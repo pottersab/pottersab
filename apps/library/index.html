@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<title>Library — Sumber Air Baku</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <div>
+      <div class="brand">Perumda Tirta Manuntung — Sumber Air Baku</div>
+      <h1>Library <span class="dummy-badge" id="statusBadge">Memuat...</span></h1>
+    </div>
+    <div class="top-note">Arsip data historis harian &amp; bulanan. Pilih dataset, atur rentang tahun/bulan, lalu unduh sesuai kebutuhan.</div>
+  </header>
+
+  <!-- Menu utama: Waduk Manggar / Waduk Teritip / Sumur Dalam -->
+  <div class="menu-main" id="menuMain"></div>
+  <!-- Menu kategori: hanya tampil untuk grup yang punya sub-kategori (mis. Sumur Dalam) -->
+  <div class="menu-category" id="menuCategory" style="display:none;"></div>
+  <!-- Sub menu: dataset di dalam kategori/menu utama yang aktif -->
+  <div class="menu-sub" id="menuSub"></div>
+
+  <div class="panel">
+    <div class="controls">
+      <div class="field time-field">
+        <label>Rentang data — <span id="rangeLabel">Semua Data</span></label>
+        <div class="year-row" id="yearRow"></div>
+        <div class="month-row" id="monthRow" style="display:none;"></div>
+      </div>
+
+      <div class="spacer"></div>
+      <button class="dl-btn" id="downloadBtn">Unduh Excel</button>
+    </div>
+
+    <div class="main-grid" id="mainGrid">
+      <div class="chart-box"><canvas id="mainChart"></canvas></div>
+      <div class="gauge-wrap">
+        <div class="gauge-label">Level Terakhir vs Historis</div>
+        <div class="gauge-track">
+          <div class="gauge-marker" id="gaugeAvgMarker"></div>
+          <div class="gauge-fill" id="gaugeFill"></div>
+        </div>
+        <div class="gauge-value" id="gaugeValue">--</div>
+      </div>
+    </div>
+
+    <div class="tiles-wrap" id="tilesWrap">
+      <div class="tiles-label">Ringkasan tiap sumur</div>
+      <div class="tiles-grid" id="tilesGrid"></div>
+    </div>
+
+    <div class="stats-row" id="statsRow"></div>
+
+    <div class="table-scroll" id="tableWrap">
+      <table>
+        <thead><tr id="tableHead"></tr></thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+    </div>
+
+    <div class="note" id="noteBox"></div>
+  </div>
+
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
