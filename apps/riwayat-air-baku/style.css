@@ -1,0 +1,222 @@
+:root{
+  --bg:#EFF5F6;
+  --surface:#FFFFFF;
+  --ink:#0E2A32;
+  --ink-soft:#4C6870;
+  --primary:#0B5566;
+  --primary-light:#1C8CA0;
+  --primary-pale:#DCEEF1;
+  --accent-rain:#D98F3E;
+  --line-muted:#C7DADD;
+  --good:#3E9B6F;
+  --warn:#D9A03B;
+  --low:#C6553D;
+  --radius:14px;
+}
+*{box-sizing:border-box;}
+body{
+  margin:0;
+  background:var(--bg);
+  color:var(--ink);
+  font-family:'Inter',sans-serif;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:1080px;margin:0 auto;padding:32px 20px 80px;}
+
+header.top{
+  display:flex;justify-content:space-between;align-items:flex-end;
+  border-bottom:2px solid var(--ink);
+  padding-bottom:18px;margin-bottom:28px;flex-wrap:wrap;gap:12px;
+}
+.brand{font-family:'Space Grotesk',sans-serif;font-size:13px;letter-spacing:0.08em;color:var(--ink-soft);text-transform:uppercase;}
+h1{
+  font-family:'Space Grotesk',sans-serif;
+  font-size:32px;margin:2px 0 0;font-weight:700;color:var(--primary);
+}
+.top-note{font-size:13px;color:var(--ink-soft);max-width:260px;text-align:right;}
+
+/* Menu utama (Waduk Manggar / Waduk Teritip / Sumur Dalam) */
+.menu-main{display:flex;gap:10px;margin-bottom:10px;flex-wrap:wrap;justify-content:center;}
+.menu-btn{
+  font-family:'Space Grotesk',sans-serif;
+  padding:12px 22px;border-radius:12px;font-size:15px;font-weight:700;
+  background:var(--surface);color:var(--ink-soft);cursor:pointer;
+  border:1.5px solid var(--line-muted);transition:all .15s ease;
+  letter-spacing:.01em;
+}
+.menu-btn.active{background:var(--ink);color:#fff;border-color:var(--ink);}
+.menu-btn:hover:not(.active){border-color:var(--primary);color:var(--primary);}
+
+/* Sub menu (dataset di dalam menu utama yang aktif) */
+.menu-sub{display:flex;gap:8px;margin-bottom:22px;flex-wrap:wrap;justify-content:center;}
+.submenu-pill{
+  font-family:'Space Grotesk',sans-serif;
+  padding:8px 15px;border-radius:999px;font-size:13px;font-weight:600;
+  background:var(--surface);color:var(--ink-soft);cursor:pointer;
+  border:1px solid var(--line-muted);transition:all .15s ease;
+}
+.submenu-pill.active{background:var(--primary);color:#fff;border-color:var(--primary);}
+.submenu-pill:hover:not(.active){border-color:var(--primary-light);color:var(--primary);}
+
+/* Menu kategori (mis. Debit Sumur / Statis Dinamis Sumur di dalam Sumur Dalam) */
+.menu-category{display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;justify-content:center;}
+.category-pill{
+  font-family:'Space Grotesk',sans-serif;
+  padding:9px 20px;border-radius:10px;font-size:14px;font-weight:700;
+  background:var(--primary-pale);color:var(--primary);cursor:pointer;
+  border:1.5px solid transparent;transition:all .15s ease;
+}
+.category-pill.active{background:var(--ink);color:#fff;}
+.category-pill:hover:not(.active){background:var(--primary-light);color:#fff;}
+
+.panel{
+  background:var(--surface);border-radius:var(--radius);
+  padding:24px;box-shadow:0 1px 3px rgba(14,42,50,0.08);
+}
+
+.controls{
+  display:flex;align-items:flex-end;gap:18px;flex-wrap:wrap;
+  padding-bottom:20px;margin-bottom:22px;border-bottom:1px dashed var(--line-muted);
+}
+.field label{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-soft);margin-bottom:6px;font-weight:600;}
+.field input[type=date], .field select{
+  font-family:'IBM Plex Mono',monospace;font-size:14px;
+  padding:8px 10px;border-radius:8px;border:1px solid var(--line-muted);
+  background:var(--bg);color:var(--ink);
+}
+.time-field{flex:1;min-width:280px;}
+.time-field label{color:var(--primary);}
+.time-field label span{color:var(--ink);font-family:'IBM Plex Mono',monospace;font-weight:600;text-transform:none;letter-spacing:0;}
+
+.year-row, .month-row{display:flex;gap:6px;flex-wrap:wrap;}
+.month-row{margin-top:8px;padding-left:14px;border-left:2px solid var(--primary-pale);}
+
+.chip{
+  font-family:'IBM Plex Mono',monospace;
+  font-size:12px;padding:7px 12px;border-radius:8px;border:1px solid var(--line-muted);
+  background:#fff;color:var(--ink-soft);cursor:pointer;transition:all .15s ease;
+}
+.chip:hover{border-color:var(--primary-light);color:var(--primary);}
+.chip.active{background:var(--primary);color:#fff;border-color:var(--primary);}
+.chip-sm{font-size:11px;padding:5px 10px;border-radius:6px;background:var(--bg);}
+
+.spacer{flex:1;}
+.dl-btn{
+  font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:14px;
+  padding:10px 18px;border-radius:8px;border:none;background:var(--ink);color:#fff;cursor:pointer;
+}
+.dl-btn:hover{background:var(--primary);}
+
+.main-grid{display:grid;grid-template-columns:1fr 90px;gap:24px;}
+@media (max-width:640px){.main-grid{grid-template-columns:1fr;}}
+
+.chart-box{height:340px;}
+
+.gauge-wrap{display:flex;flex-direction:column;align-items:center;}
+.gauge-label{font-size:10px;text-transform:uppercase;color:var(--ink-soft);letter-spacing:.05em;margin-bottom:8px;text-align:center;}
+.gauge-track{
+  width:26px;height:260px;background:var(--bg);border-radius:13px;
+  position:relative;overflow:hidden;border:1px solid var(--line-muted);
+}
+.gauge-fill{
+  position:absolute;bottom:0;left:0;width:100%;
+  background:linear-gradient(180deg,var(--primary-light),var(--primary));
+  border-radius:0 0 13px 13px;transition:height .4s ease;
+}
+.gauge-marker{position:absolute;left:-6px;right:-6px;height:2px;background:var(--ink);opacity:.35;}
+.gauge-value{margin-top:10px;font-family:'IBM Plex Mono';font-weight:600;font-size:15px;color:var(--primary);}
+
+.stats-row{display:flex;gap:18px;margin-top:22px;flex-wrap:wrap;}
+
+.tiles-wrap{margin-top:22px;display:none;}
+.tiles-label{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft);margin-bottom:10px;font-weight:600;}
+.tiles-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;}
+.tile{
+  background:var(--primary-pale);border-radius:10px;padding:14px 16px;
+}
+.tile-name{font-size:11px;color:var(--primary);font-weight:600;text-transform:uppercase;letter-spacing:.03em;margin-bottom:10px;}
+.tile-metrics{display:flex;gap:14px;}
+.tile-metric{flex:1;min-width:0;}
+.tile-metric-label{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-soft);font-weight:600;margin-bottom:2px;}
+.tile-metric-value{display:block;font-family:'IBM Plex Mono';font-size:17px;font-weight:600;color:var(--ink);white-space:nowrap;}
+.tile-delta{font-family:'IBM Plex Mono';font-size:11px;color:var(--ink-soft);margin-top:10px;}
+.tile svg{margin-top:8px;display:block;}
+.stat{background:var(--primary-pale);border-radius:10px;padding:12px 16px;min-width:130px;}
+.stat .k{font-size:10px;text-transform:uppercase;color:var(--primary);letter-spacing:.05em;font-weight:600;}
+.stat .v{font-family:'IBM Plex Mono';font-size:19px;font-weight:600;color:var(--ink);margin-top:2px;}
+
+table{width:100%;border-collapse:collapse;margin-top:22px;font-size:13px;}
+thead th{
+  text-align:left;font-size:11px;text-transform:uppercase;color:var(--ink-soft);
+  letter-spacing:.05em;padding:8px 10px;border-bottom:2px solid var(--ink);
+}
+tbody td{padding:7px 10px;border-bottom:1px solid var(--line-muted);font-family:'IBM Plex Mono';}
+tbody tr:hover{background:var(--primary-pale);}
+.table-scroll{max-height:220px;overflow-y:auto;border-radius:8px;}
+
+.note{font-size:12px;color:var(--ink-soft);margin-top:16px;line-height:1.5;}
+.dummy-badge{
+  display:inline-block;font-size:11px;background:var(--warn);color:#fff;padding:3px 10px;
+  border-radius:999px;font-weight:600;margin-left:10px;vertical-align:middle;
+}
+.loading-note{font-size:13px;color:var(--ink-soft);padding:40px 0;text-align:center;}
+.error-note{font-size:13px;color:var(--low);padding:40px 0;text-align:center;}
+
+/* --- Tambahan untuk halaman Data Historis Pengambilan Air Baku --- */
+.dl-group{display:flex;gap:10px;flex-wrap:wrap;}
+
+.dl-btn-admin{
+  background:var(--ink-soft);
+  opacity:.6;
+  cursor:not-allowed;
+}
+.dl-btn-admin.enabled{
+  background:var(--primary);
+  opacity:1;
+  cursor:pointer;
+}
+.dl-btn-admin.enabled:hover{background:var(--ink);}
+
+.page-footer-note{
+  margin-top:24px;text-align:center;
+}
+.page-footer-note a{
+  font-family:'Space Grotesk',sans-serif;font-size:13px;font-weight:600;
+  color:var(--ink-soft);text-decoration:none;
+}
+.page-footer-note a:hover{color:var(--primary);}
+
+.rekap-scroll{max-height:none;overflow-x:auto;}
+.rekap-table{min-width:760px;}
+.rekap-table thead th:first-child, .rekap-table tbody td:first-child{
+  position:sticky;left:0;background:var(--surface);z-index:1;
+}
+.rekap-table tbody td{text-align:right;}
+.rekap-table tbody td:first-child{text-align:left;}
+.rekap-total-row td{
+  background:var(--primary-pale);border-top:2px solid var(--ink);
+}
+.rekap-total-row td:first-child{background:var(--primary-pale);}
+
+/* --- Rekapitulasi (tabel pivot instalasi x bulan) --- */
+.rekap-year-block{margin-bottom:28px;}
+.rekap-year-title{
+  font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:15px;
+  color:var(--primary);margin-bottom:10px;
+}
+.rekap-table-scroll{max-height:none;overflow-x:auto;border-radius:8px;}
+table.rekap-table{width:100%;border-collapse:collapse;font-size:12px;min-width:760px;}
+table.rekap-table thead th{
+  text-align:right;font-size:10px;text-transform:uppercase;color:var(--ink-soft);
+  letter-spacing:.04em;padding:8px 10px;border-bottom:2px solid var(--ink);
+  font-family:'IBM Plex Mono';white-space:nowrap;
+}
+table.rekap-table thead th:first-child{text-align:left;}
+table.rekap-table tbody td{
+  padding:6px 10px;border-bottom:1px solid var(--line-muted);
+  font-family:'IBM Plex Mono';text-align:right;white-space:nowrap;
+}
+table.rekap-table tbody td:first-child{text-align:left;font-family:'Inter';}
+table.rekap-table tr.rekap-total-row td{
+  font-weight:700;background:var(--primary-pale);border-top:2px solid var(--ink);
+}
