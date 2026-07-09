@@ -149,35 +149,35 @@
   </div>
   <div class="app-grid">
 
-    <a class="app-card" href="apps/spd.html">
+    <a class="app-card" href="apps/spd.html" onclick="recordAccess('SPD', 'Generator SPD')">
       <div class="app-icon">SPD</div>
       <h4>Generator SPD</h4>
       <p>Membuat Surat Penyediaan Dana lengkap dengan rincian item, nomor surat otomatis, dan ekspor ke Excel / PDF.</p>
       <span class="go">Buka aplikasi →</span>
     </a>
 
-    <a class="app-card" href="apps/berita-acara.html">
+    <a class="app-card" href="apps/berita-acara.html" onclick="recordAccess('Berita Acara', 'Generator Berita Acara')">
       <div class="app-icon">BA</div>
       <h4>Generator Berita Acara</h4>
       <p>Menyusun berita acara pekerjaan lengkap dengan lampiran foto, siap cetak atau diunduh.</p>
       <span class="go">Buka aplikasi →</span>
     </a>
 
-    <a class="app-card" href="apps/formulir-sab.html">
+    <a class="app-card" href="apps/formulir-sab.html" onclick="recordAccess('Formulir SAB', 'Formulir Pekerjaan SAB')">
       <div class="app-icon">FL</div>
       <h4>Formulir Pekerjaan SAB</h4>
       <p>Laporan perbaikan lapangan: pipa transmisi, pipa sumur, dan jalan — lengkap dengan foto dan koordinat GPS otomatis.</p>
       <span class="go">Buka aplikasi →</span>
     </a>
 
-    <a class="app-card" href="apps/surat-permohonan.html">
+    <a class="app-card" href="apps/surat-permohonan.html" onclick="recordAccess('Surat Permohonan', 'Generator Surat Permohonan')">
       <div class="app-icon">SP</div>
       <h4>Generator Surat Permohonan</h4>
       <p>Membuat surat permohonan resmi lengkap dengan nomor surat otomatis, kop surat, dan tanda tangan pengesahan, siap diunduh sebagai Word.</p>
       <span class="go">Buka aplikasi →</span>
     </a>
 
-    <a class="app-card" href="apps/library/index.html">
+    <a class="app-card" href="apps/library/index.html" onclick="recordAccess('Library', 'Library Data Historis')">
       <div class="app-icon">LB</div>
       <h4>Library Data Historis</h4>
       <p>Arsip data historis harian level waduk, kualitas air, curah hujan, dan debit sumur. Pilih rentang tanggal dan unduh sebagai CSV.</p>
@@ -222,7 +222,30 @@
 
 <footer>
   <strong>Perumda Tirta Manuntung Kota Balikpapan</strong> — Sub Divisi Sumber Air Baku
+  <div style="margin-top:8px;"><a href="login.html" style="color:#8a97a8;font-size:11px;text-decoration:none;">Admin</a></div>
 </footer>
+
+<script>
+  // Mencatat setiap kali kartu aplikasi dibuka (tanpa perlu login).
+  // Menggunakan sendBeacon supaya tidak menghambat perpindahan halaman.
+  function recordAccess(documentType, documentName) {
+    try {
+      const payload = JSON.stringify({
+        documentType,
+        documentName: `${documentName} — dibuka ${new Date().toLocaleString('id-ID')}`,
+        details: { accessedAt: new Date().toISOString() }
+      });
+      const blob = new Blob([payload], { type: 'application/json' });
+      if (navigator.sendBeacon) {
+        navigator.sendBeacon('/api/history', blob);
+      } else {
+        fetch('/api/history', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: payload, keepalive: true });
+      }
+    } catch (err) {
+      // Diamkan saja — jangan sampai gagal record menghalangi user membuka aplikasi
+    }
+  }
+</script>
 
 </body>
 </html>

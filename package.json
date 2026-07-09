@@ -1,0 +1,10 @@
+{
+  "name": "pottersab",
+  "version": "1.0.0",
+  "description": "Portal aplikasi kerja Sub Divisi Sumber Air Baku",
+  "private": true,
+  "dependencies": {
+    "pg": "^8.11.3",
+    "jsonwebtoken": "^9.0.2"
+  }
+}

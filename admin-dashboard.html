@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard Admin — Sumber Air Baku</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #1c2b3a;
+    --navy: #1f3a5f;
+    --navy-dark: #152840;
+    --paper: #f6f4ee;
+    --card: #ffffff;
+    --line: #dfdad0;
+    --muted: #6b7280;
+    --accent: #a9762f;
+    --accent-soft: #f1e6d3;
+    --success: #16a34a;
+    --error: #dc2626;
+    --radius: 10px;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .serif { font-family: 'Source Serif 4', "Times New Roman", Times, serif; }
+
+  /* ===== Header ===== */
+  .masthead {
+    background: var(--card);
+    border-bottom: 1px solid var(--line);
+  }
+
+  .masthead-inner {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 16px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+  }
+
+  .masthead-left {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+  }
+
+  .masthead img { height: 48px; width: auto; }
+  .masthead-text { line-height: 1.3; }
+  .masthead-text .induk { font-size: 11px; color: var(--muted); letter-spacing: .03em; text-transform: uppercase; }
+  .masthead-text h1 { font-size: 16px; margin: 2px 0; color: var(--navy-dark); font-weight: 700; }
+  .masthead-text .sub { font-size: 11px; color: var(--muted); }
+
+  .user-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .user-badge {
+    background: var(--accent-soft);
+    color: var(--accent);
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+  }
+
+  .logout-btn {
+    padding: 8px 14px;
+    background: var(--error);
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background .15s ease;
+  }
+
+  .logout-btn:hover { background: #b91c1c; }
+
+  /* ===== Main Content ===== */
+  .container {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 40px 24px;
+  }
+
+  .section-title {
+    font-size: 28px;
+    margin: 0 0 6px;
+    color: var(--navy-dark);
+    font-weight: 700;
+  }
+
+  .section-desc {
+    font-size: 14px;
+    color: var(--muted);
+    margin: 0 0 24px;
+  }
+
+  /* ===== Controls ===== */
+  .controls {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 20px;
+    margin-bottom: 24px;
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .control-group {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .control-group label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--navy-dark);
+  }
+
+  .control-group input,
+  .control-group select {
+    padding: 8px 12px;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    font-size: 13px;
+    font-family: inherit;
+    color: var(--ink);
+  }
+
+  .control-group input:focus,
+  .control-group select:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+
+  .action-btn {
+    padding: 8px 14px;
+    border: none;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all .15s ease;
+  }
+
+  .btn-primary { background: var(--navy); color: #fff; }
+  .btn-primary:hover { background: var(--navy-dark); }
+
+  .btn-secondary { background: var(--accent-soft); color: var(--accent); }
+  .btn-secondary:hover { background: #ead9bb; }
+
+  .btn-danger { background: #fee2e2; color: var(--error); }
+  .btn-danger:hover { background: #fecaca; }
+
+  /* ===== Stats ===== */
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+
+  .stat-card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 20px;
+  }
+
+  .stat-label {
+    font-size: 12px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    margin-bottom: 8px;
+  }
+
+  .stat-value {
+    font-size: 32px;
+    font-weight: 700;
+    color: var(--navy-dark);
+  }
+
+  /* ===== History Table ===== */
+  .table-wrapper {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+
+  .table-empty {
+    padding: 40px 24px;
+    text-align: center;
+    color: var(--muted);
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  th {
+    background: var(--paper);
+    padding: 16px;
+    text-align: left;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--navy-dark);
+    border-bottom: 1px solid var(--line);
+    text-transform: uppercase;
+    letter-spacing: .05em;
+  }
+
+  td {
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--line);
+    font-size: 13px;
+  }
+
+  tr:last-child td { border-bottom: none; }
+  tr:hover { background: var(--paper); }
+
+  .doc-type {
+    background: var(--accent-soft);
+    color: var(--accent);
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-weight: 600;
+    display: inline-block;
+    font-size: 11px;
+  }
+
+  .user-role {
+    font-size: 11px;
+    color: var(--muted);
+    background: #f3f4f6;
+    padding: 2px 6px;
+    border-radius: 3px;
+    display: inline-block;
+  }
+
+  .delete-btn {
+    padding: 4px 8px;
+    background: #fee2e2;
+    color: var(--error);
+    border: none;
+    border-radius: 3px;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background .15s ease;
+  }
+
+  .delete-btn:hover { background: #fecaca; }
+
+  .time-ago {
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  /* ===== Loading & Messages ===== */
+  .loading {
+    text-align: center;
+    padding: 40px 24px;
+    color: var(--muted);
+  }
+
+  .message {
+    padding: 12px 16px;
+    border-radius: 4px;
+    margin-bottom: 16px;
+    font-size: 13px;
+  }
+
+  .message.success {
+    background: #dcfce7;
+    color: #166534;
+    border: 1px solid #bbf7d0;
+  }
+
+  .message.error {
+    background: #fee2e2;
+    color: #991b1b;
+    border: 1px solid #fecaca;
+  }
+
+  /* ===== Footer ===== */
+  footer {
+    background: var(--navy-dark);
+    color: #cdd8e6;
+    padding: 26px 24px;
+    text-align: center;
+    font-size: 12.5px;
+  }
+
+  footer strong { color: #fff; }
+
+  @media (max-width: 640px) {
+    .masthead-inner { flex-direction: column; align-items: flex-start; }
+    .controls { flex-direction: column; }
+    .control-group { width: 100%; }
+    table { font-size: 12px; }
+    th, td { padding: 10px 8px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="masthead">
+  <div class="masthead-inner">
+    <div class="masthead-left">
+      <div class="masthead-text">
+        <div class="induk">Admin Dashboard</div>
+        <h1 class="serif">Riwayat Pembuatan Surat</h1>
+        <div class="sub">Kelola dan lihat semua surat yang telah dibuat</div>
+      </div>
+    </div>
+    <div class="user-info">
+      <div class="user-badge" id="userBadge">ADMIN</div>
+      <button class="logout-btn" id="logoutBtn">Keluar</button>
+    </div>
+  </div>
+</div>
+
+<div class="container">
+  <div id="message"></div>
+
+  <div class="stats">
+    <div class="stat-card">
+      <div class="stat-label">Total Surat</div>
+      <div class="stat-value" id="totalCount">0</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Dari Admin</div>
+      <div class="stat-value" id="adminCount">0</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Dari Guest</div>
+      <div class="stat-value" id="guestCount">0</div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <div class="control-group">
+      <label for="filterType">Tipe:</label>
+      <select id="filterType">
+        <option value="">Semua</option>
+        <option value="SPD">SPD</option>
+        <option value="Berita Acara">Berita Acara</option>
+        <option value="Formulir SAB">Formulir SAB</option>
+        <option value="Surat Permohonan">Surat Permohonan</option>
+      </select>
+    </div>
+    <div class="control-group">
+      <label for="filterStart">Dari:</label>
+      <input type="date" id="filterStart">
+    </div>
+    <div class="control-group">
+      <label for="filterEnd">Sampai:</label>
+      <input type="date" id="filterEnd">
+    </div>
+    <button class="action-btn btn-primary" id="filterBtn">Filter</button>
+    <button class="action-btn btn-secondary" id="exportBtn">Export CSV</button>
+    <button class="action-btn btn-secondary" id="refreshBtn">Refresh</button>
+  </div>
+
+  <div class="table-wrapper">
+    <div id="historyContent" class="table-empty">
+      <div class="loading">Memuat data...</div>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <strong>Perumda Tirta Manuntung Kota Balikpapan</strong> — Sub Divisi Sumber Air Baku
+</footer>
+
+<script>
+  const API_URL = '';
+  const token = localStorage.getItem('token');
+  const username = localStorage.getItem('username');
+
+  if (!token || localStorage.getItem('role') !== 'admin') {
+    window.location.href = 'login.html';
+  }
+
+  document.getElementById('userBadge').textContent = username || 'ADMIN';
+
+  let historyData = [];
+
+  // Load history saat page load
+  window.addEventListener('load', loadHistory);
+
+  // Event listeners
+  document.getElementById('logoutBtn').addEventListener('click', logout);
+  document.getElementById('refreshBtn').addEventListener('click', loadHistory);
+  document.getElementById('filterBtn').addEventListener('click', filterHistory);
+  document.getElementById('exportBtn').addEventListener('click', exportCSV);
+
+  async function loadHistory() {
+    try {
+      const response = await fetch(`${API_URL}/api/history`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      if (!response.ok) throw new Error('Failed to load history');
+
+      const data = await response.json();
+      historyData = data.data || [];
+      renderTable(historyData);
+      updateStats(historyData);
+    } catch (err) {
+      showMessage('Gagal memuat data history', 'error');
+      console.error(err);
+    }
+  }
+
+  function updateStats(data) {
+    const total = data.length;
+    const admin = data.filter(d => d.role === 'admin').length;
+    const guest = data.filter(d => d.role === 'guest').length;
+
+    document.getElementById('totalCount').textContent = total;
+    document.getElementById('adminCount').textContent = admin;
+    document.getElementById('guestCount').textContent = guest;
+  }
+
+  function renderTable(data) {
+    const container = document.getElementById('historyContent');
+
+    if (data.length === 0) {
+      container.innerHTML = '<div class="table-empty">Tidak ada data surat</div>';
+      return;
+    }
+
+    let html = `
+      <table>
+        <thead>
+          <tr>
+            <th>Tipe Dokumen</th>
+            <th>Nama Dokumen</th>
+            <th>Pembuat</th>
+            <th>Tanggal</th>
+            <th>Aksi</th>
+          </tr>
+        </thead>
+        <tbody>
+    `;
+
+    data.forEach(item => {
+      const date = new Date(item.createdAt);
+      const timeAgo = getTimeAgo(date);
+      const formattedDate = date.toLocaleString('id-ID');
+
+      html += `
+        <tr>
+          <td><span class="doc-type">${item.documentType}</span></td>
+          <td>${escapeHtml(item.documentName)}</td>
+          <td>
+            <span class="user-role">${item.role.toUpperCase()}</span>
+            ${escapeHtml(item.createdBy)}
+          </td>
+          <td>
+            <span class="time-ago">${timeAgo}</span>
+            <div style="font-size: 11px; color: var(--muted);">${formattedDate}</div>
+          </td>
+          <td>
+            <button class="delete-btn" onclick="deleteEntry(${item.id})">Hapus</button>
+          </td>
+        </tr>
+      `;
+    });
+
+    html += '</tbody></table>';
+    container.innerHTML = html;
+  }
+
+  async function filterHistory() {
+    const type = document.getElementById('filterType').value;
+    const startDate = document.getElementById('filterStart').value;
+    const endDate = document.getElementById('filterEnd').value;
+
+    if (!startDate || !endDate) {
+      showMessage('Pilih rentang tanggal', 'error');
+      return;
+    }
+
+    try {
+      let url = `${API_URL}/api/history?startDate=${startDate}&endDate=${endDate}`;
+      if (type) url += `&type=${type}`;
+
+      const response = await fetch(url, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      const data = await response.json();
+      renderTable(data.data || []);
+      updateStats(data.data || []);
+    } catch (err) {
+      showMessage('Gagal memfilter data', 'error');
+    }
+  }
+
+  async function deleteEntry(id) {
+    if (!confirm('Yakin ingin menghapus entry ini?')) return;
+
+    try {
+      const response = await fetch(`${API_URL}/api/history/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      if (response.ok) {
+        showMessage('Entry berhasil dihapus', 'success');
+        loadHistory();
+      } else {
+        showMessage('Gagal menghapus entry', 'error');
+      }
+    } catch (err) {
+      showMessage('Gagal menghapus entry', 'error');
+    }
+  }
+
+  async function exportCSV() {
+    try {
+      const response = await fetch(`${API_URL}/api/history/export`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `history-${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (err) {
+      showMessage('Gagal export CSV', 'error');
+    }
+  }
+
+  function logout() {
+    localStorage.clear();
+    window.location.href = 'index.html';
+  }
+
+  function showMessage(text, type) {
+    const msg = document.getElementById('message');
+    msg.innerHTML = `<div class="message ${type}">${text}</div>`;
+    setTimeout(() => msg.innerHTML = '', 3000);
+  }
+
+  function getTimeAgo(date) {
+    const now = new Date();
+    const seconds = Math.floor((now - date) / 1000);
+
+    if (seconds < 60) return 'Baru saja';
+    if (seconds < 3600) return Math.floor(seconds / 60) + ' menit lalu';
+    if (seconds < 86400) return Math.floor(seconds / 3600) + ' jam lalu';
+    return Math.floor(seconds / 86400) + ' hari lalu';
+  }
+
+  function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
+</script>
+
+</body>
+</html>

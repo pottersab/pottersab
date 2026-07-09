@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Login Admin — Sumber Air Baku</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #1c2b3a;
+    --navy: #1f3a5f;
+    --navy-dark: #152840;
+    --paper: #f6f4ee;
+    --card: #ffffff;
+    --line: #dfdad0;
+    --muted: #6b7280;
+    --accent: #a9762f;
+    --accent-soft: #f1e6d3;
+    --error: #dc2626;
+    --radius: 10px;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .serif { font-family: 'Source Serif 4', "Times New Roman", Times, serif; }
+
+  .masthead {
+    background: var(--card);
+    border-bottom: 1px solid var(--line);
+  }
+
+  .masthead-inner {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 22px 24px 16px;
+    display: flex;
+    align-items: center;
+    gap: 18px;
+  }
+
+  .masthead-text { line-height: 1.3; }
+  .masthead-text .induk { font-size: 13px; color: var(--muted); letter-spacing: .03em; text-transform: uppercase; }
+  .masthead-text h1 { font-size: 22px; margin: 2px 0 2px; color: var(--navy-dark); font-weight: 700; }
+  .masthead-text .sub { font-size: 13px; color: var(--muted); }
+  .masthead-rule { max-width: 1080px; margin: 0 auto; height: 3px; background: var(--navy); }
+
+  .login-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: calc(100vh - 180px);
+    padding: 40px 24px;
+  }
+
+  .login-card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 44px 40px;
+    max-width: 380px;
+    width: 100%;
+    box-shadow: 0 4px 12px rgba(28, 43, 58, 0.08);
+  }
+
+  .login-card h2 {
+    font-size: 24px;
+    margin: 0 0 6px;
+    color: var(--navy-dark);
+    font-weight: 700;
+  }
+
+  .login-card .subtitle {
+    font-size: 14px;
+    color: var(--muted);
+    margin: 0 0 28px;
+    line-height: 1.5;
+  }
+
+  .form-group { margin-bottom: 20px; }
+
+  .form-group label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--navy-dark);
+    margin-bottom: 6px;
+    letter-spacing: .03em;
+    text-transform: uppercase;
+  }
+
+  .form-group input {
+    width: 100%;
+    padding: 12px 14px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    font-size: 14px;
+    font-family: inherit;
+    color: var(--ink);
+    background: #fafaf8;
+    transition: border-color .15s ease, background .15s ease;
+  }
+
+  .form-group input:focus {
+    outline: none;
+    border-color: var(--accent);
+    background: var(--card);
+  }
+
+  .error-message {
+    display: none;
+    background: #fee2e2;
+    border: 1px solid #fecaca;
+    color: var(--error);
+    padding: 12px 14px;
+    border-radius: 6px;
+    font-size: 13px;
+    margin-bottom: 20px;
+  }
+
+  .error-message.show { display: block; }
+
+  .submit-btn {
+    width: 100%;
+    padding: 12px;
+    background: var(--navy);
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: .03em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: background .15s ease, transform .15s ease;
+  }
+
+  .submit-btn:hover { background: var(--navy-dark); transform: translateY(-1px); }
+  .submit-btn:active { transform: translateY(0); }
+  .submit-btn[disabled] { opacity: 0.6; cursor: not-allowed; }
+
+  .back-link {
+    display: block;
+    text-align: center;
+    margin-top: 20px;
+    font-size: 13px;
+    color: var(--muted);
+    text-decoration: none;
+  }
+
+  .back-link:hover { color: var(--navy); }
+
+  footer {
+    background: var(--navy-dark);
+    color: #cdd8e6;
+    padding: 26px 24px;
+    text-align: center;
+    font-size: 12.5px;
+  }
+
+  footer strong { color: #fff; }
+
+  @media (max-width: 640px) {
+    .login-card { padding: 32px 24px; }
+    .login-card h2 { font-size: 20px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="masthead">
+  <div class="masthead-inner">
+    <div class="masthead-text">
+      <div class="induk">Perumda Tirta Manuntung Kota Balikpapan</div>
+      <h1 class="serif">Sub Divisi Sumber Air Baku</h1>
+      <div class="sub">Portal Aplikasi Kerja &amp; Dokumen Internal</div>
+    </div>
+  </div>
+</div>
+<div class="masthead-rule"></div>
+
+<div class="login-wrapper">
+  <div class="login-card">
+    <h2 class="serif">Login Admin</h2>
+    <p class="subtitle">Halaman ini khusus untuk administrator. Untuk membuat surat, kembali ke beranda.</p>
+
+    <div class="error-message" id="errorMessage"></div>
+
+    <form id="loginForm">
+      <div class="form-group">
+        <label for="username">Username</label>
+        <input type="text" id="username" name="username" required autofocus autocomplete="username">
+      </div>
+
+      <div class="form-group">
+        <label for="password">Password</label>
+        <input type="password" id="password" name="password" required autocomplete="current-password">
+      </div>
+
+      <button type="submit" class="submit-btn" id="submitBtn">Masuk</button>
+    </form>
+
+    <a href="index.html" class="back-link">&larr; Kembali ke beranda</a>
+  </div>
+</div>
+
+<footer>
+  <strong>Perumda Tirta Manuntung Kota Balikpapan</strong> — Sub Divisi Sumber Air Baku
+</footer>
+
+<script>
+  const API_URL = '';
+
+  const loginForm = document.getElementById('loginForm');
+  const usernameInput = document.getElementById('username');
+  const passwordInput = document.getElementById('password');
+  const errorMsg = document.getElementById('errorMessage');
+  const submitBtn = document.getElementById('submitBtn');
+
+  loginForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    errorMsg.classList.remove('show');
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Memproses...';
+
+    try {
+      const response = await fetch(`${API_URL}/api/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username: usernameInput.value,
+          password: passwordInput.value
+        })
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('role', data.role);
+        localStorage.setItem('username', data.username);
+        window.location.href = 'admin-dashboard.html';
+      } else {
+        showError(data.error || 'Username atau password salah');
+      }
+    } catch (err) {
+      showError('Koneksi ke server gagal. Coba lagi beberapa saat.');
+    }
+
+    submitBtn.disabled = false;
+    submitBtn.textContent = 'Masuk';
+  });
+
+  function showError(message) {
+    errorMsg.textContent = message;
+    errorMsg.classList.add('show');
+  }
+</script>
+
+</body>
+</html>
