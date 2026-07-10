@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Data Historis Pengambilan Air Baku — Sumber Air Baku</title>
+<title>Data Pengambilan Air Baku — Sumber Air Baku</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
@@ -13,12 +13,85 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 </head>
 <body>
+<header class="ptmb-navbar">
+  <div class="ptmb-brand">
+    <div class="ptmb-brand-mark">PT</div>
+    <div class="ptmb-brand-text">PTMB<span>Portal Internal</span></div>
+  </div>
+
+  <nav class="ptmb-nav-links" id="ptmbNavLinks">
+    <a href="../../index.html">Home</a>
+
+    <div class="ptmb-nav-item" data-ptmb-nav>
+      <button class="ptmb-nav-link" type="button">Tools <span class="ptmb-nav-caret"></span></button>
+      <div class="ptmb-nav-dropdown">
+        <a href="../spd.html">Surat Penyediaan Dana (SPD)</a>
+        <a href="../berita-acara.html">Berita Acara (BA)</a>
+        <a href="../surat-permohonan.html">Surat Permohonan (Eksternal)</a>
+      </div>
+    </div>
+
+    <div class="ptmb-nav-item" data-ptmb-nav>
+      <button class="ptmb-nav-link ptmb-active" type="button">Data Visualization <span class="ptmb-nav-caret"></span></button>
+      <div class="ptmb-nav-dropdown">
+        <a href="../library/index.html">Data Waduk dan Sumur</a>
+        <a href="index.html">Data Pengambilan Air Baku</a>
+      </div>
+    </div>
+
+    <div class="ptmb-nav-item" data-ptmb-nav>
+      <button class="ptmb-nav-link" type="button">Development <span class="ptmb-nav-caret"></span></button>
+      <div class="ptmb-nav-dropdown">
+        <span class="ptmb-nav-dropdown-tag">Admin Only</span>
+        <a href="../input-data-historis.html">Input Data Waduk Dan Sumur</a>
+        <a href="../input-air-baku.html">Input Pengambilan Air Baku</a>
+        <a href="../formulir-sab.html">Input Pekerjaan SAB</a>
+      </div>
+    </div>
+
+    <div class="ptmb-nav-item" data-ptmb-nav>
+      <button class="ptmb-nav-link" type="button">About Me <span class="ptmb-nav-caret"></span></button>
+      <div class="ptmb-nav-dropdown">
+        <a href="../../index.html#about">Profil &amp; Portfolio</a>
+        <a href="../../index.html#about">Kontak</a>
+      </div>
+    </div>
+
+    <a href="../../login.html" class="ptmb-btn-login">Login</a>
+  </nav>
+
+  <button class="ptmb-nav-toggle" id="ptmbNavToggle" aria-label="Buka menu">
+    <span></span><span></span><span></span>
+  </button>
+</header>
+
+<script>
+  (function(){
+    const toggle = document.getElementById('ptmbNavToggle');
+    const links = document.getElementById('ptmbNavLinks');
+    toggle.addEventListener('click', () => links.classList.toggle('ptmb-open-mobile'));
+
+    document.querySelectorAll('[data-ptmb-nav]').forEach((item) => {
+      const btn = item.querySelector('.ptmb-nav-link');
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const wasOpen = item.classList.contains('ptmb-open');
+        document.querySelectorAll('[data-ptmb-nav]').forEach(i => i.classList.remove('ptmb-open'));
+        if(!wasOpen) item.classList.add('ptmb-open');
+      });
+    });
+    document.addEventListener('click', () => {
+      document.querySelectorAll('[data-ptmb-nav]').forEach(i => i.classList.remove('ptmb-open'));
+    });
+  })();
+</script>
+
 <div class="wrap">
 
   <header class="top">
     <div>
       <div class="brand">Perumda Tirta Manuntung — Sumber Air Baku</div>
-      <h1>Data Historis Pengambilan Air Baku <span class="dummy-badge" id="statusBadge">Memuat...</span></h1>
+      <h1>Data Pengambilan Air Baku <span class="dummy-badge" id="statusBadge">Memuat...</span></h1>
     </div>
     <div class="top-note">Rekap debit pengambilan air baku bulanan. Pilih kategori & instalasi, atur rentang tahun/bulan, lalu unduh sesuai kebutuhan.</div>
   </header>
