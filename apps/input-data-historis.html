@@ -186,35 +186,7 @@ tbody tr:hover{background:var(--primary-pale);}
   </header>
 
   <div class="toolbar">
-    <button class="tbtn danger" id="btnResetAll">Reset semua data dummy</button>
     <button class="tbtn" id="btnLogout">Keluar</button>
-  </div>
-
-  <!-- ================================================================
-       SINKRONISASI GOOGLE SHEETS
-       Isi 2 kotak di bawah ini:
-       1. URL Web App — hasil Deploy Apps Script (langkah 2 di panduan),
-          diakhiri "/exec". Contoh:
-          https://script.google.com/macros/s/AKfycbXXXXXXXXXXXX/exec
-       2. Kata sandi sinkronisasi — HARUS SAMA PERSIS dengan nilai
-          `const SECRET = '...'` di kode Apps Script (google-sheets-backend.gs).
-       Setelah diisi, klik "Simpan Pengaturan".
-       ================================================================ -->
-  <div class="sync-panel" id="syncBox">
-    <div class="sync-panel-title">⚙️ Sinkronisasi Google Sheets</div>
-    <div class="sync-panel-sub">Isi 2 kotak ini supaya data yang disimpan lewat form ini otomatis masuk ke Google Sheets & muncul di grafik.</div>
-    <div class="sync-field">
-      <label for="syncUrl">1. URL Web App Google Apps Script (diakhiri /exec)</label>
-      <input type="text" id="syncUrl" placeholder="https://script.google.com/macros/s/AKfycbXXXXXXXXXXXX/exec">
-    </div>
-    <div class="sync-field">
-      <label for="syncSecret">2. Kata sandi sinkronisasi (harus sama dengan SECRET di Apps Script)</label>
-      <input type="text" id="syncSecret" placeholder="Kata sandi rahasia yang kamu isi di kode Apps Script">
-    </div>
-    <div class="sync-panel-actions">
-      <button class="save-btn" id="btnSaveSync">Simpan Pengaturan</button>
-      <span class="sync-status" id="syncGlobalStatus"></span>
-    </div>
   </div>
 
   <div class="menu-main" id="menuMain"></div>
@@ -328,8 +300,8 @@ const SYNC_CONFIG_KEY = 'input_data_historis_sync_config';
 // Kalau sudah diisi di sini, halaman langsung tersinkron begitu dibuka, tidak
 // perlu isi kotak "Sinkronisasi Google Sheets" di tampilan lagi.
 // ============================================================================
-const DEFAULT_SYNC_URL = '';
-const DEFAULT_SYNC_SECRET = '';
+const DEFAULT_SYNC_URL = 'https://script.google.com/macros/s/AKfycbz7R-A6amPcX5Wac-a1VMzrsWlLyJNt5D_3qGCPazngPv8iOq80zdMsCbBUz6-dEC4r/exec';
+const DEFAULT_SYNC_SECRET = 'Rahasia123';
 
 // Login sekarang langsung di halaman ini (POST ke /api/login), tidak lagi
 // redirect ke login.html terpisah — jadi tidak perlu path relatif ke sana.
@@ -443,6 +415,19 @@ function downloadText(filename, text, mime) {
 function fmtDateID(iso) {
   const [y,m,d] = iso.split('-');
   return `${d}/${m}/${y}`;
+}
+// Tambah 1 hari ke string 'YYYY-MM-DD' TANPA lewat Date.toISOString() — kalau
+// pakai toISOString(), Date dikonversi ke UTC dulu, dan karena zona waktu
+// Indonesia lebih maju dari UTC (WIB/WITA/WIT), hasilnya bisa mundur/tidak
+// maju sama sekali. Ini murni hitung tanggal lokal, aman di zona waktu manapun.
+function addOneDay(iso) {
+  const [y, m, d] = iso.split('-').map(Number);
+  const date = new Date(y, m - 1, d); // local time, tanpa komponen jam
+  date.setDate(date.getDate() + 1);
+  const yy = date.getFullYear();
+  const mm = String(date.getMonth() + 1).padStart(2, '0');
+  const dd = String(date.getDate()).padStart(2, '0');
+  return `${yy}-${mm}-${dd}`;
 }
 function fmtBulanID(ym) {
   const MONTHS = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
@@ -689,9 +674,7 @@ function renderDailyPanel() {
     }
 
     // tanggal otomatis maju satu hari untuk entri berikutnya
-    const d = new Date(tanggal + 'T00:00:00');
-    d.setDate(d.getDate() + 1);
-    nextAutoDate[currentGroup] = d.toISOString().slice(0, 10);
+    nextAutoDate[currentGroup] = addOneDay(tanggal);
 
     editingKey = null;
     renderAll();
@@ -955,29 +938,6 @@ function renderAll() {
 // =============================================================================
 // TOOLBAR
 // =============================================================================
-document.getElementById('syncUrl').value = syncConfig.url;
-document.getElementById('syncSecret').value = syncConfig.secret;
-document.getElementById('btnSaveSync').onclick = () => {
-  syncConfig = {
-    url: document.getElementById('syncUrl').value.trim(),
-    secret: document.getElementById('syncSecret').value.trim()
-  };
-  saveSyncConfig();
-  Object.keys(liveCache).forEach(k => delete liveCache[k]); // paksa ambil ulang dari sumber baru
-  const statusEl = document.getElementById('syncGlobalStatus');
-  statusEl.style.color = 'var(--good)';
-  statusEl.textContent = syncConfig.url ? 'Pengaturan sinkronisasi disimpan.' : 'Sinkronisasi dimatikan (memakai file CSV lokal).';
-  setTimeout(() => { statusEl.textContent = ''; }, 3000);
-  renderAll();
-};
-
-document.getElementById('btnResetAll').onclick = () => {
-  if (!confirm('Hapus SEMUA data dummy yang tersimpan di browser ini? Tindakan ini tidak bisa dibatalkan.')) return;
-  state = defaultState();
-  saveState();
-  editingKey = null;
-  renderAll();
-};
 document.getElementById('btnLogout').onclick = () => {
   localStorage.removeItem('token');
   localStorage.removeItem('role');
