@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Input Data Air Baku (AP/ATD)</title>
+<style>
+  :root{
+    --ink:#1c2b3a;
+    --navy:#1f3a5f;
+    --navy-dark:#152840;
+    --paper:#f6f4ee;
+    --card:#ffffff;
+    --line:#dfdad0;
+    --muted:#6b7280;
+    --accent:#a9762f;
+    --accent-soft:#f1e6d3;
+    --danger:#b3413a;
+    --ok:#2f7a4d;
+    --ok-soft:#e5f1e8;
+    --radius:10px;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--paper);color:var(--ink);-webkit-font-smoothing:antialiased;}
+  .topbar{background:var(--navy);color:#fff;padding:16px 20px;display:flex;flex-direction:column;gap:2px;}
+  .topbar h1{font-size:17px;margin:0;font-weight:700;}
+  .topbar span{font-size:12px;color:#cdd8e6;}
+  .wrap{max-width:640px;margin:0 auto;padding:16px;}
+
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:20px;margin-bottom:16px;}
+  .card h2{font-size:15px;margin:0 0 4px;color:var(--navy-dark);}
+  .card .hint{font-size:12.5px;color:var(--muted);margin:0 0 14px;line-height:1.5;}
+
+  .month-row{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;}
+  .month-row .field{flex:1;min-width:160px;}
+  label{display:block;font-size:12.5px;font-weight:600;color:var(--navy-dark);margin-bottom:5px;letter-spacing:.02em;text-transform:uppercase;}
+  input[type=month],input[type=number]{
+    width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:8px;
+    font-size:14px;font-family:inherit;color:var(--ink);background:#fafaf8;
+  }
+  input:focus{outline:none;border-color:var(--accent);background:#fff;}
+
+  .btn{padding:11px 18px;border:none;border-radius:8px;font-size:13.5px;font-weight:600;cursor:pointer;}
+  .btn-ghost{background:var(--accent-soft);color:var(--accent);}
+  .btn-primary{background:var(--navy);color:#fff;}
+  .btn-primary:hover{background:var(--navy-dark);}
+  .btn[disabled]{opacity:.6;cursor:not-allowed;}
+
+  .tab-row{display:flex;border-bottom:1px solid var(--line);margin-bottom:6px;}
+  .tab-btn{flex:1;border:none;background:none;padding:10px 4px;font-size:13.5px;font-weight:600;color:var(--muted);border-bottom:2px solid transparent;cursor:pointer;margin-bottom:-1px;}
+  .tab-btn.active{color:var(--navy);border-bottom-color:var(--navy);}
+
+  .field-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--line);gap:12px;}
+  .field-row:last-child{border-bottom:none;}
+  .field-row .field-label{font-size:13.5px;color:var(--ink);}
+  .field-row input[type=number]{width:130px;text-align:right;}
+
+  .total-row{display:flex;justify-content:space-between;align-items:baseline;margin:14px 0 4px;padding:10px 14px;background:var(--accent-soft);border-radius:8px;}
+  .total-row .total-label{font-size:12.5px;color:var(--muted);}
+  .total-row .total-value{font-size:19px;font-weight:700;color:var(--navy-dark);}
+
+  .status-msg{margin-top:14px;font-size:13px;min-height:18px;}
+  .status-msg.ok{color:var(--ok);font-weight:600;}
+  .status-msg.error{color:var(--danger);font-weight:600;}
+  .status-msg.info{color:var(--muted);}
+
+  .nav-row{display:flex;justify-content:flex-end;gap:10px;margin-top:6px;}
+
+  /* ===== Gerbang admin ===== */
+  #authGate{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;text-align:center;}
+  #authGate .gate-card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:32px 28px;max-width:340px;width:100%;}
+  #authGate .gate-icon{font-size:28px;margin-bottom:10px;}
+  #authGate h2{font-size:16px;margin:0 0 6px;color:var(--navy-dark);}
+  #authGate p{font-size:13px;color:var(--muted);line-height:1.5;margin:0 0 18px;}
+  #authGate a.gate-btn{display:inline-block;background:var(--navy);color:#fff;text-decoration:none;padding:10px 20px;border-radius:6px;font-size:13px;font-weight:600;}
+  #authGate a.gate-btn:hover{background:var(--navy-dark);}
+  .admin-bar{background:var(--navy-dark);color:#cdd8e6;font-size:12px;padding:6px 20px;display:flex;justify-content:space-between;align-items:center;}
+  .admin-bar b{color:#fff;}
+  .admin-bar a{color:#cdd8e6;text-decoration:underline;cursor:pointer;}
+</style>
+</head>
+<body>
+
+<!-- ===== Gerbang admin ===== -->
+<div id="authGate" style="display:none;">
+  <div class="gate-card">
+    <div class="gate-icon">🔒</div>
+    <h2>Khusus Admin</h2>
+    <p>Input Data Air Baku (AP/ATD) hanya bisa diisi oleh admin yang sudah login. Silakan masuk terlebih dahulu.</p>
+    <a class="gate-btn" href="#" id="gateLoginLink">Masuk sebagai Admin</a>
+  </div>
+</div>
+
+<div id="appRoot" style="display:none;">
+  <div class="admin-bar">
+    <span>Masuk sebagai <b id="adminUsername">Admin</b></span>
+    <a id="logoutLink">Keluar</a>
+  </div>
+
+  <div class="topbar">
+    <h1>Input Data Air Baku</h1>
+    <span>Debit bulanan — Air Permukaan (AP) &amp; Air Tanah Dalam (ATD)</span>
+  </div>
+
+  <div class="wrap">
+
+    <div class="card">
+      <h2>Pilih Bulan</h2>
+      <p class="hint">Data disimpan per bulan. Kalau bulan yang dipilih sudah ada datanya, klik "Muat data bulan ini" untuk mengedit, atau langsung isi ulang semua kolom untuk menimpa.</p>
+      <div class="month-row">
+        <div class="field">
+          <label for="bulanInput">Bulan</label>
+          <input type="month" id="bulanInput">
+        </div>
+        <button type="button" class="btn btn-ghost" id="loadBtn">Muat data bulan ini</button>
+      </div>
+      <div class="status-msg info" id="loadStatus"></div>
+    </div>
+
+    <div class="card">
+      <h2>Debit Instalasi</h2>
+      <p class="hint">Debit dalam m³ untuk bulan yang dipilih di atas. Pindah tab untuk isi kategori satunya.</p>
+
+      <div class="tab-row">
+        <button type="button" class="tab-btn active" id="tabAP">Air Permukaan</button>
+        <button type="button" class="tab-btn" id="tabATD">Air Tanah Dalam</button>
+      </div>
+
+      <div id="apFields"></div>
+      <div id="atdFields" style="display:none;"></div>
+
+      <div class="total-row">
+        <span class="total-label">Total <span id="totalLabel">AP</span></span>
+        <span class="total-value" id="totalValue">0</span>
+      </div>
+
+      <div class="nav-row">
+        <button type="button" class="btn btn-primary" id="submitBtn">Simpan Data</button>
+      </div>
+      <div class="status-msg" id="statusMsg"></div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ============== GERBANG ADMIN ==============
+(function () {
+  const REDIRECT_PATH = 'apps/input-air-baku.html';
+  const token = localStorage.getItem('token');
+  const role = localStorage.getItem('role');
+  const username = localStorage.getItem('username');
+
+  const gate = document.getElementById('authGate');
+  const app = document.getElementById('appRoot');
+  const loginLink = document.getElementById('gateLoginLink');
+  loginLink.href = '../login.html?redirect=' + encodeURIComponent(REDIRECT_PATH);
+
+  if (!token || role !== 'admin') {
+    gate.style.display = 'flex';
+    setTimeout(() => { window.location.replace(loginLink.href); }, 900);
+    throw new Error('ADMIN_ONLY: akses ditolak, mengalihkan ke login.');
+  }
+
+  document.getElementById('adminUsername').textContent = username || 'Admin';
+  document.getElementById('logoutLink').addEventListener('click', () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('role');
+    localStorage.removeItem('username');
+    window.location.href = '../login.html';
+  });
+  app.style.display = 'block';
+})();
+</script>
+
+<script>
+// ============== KONFIGURASI ==============
+// Ganti dengan URL Web App hasil deploy Code_AirBaku.gs (lihat komentar di file itu)
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz_7JO5J0KybOq0eUXAquUEJv204tuv8C-oQdHWU--YShiG7UxQGXtHHUerem9qhFZCzA/exec";
+// Harus SAMA PERSIS dengan SHARED_SECRET di Code_AirBaku.gs
+const SHARED_SECRET = "Rahasia123";
+// ==========================================
+
+const AP_FIELDS = [
+  { key: 'Teritip', label: 'Teritip' },
+  { key: 'Kampung_Damai', label: 'Kampung Damai' },
+  { key: 'Batu_Ampar', label: 'Batu Ampar' },
+  { key: 'Km_12', label: 'Kilometer 12' },
+  { key: 'Gunung_Tembak', label: 'Gunung Tembak' }
+];
+const ATD_FIELDS = [
+  { key: 'Kampung_Damai', label: 'Kampung Damai' },
+  { key: 'Gunung_Sari', label: 'Gunung Sari' },
+  { key: 'Prapatan', label: 'Prapatan' },
+  { key: 'Zamp', label: 'Zamp' },
+  { key: 'Kampung_Baru_Ulu', label: 'Kampung Baru Ulu' }
+];
+
+function fieldId(prefix, key) { return prefix + '_' + key; }
+
+function renderFields(containerId, prefix, fields) {
+  const el = document.getElementById(containerId);
+  el.innerHTML = fields.map(f => `
+    <div class="field-row">
+      <span class="field-label">${f.label}</span>
+      <input type="number" step="any" min="0" id="${fieldId(prefix, f.key)}" placeholder="m³">
+    </div>
+  `).join('');
+  fields.forEach(f => {
+    document.getElementById(fieldId(prefix, f.key)).addEventListener('input', updateTotal);
+  });
+}
+renderFields('apFields', 'ap', AP_FIELDS);
+renderFields('atdFields', 'atd', ATD_FIELDS);
+
+let activeTab = 'ap';
+
+function updateTotal() {
+  const fields = activeTab === 'ap' ? AP_FIELDS : ATD_FIELDS;
+  let sum = 0;
+  fields.forEach(f => { sum += Number(document.getElementById(fieldId(activeTab, f.key)).value) || 0; });
+  document.getElementById('totalValue').textContent = sum.toLocaleString('id-ID');
+  document.getElementById('totalLabel').textContent = activeTab === 'ap' ? 'AP' : 'ATD';
+}
+
+function switchTab(tab) {
+  activeTab = tab;
+  document.getElementById('apFields').style.display = tab === 'ap' ? 'block' : 'none';
+  document.getElementById('atdFields').style.display = tab === 'atd' ? 'block' : 'none';
+  document.getElementById('tabAP').classList.toggle('active', tab === 'ap');
+  document.getElementById('tabATD').classList.toggle('active', tab === 'atd');
+  updateTotal();
+}
+document.getElementById('tabAP').addEventListener('click', () => switchTab('ap'));
+document.getElementById('tabATD').addEventListener('click', () => switchTab('atd'));
+updateTotal();
+
+function currentBulan() {
+  return document.getElementById('bulanInput').value; // format YYYY-MM bawaan <input type=month>
+}
+
+function setLoadStatus(msg, cls) {
+  const el = document.getElementById('loadStatus');
+  el.textContent = msg;
+  el.className = 'status-msg ' + (cls || 'info');
+}
+
+function setStatus(msg, cls) {
+  const el = document.getElementById('statusMsg');
+  el.textContent = msg;
+  el.className = 'status-msg ' + (cls || '');
+}
+
+function clearAllFields() {
+  [...AP_FIELDS].forEach(f => document.getElementById(fieldId('ap', f.key)).value = '');
+  [...ATD_FIELDS].forEach(f => document.getElementById(fieldId('atd', f.key)).value = '');
+  updateTotal();
+}
+
+async function loadMonthData() {
+  const bulan = currentBulan();
+  if (!bulan) { setLoadStatus('Pilih bulan terlebih dahulu.', 'error'); return; }
+  setLoadStatus('Memuat data...', 'info');
+  clearAllFields();
+
+  try {
+    const [apRes, atdRes] = await Promise.all([
+      fetch(`${SCRIPT_URL}?sheet=AP&format=json&bulan=${encodeURIComponent(bulan)}`).then(r => r.json()),
+      fetch(`${SCRIPT_URL}?sheet=ATD&format=json&bulan=${encodeURIComponent(bulan)}`).then(r => r.json())
+    ]);
+
+    if (apRes.found) {
+      AP_FIELDS.forEach(f => {
+        const v = apRes.values[f.key];
+        if (v !== undefined && v !== '') document.getElementById(fieldId('ap', f.key)).value = v;
+      });
+    }
+    if (atdRes.found) {
+      ATD_FIELDS.forEach(f => {
+        const v = atdRes.values[f.key];
+        if (v !== undefined && v !== '') document.getElementById(fieldId('atd', f.key)).value = v;
+      });
+    }
+
+    if (apRes.found || atdRes.found) {
+      setLoadStatus('Data bulan ini ditemukan dan dimuat. Ubah lalu simpan untuk update.', 'ok');
+    } else {
+      setLoadStatus('Belum ada data untuk bulan ini. Isi semua kolom lalu simpan sebagai data baru.', 'info');
+    }
+    updateTotal();
+  } catch (err) {
+    setLoadStatus('Gagal memuat data: ' + err.message, 'error');
+  }
+}
+
+async function submitData() {
+  const bulan = currentBulan();
+  if (!bulan) { setStatus('Pilih bulan terlebih dahulu.', 'error'); return; }
+
+  const ap = {};
+  AP_FIELDS.forEach(f => { ap[f.key] = document.getElementById(fieldId('ap', f.key)).value; });
+  const atd = {};
+  ATD_FIELDS.forEach(f => { atd[f.key] = document.getElementById(fieldId('atd', f.key)).value; });
+
+  const btn = document.getElementById('submitBtn');
+  btn.disabled = true;
+  btn.textContent = 'Menyimpan...';
+  setStatus('Mengirim data...', 'info');
+
+  try {
+    const res = await fetch(SCRIPT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // hindari preflight CORS ke Apps Script
+      body: JSON.stringify({ secret: SHARED_SECRET, bulan, ap, atd })
+    });
+    const data = await res.json();
+    if (data.status === 'ok') {
+      setStatus('Tersimpan. Data akan otomatis muncul di halaman "Data Historis Pengambilan Air Baku".', 'ok');
+    } else {
+      setStatus('Gagal: ' + (data.message || 'terjadi kesalahan.'), 'error');
+    }
+  } catch (err) {
+    setStatus('Gagal mengirim data: ' + err.message, 'error');
+  }
+
+  btn.disabled = false;
+  btn.textContent = 'Simpan Data';
+}
+
+document.getElementById('loadBtn').addEventListener('click', loadMonthData);
+document.getElementById('submitBtn').addEventListener('click', submitData);
+
+// Default: bulan berjalan
+(function setDefaultMonth(){
+  const now = new Date();
+  const val = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+  document.getElementById('bulanInput').value = val;
+})();
+</script>
+
+</body>
+</html>

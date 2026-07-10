@@ -44,7 +44,7 @@ function keyIsAvailable(k) {
 // ---------------------------------------------------------------------------
 const DATA_SOURCES = [
   {
-    file: 'data/air_permukaan.csv',
+    file: 'https://script.google.com/macros/s/AKfycbz_7JO5J0KybOq0eUXAquUEJv204tuv8C-oQdHWU--YShiG7UxQGXtHHUerem9qhFZCzA/exec?sheet=AP',
     dateColumn: 'Bulan',
     totalKey: 'ap_total',
     totalLabel: 'Jumlah — Air Permukaan (AP)',
@@ -59,7 +59,7 @@ const DATA_SOURCES = [
     }
   },
   {
-    file: 'data/air_tanah_dalam.csv',
+    file: 'https://script.google.com/macros/s/AKfycbz_7JO5J0KybOq0eUXAquUEJv204tuv8C-oQdHWU--YShiG7UxQGXtHHUerem9qhFZCzA/exec?sheet=ATD',
     dateColumn: 'Bulan',
     totalKey: 'atd_total',
     totalLabel: 'Jumlah — Air Tanah Dalam (ATD)',
