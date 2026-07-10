@@ -953,6 +953,11 @@ function buildExportSheet() {
 }
 
 function downloadExcel() {
+  if (!isAdmin) {
+    alert('Unduh Excel khusus admin. Silakan login admin terlebih dahulu.');
+    window.location.href = '../../login.html';
+    return;
+  }
   const { header, body } = buildExportSheet();
   const ws = XLSX.utils.aoa_to_sheet([header, ...body]);
   ws['!cols'] = header.map((h, i) => ({ wch: Math.max(14, h.length + 2, i === 0 ? 16 : 10) }));
@@ -967,10 +972,81 @@ function downloadExcel() {
 }
 
 // ---------------------------------------------------------------------------
+// UNDUH PDF (Tamu, via jsPDF + autotable) — terbuka untuk semua pengunjung,
+// tidak digating seperti Excel. Sertakan grafik untuk Waduk Manggar/Teritip
+// (tidak ada grafik tunggal untuk Sumur Dalam, jadi langsung tabel saja).
+// ---------------------------------------------------------------------------
+function downloadPdf() {
+  const { jsPDF } = window.jspdf;
+  const ds = currentDataset();
+  const { header, body } = buildExportSheet();
+  const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(14);
+  doc.text('Library — Sumber Air Baku', 40, 40);
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  doc.text(`Perumda Tirta Manuntung — Sumber Air Baku  |  ${ds.label}  |  Rentang: ${currentRangeLabel()}`, 40, 58);
+
+  let startY = 78;
+  if (currentGroup !== 'sumur') {
+    try {
+      const chartImg = document.getElementById('mainChart').toDataURL('image/png', 1.0);
+      doc.addImage(chartImg, 'PNG', 40, 72, 560, 220);
+      startY = 305;
+    } catch (e) {
+      console.warn('Gagal menyisipkan grafik ke PDF:', e);
+    }
+  }
+
+  doc.autoTable({
+    head: [header],
+    body,
+    startY,
+    styles: { font: 'helvetica', fontSize: 8, cellPadding: 4 },
+    headStyles: { fillColor: [11, 85, 102], textColor: 255 },
+    margin: { left: 40, right: 40 }
+  });
+
+  const rangePart = filterMode === 'all' ? 'semua-data' : (filterMode === 'month' ? `${selectedYear}-${String(selectedMonth).padStart(2,'0')}` : `${selectedYear}`);
+  doc.save(`${currentKey}_${rangePart}.pdf`);
+}
+
+// ---------------------------------------------------------------------------
+// STATUS ADMIN (gating tombol Unduh Excel)
+// --------------------------------------------------------------------------
+// Sama persis dengan pola di apps/riwayat-air-baku: token disimpan di
+// localStorage dengan key "token", role dengan key "role" (diisi oleh
+// login.html). Tidak ada endpoint /api/verify terpisah — cek langsung ke
+// localStorage seperti admin-dashboard.html.
+// ---------------------------------------------------------------------------
+let isAdmin = false;
+
+function checkAdminStatus() {
+  const token = localStorage.getItem('token');
+  const role = localStorage.getItem('role');
+  isAdmin = !!(token && role === 'admin');
+  updateAdminButton();
+}
+
+function updateAdminButton() {
+  const btn = document.getElementById('downloadExcelBtn');
+  if (isAdmin) {
+    btn.textContent = 'Unduh Excel';
+    btn.classList.add('enabled');
+  } else {
+    btn.textContent = '🔒 Unduh Excel (Admin)';
+    btn.classList.remove('enabled');
+  }
+}
+
+// ---------------------------------------------------------------------------
 // INIT
 // ---------------------------------------------------------------------------
 function wireControls() {
-  document.getElementById('downloadBtn').onclick = downloadExcel;
+  document.getElementById('downloadPdfBtn').onclick = downloadPdf;
+  document.getElementById('downloadExcelBtn').onclick = downloadExcel;
 }
 
 async function init() {
@@ -978,6 +1054,7 @@ async function init() {
   buildMenuCategory();
   buildMenuSub();
   wireControls();
+  checkAdminStatus();
   // Cuma dataset pertama (Level Waduk Manggar) yang di-fetch saat halaman
   // dibuka. Dataset lain baru di-fetch saat tab-nya diklik (lihat
   // selectDataset). Ini yang bikin loading pertama jauh lebih cepat

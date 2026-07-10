@@ -107,6 +107,16 @@ h1{
 }
 .dl-btn:hover{background:var(--primary);}
 
+/* Grup tombol unduh: PDF (terbuka untuk semua) + Excel (khusus admin) */
+.dl-group{display:flex;gap:10px;flex-wrap:wrap;}
+.dl-btn-guest{background:var(--primary);}
+.dl-btn-guest:hover{background:var(--ink);}
+.dl-btn-admin{
+  background:var(--line-muted);color:var(--ink-soft);cursor:not-allowed;
+}
+.dl-btn-admin.enabled{background:var(--ink);color:#fff;cursor:pointer;}
+.dl-btn-admin.enabled:hover{background:var(--primary);}
+
 .main-grid{display:grid;grid-template-columns:1fr 90px;gap:24px;}
 @media (max-width:640px){.main-grid{grid-template-columns:1fr;}}
 

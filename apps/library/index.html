@@ -8,6 +8,8 @@
 <link rel="stylesheet" href="style.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 </head>
 <body>
 <div class="wrap">
@@ -36,7 +38,10 @@
       </div>
 
       <div class="spacer"></div>
-      <button class="dl-btn" id="downloadBtn">Unduh Excel</button>
+      <div class="dl-group">
+        <button class="dl-btn dl-btn-guest" id="downloadPdfBtn">Unduh PDF</button>
+        <button class="dl-btn dl-btn-admin" id="downloadExcelBtn">🔒 Unduh Excel (Admin)</button>
+      </div>
     </div>
 
     <div class="main-grid" id="mainGrid">
