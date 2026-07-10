@@ -1,0 +1,983 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Input Data Historis (Dummy) — Sumber Air Baku</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#EFF5F6;
+  --surface:#FFFFFF;
+  --ink:#0E2A32;
+  --ink-soft:#4C6870;
+  --primary:#0B5566;
+  --primary-light:#1C8CA0;
+  --primary-pale:#DCEEF1;
+  --accent-rain:#D98F3E;
+  --line-muted:#C7DADD;
+  --good:#3E9B6F;
+  --warn:#D9A03B;
+  --low:#C6553D;
+  --radius:14px;
+}
+*{box-sizing:border-box;}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:'Inter',sans-serif;-webkit-font-smoothing:antialiased;}
+.wrap{max-width:1080px;margin:0 auto;padding:32px 20px 80px;}
+header.top{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2px solid var(--ink);padding-bottom:18px;margin-bottom:24px;flex-wrap:wrap;gap:12px;}
+.brand{font-family:'Space Grotesk',sans-serif;font-size:13px;letter-spacing:.08em;color:var(--ink-soft);text-transform:uppercase;}
+h1{font-family:'Space Grotesk',sans-serif;font-size:28px;margin:2px 0 0;font-weight:700;color:var(--primary);display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.dummy-badge{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;background:#FCEFDC;color:#8A5A16;border:1px solid #E9C88C;padding:4px 9px;border-radius:999px;letter-spacing:.02em;}
+.top-note{font-size:13px;color:var(--ink-soft);max-width:320px;text-align:right;}
+
+.toolbar{display:flex;gap:8px;justify-content:flex-end;margin-bottom:18px;flex-wrap:wrap;}
+.tbtn{font-family:'Space Grotesk',sans-serif;font-size:12px;font-weight:600;background:var(--surface);color:var(--ink-soft);border:1px solid var(--line-muted);padding:8px 12px;border-radius:9px;cursor:pointer;}
+.tbtn:hover{border-color:var(--primary);color:var(--primary);}
+.tbtn.danger:hover{border-color:var(--low);color:var(--low);}
+
+.sync-panel{background:var(--primary-pale);border:2px dashed var(--primary-light);border-radius:var(--radius);padding:16px 18px;margin-bottom:20px;}
+.sync-panel-title{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:14px;color:var(--primary);margin-bottom:4px;}
+.sync-panel-sub{font-size:12px;color:var(--ink-soft);margin-bottom:12px;}
+.sync-field{margin-bottom:10px;}
+.sync-field label{display:block;font-size:11.5px;font-weight:700;color:var(--ink-soft);font-family:'Space Grotesk',sans-serif;margin-bottom:4px;}
+.sync-field input{width:100%;padding:9px 10px;border:1px solid var(--line-muted);border-radius:8px;font-size:13px;font-family:'IBM Plex Mono',monospace;}
+.sync-panel-actions{display:flex;align-items:center;gap:12px;margin-top:4px;}
+.sync-status{font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:11.5px;}
+
+.menu-main{display:flex;gap:10px;margin-bottom:10px;flex-wrap:wrap;justify-content:center;}
+.menu-btn{font-family:'Space Grotesk',sans-serif;padding:12px 22px;border-radius:12px;font-size:15px;font-weight:700;background:var(--surface);color:var(--ink-soft);cursor:pointer;border:1.5px solid var(--line-muted);transition:all .15s ease;}
+.menu-btn.active{background:var(--ink);color:#fff;border-color:var(--ink);}
+.menu-btn:hover:not(.active){border-color:var(--primary);color:var(--primary);}
+
+.menu-category{display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;justify-content:center;}
+.cat-pill{font-family:'Space Grotesk',sans-serif;padding:9px 16px;border-radius:999px;font-size:13px;font-weight:700;background:var(--primary-pale);color:var(--primary);cursor:pointer;border:1px solid transparent;}
+.cat-pill.active{background:var(--primary);color:#fff;}
+
+.menu-sub{display:flex;gap:8px;margin-bottom:22px;flex-wrap:wrap;justify-content:center;}
+.submenu-pill{font-family:'Space Grotesk',sans-serif;padding:8px 15px;border-radius:999px;font-size:13px;font-weight:600;background:var(--surface);color:var(--ink-soft);cursor:pointer;border:1px solid var(--line-muted);transition:all .15s ease;}
+.submenu-pill.active{background:var(--primary);color:#fff;border-color:var(--primary);}
+.submenu-pill:hover:not(.active){border-color:var(--primary-light);color:var(--primary);}
+
+.panel{background:var(--surface);border:1px solid var(--line-muted);border-radius:var(--radius);padding:24px;}
+.panel h2{font-family:'Space Grotesk',sans-serif;font-size:18px;margin:0 0 4px;color:var(--ink);}
+.panel .sub{font-size:12.5px;color:var(--ink-soft);margin:0 0 18px;}
+
+.well-manager{background:var(--primary-pale);border-radius:10px;padding:12px 14px;margin-bottom:18px;}
+.well-manager .wm-title{font-family:'Space Grotesk',sans-serif;font-size:12.5px;font-weight:700;color:var(--primary);margin-bottom:8px;}
+.well-chip-row{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;}
+.well-chip{display:inline-flex;align-items:center;gap:6px;background:var(--surface);border:1px solid var(--line-muted);border-radius:999px;padding:4px 6px 4px 10px;font-size:12px;font-family:'IBM Plex Mono',monospace;}
+.well-chip button{border:none;background:var(--low);color:#fff;width:16px;height:16px;border-radius:50%;font-size:11px;line-height:1;cursor:pointer;}
+.well-add-row{display:flex;gap:6px;}
+.well-add-row input{flex:1;padding:7px 9px;border:1px solid var(--line-muted);border-radius:8px;font-size:12.5px;font-family:'Inter',sans-serif;}
+.well-add-row button{font-family:'Space Grotesk',sans-serif;font-size:12px;font-weight:700;background:var(--primary);color:#fff;border:none;border-radius:8px;padding:0 14px;cursor:pointer;}
+.wm-hint{font-size:11.5px;color:var(--ink-soft);margin-top:6px;}
+
+.form-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin-bottom:14px;}
+.field{display:flex;flex-direction:column;gap:5px;}
+.field label{font-size:11.5px;font-weight:600;color:var(--ink-soft);font-family:'Space Grotesk',sans-serif;letter-spacing:.01em;}
+.field input{padding:9px 10px;border:1px solid var(--line-muted);border-radius:9px;font-size:14px;font-family:'IBM Plex Mono',monospace;color:var(--ink);}
+.field input:focus{outline:2px solid var(--primary-light);outline-offset:1px;}
+
+.well-block{border:1px solid var(--line-muted);border-radius:10px;padding:10px 12px;margin-bottom:8px;}
+.well-block .wb-name{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--primary);margin-bottom:6px;font-weight:600;}
+.well-block .wb-inputs{display:flex;gap:8px;}
+.well-block .wb-inputs .field{flex:1;}
+
+.actions-row{display:flex;gap:10px;align-items:center;margin:6px 0 24px;flex-wrap:wrap;}
+.save-btn{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:13.5px;background:var(--primary);color:#fff;border:none;padding:11px 22px;border-radius:10px;cursor:pointer;}
+.save-btn:hover{background:var(--primary-light);}
+.clear-form-btn{font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:12.5px;background:none;color:var(--ink-soft);border:1px solid var(--line-muted);padding:10px 16px;border-radius:10px;cursor:pointer;}
+.form-status{font-size:12px;color:var(--good);font-family:'Space Grotesk',sans-serif;font-weight:600;}
+
+.table-head-row{display:flex;justify-content:space-between;align-items:center;margin:6px 0 10px;}
+.table-head-row .count{font-size:12px;color:var(--ink-soft);}
+.table-scroll{max-height:360px;overflow:auto;border:1px solid var(--line-muted);border-radius:10px;}
+table{width:100%;border-collapse:collapse;font-size:12.5px;}
+thead th{position:sticky;top:0;background:var(--primary-pale);color:var(--primary);text-align:left;padding:8px 10px;font-family:'Space Grotesk',sans-serif;font-weight:700;white-space:nowrap;}
+tbody td{padding:7px 10px;border-top:1px solid var(--line-muted);font-family:'IBM Plex Mono',monospace;white-space:nowrap;}
+tbody tr:hover{background:var(--primary-pale);}
+.row-actions button{border:none;background:none;cursor:pointer;font-family:'Space Grotesk',sans-serif;font-size:11.5px;font-weight:700;margin-right:8px;}
+.row-actions .edit-btn{color:var(--primary);}
+.row-actions .del-btn{color:var(--low);}
+.empty-note{padding:24px;text-align:center;color:var(--ink-soft);font-size:13px;}
+
+.export-row{display:flex;justify-content:space-between;align-items:center;margin-top:14px;flex-wrap:wrap;gap:10px;}
+.export-row .note{font-size:11.5px;color:var(--ink-soft);max-width:520px;}
+.dl-btn{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:12.5px;background:var(--ink);color:#fff;border:none;padding:9px 16px;border-radius:9px;cursor:pointer;}
+.dl-btn:hover{background:var(--primary);}
+
+/* Lock screen (khusus admin) */
+.lock-screen{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:50;padding:20px;}
+.lock-card{background:var(--surface);border:1px solid var(--line-muted);border-radius:var(--radius);padding:32px 28px;max-width:340px;width:100%;text-align:center;box-shadow:0 10px 30px rgba(14,42,50,.08);}
+.lock-brand{font-family:'Space Grotesk',sans-serif;font-size:12px;letter-spacing:.08em;color:var(--ink-soft);text-transform:uppercase;margin-bottom:6px;}
+.lock-card h2{font-family:'Space Grotesk',sans-serif;color:var(--primary);margin:0 0 8px;font-size:20px;}
+.lock-sub{font-size:12.5px;color:var(--ink-soft);margin:0 0 18px;line-height:1.5;}
+.lock-card input{width:100%;padding:11px 12px;border:1px solid var(--line-muted);border-radius:9px;font-size:14px;font-family:'IBM Plex Mono',monospace;margin-bottom:12px;text-align:center;}
+.lock-card button{width:100%;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:13.5px;background:var(--primary);color:#fff;border:none;padding:11px;border-radius:10px;cursor:pointer;}
+.lock-card button:hover{background:var(--primary-light);}
+.lock-error{color:var(--low);font-size:12px;font-weight:600;margin-top:10px;min-height:16px;}
+.lock-hint{font-size:11px;color:var(--ink-soft);margin-top:14px;opacity:.75;}
+</style>
+</head>
+<body>
+
+<div class="lock-screen" id="lockScreen">
+  <div class="lock-card">
+    <div class="lock-brand">Perumda Tirta Manuntung</div>
+    <h2>Input Data Historis</h2>
+    <p class="lock-sub" id="lockMessage">Form ini khusus untuk admin. Anda perlu login terlebih dahulu.</p>
+    <button id="btnGoLogin">Ke halaman login</button>
+    <div class="lock-hint">Memakai sesi login yang sama dengan halaman lain di situs ini — kalau sudah login sebagai admin di tab/halaman lain, cukup muat ulang halaman ini.</div>
+  </div>
+</div>
+
+<div class="wrap" id="appRoot" style="display:none;">
+
+  <header class="top">
+    <div>
+      <div class="brand">Perumda Tirta Manuntung — Sumber Air Baku</div>
+      <h1>Input Data Historis <span class="dummy-badge">DUMMY — belum tersambung server</span></h1>
+    </div>
+    <div class="top-note">Purwarupa form input untuk Waduk Manggar, Waduk Teritip &amp; Sumur Dalam. Data tersimpan sementara di browser (localStorage), belum masuk ke database/CSV asli.</div>
+  </header>
+
+  <div class="toolbar">
+    <button class="tbtn danger" id="btnResetAll">Reset semua data dummy</button>
+    <button class="tbtn" id="btnLogout">Keluar</button>
+  </div>
+
+  <!-- ================================================================
+       SINKRONISASI GOOGLE SHEETS
+       Isi 2 kotak di bawah ini:
+       1. URL Web App — hasil Deploy Apps Script (langkah 2 di panduan),
+          diakhiri "/exec". Contoh:
+          https://script.google.com/macros/s/AKfycbXXXXXXXXXXXX/exec
+       2. Kata sandi sinkronisasi — HARUS SAMA PERSIS dengan nilai
+          `const SECRET = '...'` di kode Apps Script (google-sheets-backend.gs).
+       Setelah diisi, klik "Simpan Pengaturan".
+       ================================================================ -->
+  <div class="sync-panel" id="syncBox">
+    <div class="sync-panel-title">⚙️ Sinkronisasi Google Sheets</div>
+    <div class="sync-panel-sub">Isi 2 kotak ini supaya data yang disimpan lewat form ini otomatis masuk ke Google Sheets & muncul di grafik.</div>
+    <div class="sync-field">
+      <label for="syncUrl">1. URL Web App Google Apps Script (diakhiri /exec)</label>
+      <input type="text" id="syncUrl" placeholder="https://script.google.com/macros/s/AKfycbXXXXXXXXXXXX/exec">
+    </div>
+    <div class="sync-field">
+      <label for="syncSecret">2. Kata sandi sinkronisasi (harus sama dengan SECRET di Apps Script)</label>
+      <input type="text" id="syncSecret" placeholder="Kata sandi rahasia yang kamu isi di kode Apps Script">
+    </div>
+    <div class="sync-panel-actions">
+      <button class="save-btn" id="btnSaveSync">Simpan Pengaturan</button>
+      <span class="sync-status" id="syncGlobalStatus"></span>
+    </div>
+  </div>
+
+  <div class="menu-main" id="menuMain"></div>
+  <div class="menu-category" id="menuCategory" style="display:none;"></div>
+  <div class="menu-sub" id="menuSub" style="display:none;"></div>
+
+  <div class="panel" id="panel"></div>
+
+</div>
+
+<script>
+// =============================================================================
+// KONFIGURASI — struktur ini SENGAJA dibuat sama dengan apps/library/app.js
+// supaya nanti gampang disambungkan: kolom CSV yang diekspor di sini persis
+// sama urutannya dengan kolom yang dipakai di /apps/library/data/*.csv
+// =============================================================================
+const GROUPS = [
+  { key:'manggar', label:'Waduk Manggar' },
+  { key:'teritip', label:'Waduk Teritip' },
+  { key:'sumur',   label:'Sumur Dalam' }
+];
+
+const SUMUR_CATEGORIES = [
+  { key:'debit', label:'Debit Sumur' },
+  { key:'level', label:'Statis & Dinamis Sumur' }
+];
+
+// Daftar sumur default. Gunung Sari & Kampung Damai memakai nama sumur asli
+// (sesuai data yang sudah ada di apps/library). Instalasi lain masih pakai
+// nama contoh (Sumur_01, Sumur_02, ...) — silakan disunting lewat tombol
+// "Kelola daftar sumur" di bawah form supaya sesuai kondisi lapangan.
+const SUMUR_LOCATIONS = [
+  { key:'gunung_sari',      label:'IPA Gunung Sari',       placeholder:false,
+    wells:['Sumur_01_Dalam_IPA','Sumur_02_Dalam_IPA','Sumur_03_Dalam_IPA','Sumur_04_Dalam_IPA','Sumur_05_Reservoar_Lama','Sumur_06_Telaga_Sari','Sumur_07_Marthadinata','Sumur_08_Transito'] },
+  { key:'kampung_damai',    label:'IPA Kampung Damai',     placeholder:false,
+    wells:['Sumur_01_Parkiran_IPA','Sumur_02_Gas_Chlor','Sumur_03_Terminal_Tangki','Sumur_04_Bukit_Cinta','Sumur_05_Penggalang','Sumur_06_Gang_Mufakat'] },
+  { key:'teritip',          label:'IPA Teritip',           placeholder:true, wells:['Sumur_01','Sumur_02','Sumur_03'] },
+  { key:'gunung_tembak',    label:'IPA Gunung Tembak',     placeholder:true, wells:['Sumur_01','Sumur_02'] },
+  { key:'prapatan',         label:'IPA Prapatan',          placeholder:true, wells:['Sumur_01','Sumur_02'] },
+  { key:'zamp',             label:'IPA Zamp',              placeholder:true, wells:['Sumur_01','Sumur_02'] },
+  { key:'kampung_baru_ulu', label:'IPA Kampung Baru Ulu',  placeholder:true, wells:['Sumur_01','Sumur_02'] }
+];
+
+// Nama file CSV asli di apps/library/data — dipakai untuk mengambil "bayangan"
+// (placeholder) angka terakhir pada form Debit Sumur & Statis/Dinamis Sumur.
+// Sesuaikan LIVE_DATA_BASE di bawah kalau struktur folder website berbeda.
+const SUMUR_FILE_MAP = {
+  debit: {
+    gunung_sari: 'sumur_debit_gunung_sari.csv',
+    kampung_damai: 'sumur_debit_kampung_damai.csv',
+    teritip: 'sumur_debit_teritip.csv',
+    gunung_tembak: 'sumur_debit_gunung_tembak.csv',
+    prapatan: 'sumur_debit_prapatan.csv',
+    zamp: 'sumur_debit_zamp.csv',
+    kampung_baru_ulu: 'sumur_debit_kp_baru_ulu.csv'
+  },
+  level: {
+    gunung_sari: 'sumur_level_gunung_sari.csv',
+    kampung_damai: 'sumur_level_kampung_damai.csv',
+    teritip: 'sumur_level_teritip.csv',
+    gunung_tembak: 'sumur_level_gunung_tembak.csv',
+    prapatan: 'sumur_level_prapatan.csv',
+    zamp: 'sumur_level_zamp.csv',
+    kampung_baru_ulu: 'sumur_level_kampung_baru_ulu.csv'
+  }
+};
+const LIVE_DATA_BASE = 'library/data/';
+
+const DAILY_FIELDS = {
+  manggar: [
+    { key:'level', label:'Level Waduk Manggar', unit:'m',   step:'0.01' },
+    { key:'hujan', label:'Curah Hujan',         unit:'mm',  step:'0.1'  },
+    { key:'ntu',   label:'Kekeruhan',           unit:'NTU', step:'0.1'  },
+    { key:'ph',    label:'pH Air Baku',         unit:'pH',  step:'0.1'  }
+  ],
+  teritip: [
+    { key:'level', label:'Level Waduk Teritip', unit:'m',   step:'0.01' },
+    { key:'ntu',   label:'Kekeruhan',           unit:'NTU', step:'0.1'  },
+    { key:'ph',    label:'pH Air Baku',         unit:'pH',  step:'0.1'  }
+  ]
+};
+
+const DAILY_CSV_HEADER = {
+  manggar: ['Tanggal','Level_Waduk_Manggar_m','Curah_Hujan_mm','NTU_Manggar','PH_Manggar'],
+  teritip: ['Tanggal','Level_Waduk_Teritip_m','NTU_Teritip','PH_Teritip']
+};
+
+// Field harian (level/hujan/ntu/ph) tersebar di 2 sheet Google Sheets berbeda
+// (kualitas_air_manggar_teritip dipakai bersama Manggar & Teritip) — dipakai
+// saat sinkronisasi supaya tiap field ditulis ke tab yang tepat.
+const DAILY_SHEET_MAP = {
+  manggar: [
+    { sheet: 'manggar_level_curahhujan', cols: { level: 'Level_Waduk_Manggar_m', hujan: 'Curah_Hujan_mm' } },
+    { sheet: 'kualitas_air_manggar_teritip', cols: { ntu: 'NTU_Manggar', ph: 'PH_Manggar' } }
+  ],
+  teritip: [
+    { sheet: 'teritip_level', cols: { level: 'Level_Waduk_Teritip_m' } },
+    { sheet: 'kualitas_air_manggar_teritip', cols: { ntu: 'NTU_Teritip', ph: 'PH_Teritip' } }
+  ]
+};
+
+const STORAGE_KEY = 'input_data_historis_dummy_v1';
+const SYNC_CONFIG_KEY = 'input_data_historis_sync_config';
+
+// ============================================================================
+// ISI DI SINI (edit langsung pakai Notepad/text editor, lalu push/upload):
+//   DEFAULT_SYNC_URL    -> URL Web App hasil Deploy Apps Script, diakhiri /exec
+//                          contoh: 'https://script.google.com/macros/s/AKfycb.../exec'
+//   DEFAULT_SYNC_SECRET -> harus SAMA PERSIS dengan const SECRET di
+//                          google-sheets-backend.gs
+// Kalau sudah diisi di sini, halaman langsung tersinkron begitu dibuka, tidak
+// perlu isi kotak "Sinkronisasi Google Sheets" di tampilan lagi.
+// ============================================================================
+const DEFAULT_SYNC_URL = 'https://script.google.com/macros/s/AKfycbz7R-A6amPcX5Wac-a1VMzrsWlLyJNt5D_3qGCPazngPv8iOq80zdMsCbBUz6-dEC4r/exec';
+const DEFAULT_SYNC_SECRET = 'Rahasia123';
+
+// File ini ditaruh sejajar dengan form lain: apps/input-data-historis.html
+// (satu tingkat di bawah root, sama seperti apps/formulir-sab.html) —
+// jadi login.html di root situs cukup satu tingkat di atas.
+const LOGIN_PATH = '../login.html';
+
+// =============================================================================
+// STATE
+// =============================================================================
+function defaultState() {
+  const sumur = { debit:{}, level:{} };
+  SUMUR_LOCATIONS.forEach(loc => {
+    sumur.debit[loc.key] = { wells:[...loc.wells], rows:[] };
+    sumur.level[loc.key] = { wells:[...loc.wells], rows:[] };
+  });
+  return { manggar: [], teritip: [], sumur };
+}
+
+let state = loadState();
+let currentGroup = 'manggar';
+let currentCategory = 'debit';
+let currentSub = 'gunung_sari';
+let editingKey = null;      // tanggal/bulan yang sedang diedit (null = entri baru)
+let nextAutoDate = {};      // { manggar: 'YYYY-MM-DD', teritip: 'YYYY-MM-DD' } — maju otomatis tiap simpan
+let nextAutoMonth = {};     // { 'debit:gunung_sari': 'YYYY-MM', ... } — maju otomatis tiap simpan
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return defaultState();
+    const parsed = JSON.parse(raw);
+    const base = defaultState();
+    return {
+      manggar: parsed.manggar || base.manggar,
+      teritip: parsed.teritip || base.teritip,
+      sumur: {
+        debit: Object.assign(base.sumur.debit, parsed.sumur && parsed.sumur.debit),
+        level: Object.assign(base.sumur.level, parsed.sumur && parsed.sumur.level)
+      }
+    };
+  } catch (e) {
+    console.warn('Gagal memuat data dummy, pakai default.', e);
+    return defaultState();
+  }
+}
+
+function saveState() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+
+// =============================================================================
+// SINKRONISASI GOOGLE SHEETS — lihat google-sheets-backend.gs.txt untuk kode
+// Apps Script yang harus di-deploy sebagai Web App terlebih dahulu.
+// =============================================================================
+function loadSyncConfig() {
+  try {
+    const raw = localStorage.getItem(SYNC_CONFIG_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch (e) { /* abaikan, pakai bawaan di bawah */ }
+  return { url: DEFAULT_SYNC_URL, secret: DEFAULT_SYNC_SECRET };
+}
+let syncConfig = loadSyncConfig();
+function saveSyncConfig() {
+  localStorage.setItem(SYNC_CONFIG_KEY, JSON.stringify(syncConfig));
+}
+
+// Kirim satu baris (partial — hanya kolom yang diisi) ke satu tab Google
+// Sheets. Dipakai untuk simpan data harian (bisa 2x panggilan kalau kolomnya
+// tersebar di 2 sheet, mis. Manggar/Teritip berbagi sheet kualitas air) dan
+// data sumur bulanan.
+async function syncRowToSheets(sheetName, row) {
+  if (!syncConfig.url) return { ok: false, error: 'belum diatur' };
+  try {
+    const res = await fetch(syncConfig.url, {
+      method: 'POST',
+      body: JSON.stringify({ secret: syncConfig.secret, sheet: sheetName, row })
+    });
+    return await res.json();
+  } catch (err) {
+    return { ok: false, error: err.message };
+  }
+}
+
+// Ambil isi satu tab Google Sheets sebagai CSV terparse — dipakai untuk
+// bayangan angka terakhir & (nanti) sebagai sumber grafik itu sendiri.
+async function fetchSheetOrLocal(filename) {
+  if (syncConfig.url) {
+    const sheetName = filename.replace(/\.csv$/, '');
+    return fetchCSVSimple(syncConfig.url + '?sheet=' + encodeURIComponent(sheetName));
+  }
+  return fetchCSVSimple(LIVE_DATA_BASE + filename);
+}
+
+// =============================================================================
+// HELPERS
+// =============================================================================
+function csvCell(v) {
+  if (v === null || v === undefined) return '';
+  const s = String(v);
+  return /[",\r\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+}
+function toCSV(header, rows) {
+  return [header, ...rows].map(r => r.map(csvCell).join(',')).join('\r\n');
+}
+function downloadText(filename, text, mime) {
+  const blob = new Blob([text], { type: (mime || 'text/csv') + ';charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+}
+function fmtDateID(iso) {
+  const [y,m,d] = iso.split('-');
+  return `${d}/${m}/${y}`;
+}
+function fmtBulanID(ym) {
+  const MONTHS = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
+  const [y,m] = ym.split('-');
+  return `${MONTHS[parseInt(m,10)-1]} ${y}`;
+}
+
+// =============================================================================
+// DATA LIVE — ambil "bayangan" (placeholder) angka terakhir dari CSV asli di
+// apps/library/data, supaya admin punya acuan saat mengisi bulan berjalan.
+// Ini hanya dipakai sebagai placeholder, TIDAK pernah menimpa data yang
+// sudah diketik atau data yang sudah tersimpan di form.
+// =============================================================================
+const liveCache = {};
+
+async function fetchCSVSimple(path) {
+  const res = await fetch(path, { cache: 'no-store' });
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+  const text = await res.text();
+  const lines = text.replace(/\r/g, '').split('\n').filter(l => l.length > 0);
+  const header = lines[0].split(',').map(h => h.trim());
+  const rows = lines.slice(1).map(line => {
+    const cells = line.split(',');
+    const row = {};
+    header.forEach((h, i) => { row[h] = cells[i] !== undefined ? cells[i].trim() : ''; });
+    return row;
+  });
+  return { header, rows };
+}
+
+function lastNumericInColumn(rows, col) {
+  for (let i = rows.length - 1; i >= 0; i--) {
+    const raw = rows[i][col];
+    if (raw !== undefined && raw !== '') {
+      const n = Number(raw);
+      if (!Number.isNaN(n)) return { value: n, bulan: rows[i]['Bulan'] };
+    }
+  }
+  return null;
+}
+
+async function loadLiveSumurData(category, locKey) {
+  const cacheKey = category + ':' + locKey;
+  if (liveCache[cacheKey]) return liveCache[cacheKey];
+  const filename = SUMUR_FILE_MAP[category][locKey];
+  if (!filename) return null;
+  try {
+    const { header, rows } = await fetchSheetOrLocal(filename);
+    let result;
+    if (category === 'level') {
+      const wells = [];
+      header.forEach(h => {
+        const m = h.match(/^(.*)_(Statis|Dinamis)$/i);
+        if (m && !wells.includes(m[1])) wells.push(m[1]);
+      });
+      const values = {};
+      wells.forEach(w => {
+        values[w] = {
+          statis: lastNumericInColumn(rows, w + '_Statis'),
+          dinamis: lastNumericInColumn(rows, w + '_Dinamis')
+        };
+      });
+      result = { ok: true, wells, values };
+    } else {
+      const wells = header.filter(h => h !== 'Bulan');
+      const values = {};
+      wells.forEach(w => { values[w] = lastNumericInColumn(rows, w); });
+      result = { ok: true, wells, values };
+    }
+    liveCache[cacheKey] = result;
+    return result;
+  } catch (err) {
+    const path = syncConfig.url ? (syncConfig.url + '?sheet=' + filename.replace(/\.csv$/, '')) : (LIVE_DATA_BASE + filename);
+    console.warn('Gagal memuat data untuk placeholder:', path, err);
+    const result = { ok: false, error: err.message, path };
+    liveCache[cacheKey] = result;
+    return result;
+  }
+}
+
+function applyLivePlaceholders(category, locKey, res) {
+  if (currentCategory !== category || currentSub !== locKey) return;
+  const statusEl = document.getElementById('liveStatus');
+  if (!statusEl) return;
+  if (!res || !res.ok) {
+    statusEl.textContent = 'Bayangan data web tidak tersedia — pastikan file ini dibuka lewat server (bukan file://) dan berada dalam struktur folder yang benar.';
+    statusEl.style.color = 'var(--warn)';
+    return;
+  }
+  const wells = state.sumur[category][locKey].wells;
+  let matched = 0, lastBulan = null;
+  wells.forEach(w => {
+    const lv = res.values[w];
+    if (!lv) return;
+    if (category === 'level') {
+      const sInput = document.getElementById('w_' + cssKey(w) + '_statis');
+      const dInput = document.getElementById('w_' + cssKey(w) + '_dinamis');
+      if (sInput && lv.statis) { sInput.placeholder = 'terakhir: ' + lv.statis.value; matched++; if (!lastBulan || lv.statis.bulan > lastBulan) lastBulan = lv.statis.bulan; }
+      if (dInput && lv.dinamis) { dInput.placeholder = 'terakhir: ' + lv.dinamis.value; if (!lastBulan || lv.dinamis.bulan > lastBulan) lastBulan = lv.dinamis.bulan; }
+    } else {
+      const input = document.getElementById('w_' + cssKey(w));
+      if (input && lv) { input.placeholder = 'terakhir: ' + lv.value; matched++; if (!lastBulan || lv.bulan > lastBulan) lastBulan = lv.bulan; }
+    }
+  });
+  statusEl.style.color = 'var(--good)';
+  statusEl.textContent = matched > 0
+    ? `Bayangan angka terakhir termuat dari data web (${matched} sumur cocok nama${lastBulan ? ', s.d. ' + fmtBulanID(lastBulan) : ''}).`
+    : 'Data web termuat, tapi nama sumur tidak cocok dengan daftar sumur saat ini — coba "Muat nama sumur dari data web".';
+}
+
+// =============================================================================
+// MENU
+// =============================================================================
+function buildMenuMain() {
+  const el = document.getElementById('menuMain');
+  el.innerHTML = '';
+  GROUPS.forEach(g => {
+    const btn = document.createElement('button');
+    btn.className = 'menu-btn' + (currentGroup === g.key ? ' active' : '');
+    btn.textContent = g.label;
+    btn.onclick = () => { currentGroup = g.key; editingKey = null; renderAll(); };
+    el.appendChild(btn);
+  });
+}
+
+function buildMenuCategory() {
+  const el = document.getElementById('menuCategory');
+  if (currentGroup !== 'sumur') { el.style.display = 'none'; return; }
+  el.style.display = 'flex';
+  el.innerHTML = '';
+  SUMUR_CATEGORIES.forEach(c => {
+    const pill = document.createElement('button');
+    pill.className = 'cat-pill' + (currentCategory === c.key ? ' active' : '');
+    pill.textContent = c.label;
+    pill.onclick = () => { currentCategory = c.key; editingKey = null; renderAll(); };
+    el.appendChild(pill);
+  });
+}
+
+function buildMenuSub() {
+  const el = document.getElementById('menuSub');
+  if (currentGroup !== 'sumur') { el.style.display = 'none'; return; }
+  el.style.display = 'flex';
+  el.innerHTML = '';
+  SUMUR_LOCATIONS.forEach(loc => {
+    const pill = document.createElement('button');
+    pill.className = 'submenu-pill' + (currentSub === loc.key ? ' active' : '');
+    pill.textContent = loc.label;
+    pill.onclick = () => { currentSub = loc.key; editingKey = null; renderAll(); };
+    el.appendChild(pill);
+  });
+}
+
+// =============================================================================
+// PANEL — Waduk Manggar / Waduk Teritip (harian)
+// =============================================================================
+function renderDailyPanel() {
+  const panel = document.getElementById('panel');
+  const fields = DAILY_FIELDS[currentGroup];
+  const label = currentGroup === 'manggar' ? 'Waduk Manggar' : 'Waduk Teritip';
+  const rows = state[currentGroup];
+  const editingRow = editingKey ? rows.find(r => r.tanggal === editingKey) : null;
+  const suggestedDate = nextAutoDate[currentGroup] || '';
+
+  panel.innerHTML = `
+    <h2>Input Data Harian — ${label}</h2>
+    <p class="sub">Satu baris data per tanggal. Mengisi tanggal yang sudah ada akan menimpa (update) data tanggal tersebut. Tanggal otomatis maju satu hari setiap selesai menyimpan.</p>
+
+    <div class="form-grid">
+      <div class="field">
+        <label>Tanggal</label>
+        <input type="date" id="f_tanggal" value="${editingRow ? editingRow.tanggal : suggestedDate}">
+      </div>
+      ${fields.map(f => `
+        <div class="field">
+          <label>${f.label} (${f.unit})</label>
+          <input type="number" step="${f.step}" id="f_${f.key}" value="${editingRow && editingRow[f.key] !== undefined && editingRow[f.key] !== null ? editingRow[f.key] : ''}">
+        </div>
+      `).join('')}
+    </div>
+
+    <div class="actions-row">
+      <button class="save-btn" id="btnSaveDaily">${editingRow ? 'Perbarui data' : 'Simpan data'}</button>
+      <button class="clear-form-btn" id="btnClearDaily">Bersihkan form</button>
+      <span class="form-status" id="dailyStatus"></span>
+    </div>
+
+    <div class="table-head-row">
+      <strong style="font-family:'Space Grotesk',sans-serif;font-size:13px;">Data tersimpan</strong>
+      <span class="count">${rows.length} entri</span>
+    </div>
+    <div class="table-scroll">
+      ${rows.length === 0 ? '<div class="empty-note">Belum ada data. Isi form di atas untuk menambah entri.</div>' : `
+      <table>
+        <thead><tr>
+          <th>Tanggal</th>
+          ${fields.map(f => `<th>${f.label} (${f.unit})</th>`).join('')}
+          <th></th>
+        </tr></thead>
+        <tbody>
+          ${[...rows].sort((a,b) => b.tanggal.localeCompare(a.tanggal)).map(r => `
+            <tr>
+              <td>${fmtDateID(r.tanggal)}</td>
+              ${fields.map(f => `<td>${r[f.key] !== undefined && r[f.key] !== null && r[f.key] !== '' ? r[f.key] : '-'}</td>`).join('')}
+              <td class="row-actions">
+                <button class="edit-btn" data-edit="${r.tanggal}">Ubah</button>
+                <button class="del-btn" data-del="${r.tanggal}">Hapus</button>
+              </td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>`}
+    </div>
+
+    <div class="export-row">
+      <div class="note">Unduh CSV dengan kolom yang sama persis dengan file data asli (${currentGroup === 'manggar' ? 'manggar_level_curahhujan.csv / kualitas_air_manggar_teritip.csv' : 'teritip_level.csv / kualitas_air_manggar_teritip.csv'}), tinggal digabung manual saat sudah diverifikasi.</div>
+      <button class="dl-btn" id="btnExportDaily">Unduh CSV</button>
+    </div>
+  `;
+
+  document.getElementById('btnSaveDaily').onclick = async () => {
+    const tanggal = document.getElementById('f_tanggal').value;
+    if (!tanggal) { setStatus('dailyStatus', 'Tanggal wajib diisi.', true); return; }
+    const entry = { tanggal };
+    fields.forEach(f => {
+      const v = document.getElementById('f_' + f.key).value;
+      entry[f.key] = v === '' ? null : Number(v);
+    });
+    const idx = rows.findIndex(r => r.tanggal === tanggal);
+    if (idx >= 0) rows[idx] = entry; else rows.push(entry);
+    saveState();
+
+    let syncMsg = '';
+    if (syncConfig.url) {
+      setStatus('dailyStatus', 'Menyimpan & menyinkronkan...', false);
+      const targets = DAILY_SHEET_MAP[currentGroup];
+      const results = await Promise.all(targets.map(t => {
+        const row = { Tanggal: tanggal };
+        Object.keys(t.cols).forEach(fk => { row[t.cols[fk]] = entry[fk]; });
+        return syncRowToSheets(t.sheet, row);
+      }));
+      const failed = results.find(r => !r.ok);
+      syncMsg = failed ? ` — sinkron ke Sheets gagal (${failed.error || 'tidak diketahui'})` : ' — tersinkron ke Google Sheets.';
+    }
+
+    // tanggal otomatis maju satu hari untuk entri berikutnya
+    const d = new Date(tanggal + 'T00:00:00');
+    d.setDate(d.getDate() + 1);
+    nextAutoDate[currentGroup] = d.toISOString().slice(0, 10);
+
+    editingKey = null;
+    renderAll();
+    setStatus('dailyStatus', (idx >= 0 ? 'Data diperbarui.' : 'Data disimpan.') + syncMsg, !!syncMsg.includes('gagal'));
+  };
+
+  document.getElementById('btnClearDaily').onclick = () => { editingKey = null; renderAll(); };
+
+  panel.querySelectorAll('[data-edit]').forEach(btn => {
+    btn.onclick = () => { editingKey = btn.getAttribute('data-edit'); renderAll(); };
+  });
+  panel.querySelectorAll('[data-del]').forEach(btn => {
+    btn.onclick = () => {
+      if (!confirm('Hapus data tanggal ' + fmtDateID(btn.getAttribute('data-del')) + '?')) return;
+      state[currentGroup] = rows.filter(r => r.tanggal !== btn.getAttribute('data-del'));
+      saveState();
+      renderAll();
+    };
+  });
+
+  document.getElementById('btnExportDaily').onclick = () => {
+    const header = DAILY_CSV_HEADER[currentGroup];
+    const body = [...rows].sort((a,b) => a.tanggal.localeCompare(b.tanggal)).map(r => {
+      if (currentGroup === 'manggar') return [r.tanggal, r.level ?? '', r.hujan ?? '', r.ntu ?? '', r.ph ?? ''];
+      return [r.tanggal, r.level ?? '', r.ntu ?? '', r.ph ?? ''];
+    });
+    downloadText(`${currentGroup}_input_dummy.csv`, toCSV(header, body));
+  };
+}
+
+// =============================================================================
+// PANEL — Sumur Dalam (bulanan, per instalasi, kolom sumur dinamis)
+// =============================================================================
+function renderSumurPanel() {
+  const panel = document.getElementById('panel');
+  const loc = SUMUR_LOCATIONS.find(l => l.key === currentSub);
+  const isPair = currentCategory === 'level';
+  const bucket = state.sumur[currentCategory][currentSub];
+  const wells = bucket.wells;
+  const rows = bucket.rows;
+  const editingRow = editingKey ? rows.find(r => r.bulan === editingKey) : null;
+  const catLabel = isPair ? 'Statis & Dinamis' : 'Debit';
+  const autoKey = currentCategory + ':' + currentSub;
+  const suggestedBulan = nextAutoMonth[autoKey] || '';
+
+  panel.innerHTML = `
+    <h2>Input ${catLabel} Sumur — ${loc.label}</h2>
+    <p class="sub">Satu baris data per bulan (format YYYY-MM), kolom mengikuti daftar sumur di bawah. Bulan otomatis maju satu bulan setiap selesai menyimpan. ${loc.placeholder ? '<strong>Nama sumur di bawah masih contoh — sunting agar sesuai instalasi sebenarnya.</strong>' : ''}</p>
+
+    <div class="well-manager">
+      <div class="wm-title">Kelola daftar sumur — ${loc.label}</div>
+      <div class="well-chip-row" id="wellChipRow">
+        ${wells.map(w => `<span class="well-chip">${w}<button data-remove-well="${w}" title="Hapus sumur ini">×</button></span>`).join('')}
+      </div>
+      <div class="well-add-row">
+        <input type="text" id="newWellName" placeholder="Nama sumur baru, mis. Sumur_09_Cadangan">
+        <button id="btnAddWell">Tambah</button>
+      </div>
+      <div class="wm-hint">Mengubah daftar sumur tidak menghapus data bulan yang sudah tersimpan untuk sumur lain.</div>
+      <div class="wm-hint" style="margin-top:10px;">
+        <button class="tbtn" id="btnLoadLiveWells" style="margin-bottom:6px;">Muat nama sumur dari data web</button><br>
+        <span id="liveStatus">Memuat bayangan angka terakhir dari data web…</span>
+      </div>
+    </div>
+
+    <div class="form-grid" style="grid-template-columns:160px;">
+      <div class="field">
+        <label>Bulan</label>
+        <input type="month" id="f_bulan" value="${editingRow ? editingRow.bulan : suggestedBulan}">
+      </div>
+    </div>
+
+    ${wells.map(w => `
+      <div class="well-block">
+        <div class="wb-name">${w}</div>
+        <div class="wb-inputs">
+          ${isPair ? `
+            <div class="field">
+              <label>Statis (m)</label>
+              <input type="number" step="0.01" id="w_${cssKey(w)}_statis" value="${editingRow && editingRow.values[w] && editingRow.values[w].statis !== null && editingRow.values[w].statis !== undefined ? editingRow.values[w].statis : ''}">
+            </div>
+            <div class="field">
+              <label>Dinamis (m)</label>
+              <input type="number" step="0.01" id="w_${cssKey(w)}_dinamis" value="${editingRow && editingRow.values[w] && editingRow.values[w].dinamis !== null && editingRow.values[w].dinamis !== undefined ? editingRow.values[w].dinamis : ''}">
+            </div>
+          ` : `
+            <div class="field">
+              <label>Debit (m³/jam)</label>
+              <input type="number" step="0.01" id="w_${cssKey(w)}" value="${editingRow && editingRow.values[w] !== null && editingRow.values[w] !== undefined ? editingRow.values[w] : ''}">
+            </div>
+          `}
+        </div>
+      </div>
+    `).join('')}
+
+    <div class="actions-row">
+      <button class="save-btn" id="btnSaveSumur">${editingRow ? 'Perbarui data' : 'Simpan data'}</button>
+      <button class="clear-form-btn" id="btnClearSumur">Bersihkan form</button>
+      <span class="form-status" id="sumurStatus"></span>
+    </div>
+
+    <div class="table-head-row">
+      <strong style="font-family:'Space Grotesk',sans-serif;font-size:13px;">Data tersimpan</strong>
+      <span class="count">${rows.length} entri</span>
+    </div>
+    <div class="table-scroll">
+      ${rows.length === 0 ? '<div class="empty-note">Belum ada data. Isi form di atas untuk menambah entri.</div>' : `
+      <table>
+        <thead><tr>
+          <th>Bulan</th>
+          ${isPair ? wells.map(w => `<th>${w} (S)</th><th>${w} (D)</th>`).join('') : wells.map(w => `<th>${w}</th>`).join('')}
+          <th></th>
+        </tr></thead>
+        <tbody>
+          ${[...rows].sort((a,b) => b.bulan.localeCompare(a.bulan)).map(r => `
+            <tr>
+              <td>${fmtBulanID(r.bulan)}</td>
+              ${isPair
+                ? wells.map(w => `<td>${r.values[w] && r.values[w].statis != null ? r.values[w].statis : '-'}</td><td>${r.values[w] && r.values[w].dinamis != null ? r.values[w].dinamis : '-'}</td>`).join('')
+                : wells.map(w => `<td>${r.values[w] != null ? r.values[w] : '-'}</td>`).join('')}
+              <td class="row-actions">
+                <button class="edit-btn" data-edit="${r.bulan}">Ubah</button>
+                <button class="del-btn" data-del="${r.bulan}">Hapus</button>
+              </td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>`}
+    </div>
+
+    <div class="export-row">
+      <div class="note">Unduh CSV dengan struktur sama persis dengan file asli (kolom "Bulan" lalu satu kolom per sumur${isPair ? ' — pasangan _Statis / _Dinamis' : ''}), siap menggantikan/menambah file data/sumur_${isPair ? 'level' : 'debit'}_${currentSub}.csv.</div>
+      <button class="dl-btn" id="btnExportSumur">Unduh CSV</button>
+    </div>
+  `;
+
+  document.getElementById('btnAddWell').onclick = () => {
+    const input = document.getElementById('newWellName');
+    const name = input.value.trim().replace(/\s+/g, '_');
+    if (!name) return;
+    if (wells.includes(name)) { alert('Nama sumur sudah ada.'); return; }
+    wells.push(name);
+    saveState();
+    renderAll();
+  };
+  panel.querySelectorAll('[data-remove-well]').forEach(btn => {
+    btn.onclick = () => {
+      const name = btn.getAttribute('data-remove-well');
+      if (!confirm(`Hapus "${name}" dari daftar sumur ${loc.label}? Data historis kolom ini pada baris tersimpan tidak akan ditampilkan lagi.`)) return;
+      bucket.wells = wells.filter(w => w !== name);
+      saveState();
+      renderAll();
+    };
+  });
+
+  document.getElementById('btnLoadLiveWells').onclick = async () => {
+    const statusEl = document.getElementById('liveStatus');
+    statusEl.textContent = 'Memuat...';
+    const res = await loadLiveSumurData(currentCategory, currentSub);
+    if (!res || !res.ok) {
+      alert('Gagal memuat data dari web.\n\nPath yang dicoba: ' + (res && res.path) + '\n\nPastikan file ini dibuka lewat server (bukan dibuka langsung dari komputer).');
+      applyLivePlaceholders(currentCategory, currentSub, res);
+      return;
+    }
+    if (!confirm(`Ganti daftar sumur ${loc.label} dengan ${res.wells.length} nama sumur asli dari data web?\n\n${res.wells.join(', ')}`)) return;
+    bucket.wells = [...res.wells];
+    saveState();
+    renderAll();
+  };
+
+  // ambil bayangan angka terakhir secara otomatis (tidak memblokir form)
+  loadLiveSumurData(currentCategory, currentSub).then(res => applyLivePlaceholders(currentCategory, currentSub, res));
+
+  document.getElementById('btnSaveSumur').onclick = async () => {
+    const bulan = document.getElementById('f_bulan').value;
+    if (!bulan) { setStatus('sumurStatus', 'Bulan wajib diisi.', true); return; }
+    const values = {};
+    wells.forEach(w => {
+      if (isPair) {
+        const s = document.getElementById('w_' + cssKey(w) + '_statis').value;
+        const d = document.getElementById('w_' + cssKey(w) + '_dinamis').value;
+        values[w] = { statis: s === '' ? null : Number(s), dinamis: d === '' ? null : Number(d) };
+      } else {
+        const v = document.getElementById('w_' + cssKey(w)).value;
+        values[w] = v === '' ? null : Number(v);
+      }
+    });
+    const idx = rows.findIndex(r => r.bulan === bulan);
+    const entry = { bulan, values };
+    if (idx >= 0) rows[idx] = entry; else rows.push(entry);
+    saveState();
+
+    let syncMsg = '';
+    if (syncConfig.url) {
+      const sheetName = SUMUR_FILE_MAP[currentCategory][currentSub].replace(/\.csv$/, '');
+      const row = { Bulan: bulan };
+      wells.forEach(w => {
+        if (isPair) { row[w + '_Statis'] = values[w].statis; row[w + '_Dinamis'] = values[w].dinamis; }
+        else { row[w] = values[w]; }
+      });
+      const result = await syncRowToSheets(sheetName, row);
+      syncMsg = result.ok ? ' — tersinkron ke Google Sheets.' : ` — sinkron ke Sheets gagal (${result.error || 'tidak diketahui'})`;
+    }
+
+    // bulan otomatis maju satu bulan untuk entri berikutnya
+    const [yy, mm] = bulan.split('-').map(Number);
+    let ny = yy, nm = mm + 1;
+    if (nm > 12) { nm = 1; ny++; }
+    nextAutoMonth[autoKey] = `${ny}-${String(nm).padStart(2, '0')}`;
+
+    editingKey = null;
+    renderAll();
+    setStatus('sumurStatus', (idx >= 0 ? 'Data diperbarui.' : 'Data disimpan.') + syncMsg, syncMsg.includes('gagal'));
+  };
+
+  document.getElementById('btnClearSumur').onclick = () => { editingKey = null; renderAll(); };
+
+  panel.querySelectorAll('[data-edit]').forEach(btn => {
+    btn.onclick = () => { editingKey = btn.getAttribute('data-edit'); renderAll(); };
+  });
+  panel.querySelectorAll('[data-del]').forEach(btn => {
+    btn.onclick = () => {
+      if (!confirm('Hapus data bulan ' + fmtBulanID(btn.getAttribute('data-del')) + '?')) return;
+      bucket.rows = rows.filter(r => r.bulan !== btn.getAttribute('data-del'));
+      saveState();
+      renderAll();
+    };
+  });
+
+  document.getElementById('btnExportSumur').onclick = () => {
+    const header = isPair
+      ? ['Bulan', ...wells.flatMap(w => [w + '_Statis', w + '_Dinamis'])]
+      : ['Bulan', ...wells];
+    const body = [...rows].sort((a,b) => a.bulan.localeCompare(b.bulan)).map(r => {
+      if (isPair) return [r.bulan, ...wells.flatMap(w => [r.values[w]?.statis ?? '', r.values[w]?.dinamis ?? ''])];
+      return [r.bulan, ...wells.map(w => r.values[w] ?? '')];
+    });
+    downloadText(`sumur_${isPair ? 'level' : 'debit'}_${currentSub}_input_dummy.csv`, toCSV(header, body));
+  };
+}
+
+function cssKey(w) { return w.replace(/[^a-zA-Z0-9_]/g, '_'); }
+function setStatus(id, msg, isError) {
+  const el = document.getElementById(id);
+  el.textContent = msg;
+  el.style.color = isError ? 'var(--low)' : 'var(--good)';
+  setTimeout(() => { if (el) el.textContent = ''; }, 2500);
+}
+
+// =============================================================================
+// RENDER ALL
+// =============================================================================
+function renderAll() {
+  buildMenuMain();
+  buildMenuCategory();
+  buildMenuSub();
+  if (currentGroup === 'sumur') renderSumurPanel();
+  else renderDailyPanel();
+}
+
+// =============================================================================
+// TOOLBAR
+// =============================================================================
+document.getElementById('syncUrl').value = syncConfig.url;
+document.getElementById('syncSecret').value = syncConfig.secret;
+document.getElementById('btnSaveSync').onclick = () => {
+  syncConfig = {
+    url: document.getElementById('syncUrl').value.trim(),
+    secret: document.getElementById('syncSecret').value.trim()
+  };
+  saveSyncConfig();
+  Object.keys(liveCache).forEach(k => delete liveCache[k]); // paksa ambil ulang dari sumber baru
+  const statusEl = document.getElementById('syncGlobalStatus');
+  statusEl.style.color = 'var(--good)';
+  statusEl.textContent = syncConfig.url ? 'Pengaturan sinkronisasi disimpan.' : 'Sinkronisasi dimatikan (memakai file CSV lokal).';
+  setTimeout(() => { statusEl.textContent = ''; }, 3000);
+  renderAll();
+};
+
+document.getElementById('btnResetAll').onclick = () => {
+  if (!confirm('Hapus SEMUA data dummy yang tersimpan di browser ini? Tindakan ini tidak bisa dibatalkan.')) return;
+  state = defaultState();
+  saveState();
+  editingKey = null;
+  renderAll();
+};
+document.getElementById('btnLogout').onclick = () => {
+  localStorage.removeItem('token');
+  localStorage.removeItem('role');
+  localStorage.removeItem('username');
+  window.location.href = LOGIN_PATH;
+};
+
+// =============================================================================
+// GERBANG ADMIN — memakai sesi login yang sama dengan halaman lain di situs
+// ini (login.html menyimpan localStorage "token" & "role" setelah berhasil
+// login, lihat api/login.js). TIDAK bikin login terpisah supaya tidak double
+// login. Kalau nanti API sudah punya endpoint /api/verify yang sesungguhnya,
+// idealnya token divalidasi ke server di sini juga (localStorage saja bisa
+// dipalsukan lewat devtools) — untuk sekarang disamakan dengan pola yang
+// sudah dipakai di apps/riwayat-air-baku.
+// =============================================================================
+function isAdminLoggedIn() {
+  const token = localStorage.getItem('token');
+  const role = localStorage.getItem('role');
+  return !!(token && role === 'admin');
+}
+function showLock() {
+  const token = localStorage.getItem('token');
+  const role = localStorage.getItem('role');
+  const msgEl = document.getElementById('lockMessage');
+  if (token && role && role !== 'admin') {
+    msgEl.textContent = `Akun ini login sebagai "${role}", bukan admin. Silakan login dengan akun admin.`;
+  } else {
+    msgEl.textContent = 'Form ini khusus untuk admin. Anda perlu login terlebih dahulu.';
+  }
+  document.getElementById('lockScreen').style.display = 'flex';
+  document.getElementById('appRoot').style.display = 'none';
+}
+function showApp() {
+  document.getElementById('lockScreen').style.display = 'none';
+  document.getElementById('appRoot').style.display = 'block';
+  renderAll();
+}
+document.getElementById('btnGoLogin').onclick = () => { window.location.href = LOGIN_PATH; };
+
+if (isAdminLoggedIn()) showApp(); else showLock();
+</script>
+</body>
+</html>

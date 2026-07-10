@@ -1,10 +1,15 @@
 /* ==========================================================================
    Library — Sumber Air Baku
    --------------------------------------------------------------------------
-   Semua data TIDAK ditulis langsung di file ini. Data diambil (fetch) dari
-   file-file CSV di folder /data. Untuk mengubah/menambah data historis,
-   cukup edit file CSV yang bersangkutan (bisa dibuka & diedit di Excel),
-   TIDAK perlu menyentuh file .js atau .html ini.
+   Data diambil (fetch) dari Google Sheets lewat Apps Script Web App —
+   sama pola dengan apps/riwayat-air-baku (AP/ATD). Untuk mengubah/menambah
+   data historis, edit langsung di Google Sheets-nya (via form input di
+   apps/input-data-historis.html, atau langsung di spreadsheet).
+
+   Ganti SHEETS_BASE di bawah dengan URL Web App hasil deploy dari
+   google-sheets-backend.gs (Deploy -> New deployment -> Web app -> Anyone).
+   Nama tab di parameter ?sheet=... harus sama persis dengan nama tab di
+   spreadsheet (lihat daftar tab di google-sheets-backend.gs).
 
    Struktur menu sekarang 2 tingkat:
      Menu utama  -> Waduk Manggar / Waduk Teritip / Sumur Dalam
@@ -13,6 +18,11 @@
    Rentang data (untuk grafik/tabel/unduhan) dipilih lewat tombol
    Tahun -> Bulan (bukan lagi input tanggal bebas), supaya simple & efisien.
    ========================================================================== */
+
+// Ganti dengan URL Web App Google Apps Script hasil deploy (lihat
+// google-sheets-backend.gs). Formatnya diakhiri "/exec", tanpa parameter.
+const SHEETS_BASE = 'https://script.google.com/macros/s/AKfycbz7R-A6amPcX5Wac-a1VMzrsWlLyJNt5D_3qGCPazngPv8iOq80zdMsCbBUz6-dEC4r/exec';
+
 
 // ---------------------------------------------------------------------------
 // KONFIGURASI MENU (menu utama -> sub menu)
@@ -56,7 +66,7 @@ function activeTabs() {
 // ---------------------------------------------------------------------------
 const DATA_SOURCES = [
   {
-    file: 'data/manggar_level_curahhujan.csv',
+    file: SHEETS_BASE + '?sheet=manggar_level_curahhujan',
     dateColumn: 'Tanggal',
     columns: {
       Level_Waduk_Manggar_m: {
@@ -70,7 +80,7 @@ const DATA_SOURCES = [
     }
   },
   {
-    file: 'data/kualitas_air_manggar_teritip.csv',
+    file: SHEETS_BASE + '?sheet=kualitas_air_manggar_teritip',
     dateColumn: 'Tanggal',
     columns: {
       NTU_Manggar: { key: 'manggar_ntu', label: 'Kekeruhan (NTU) Waduk Manggar', unit: 'NTU', type: 'daily', color: 'rain' },
@@ -80,7 +90,7 @@ const DATA_SOURCES = [
     }
   },
   {
-    file: 'data/teritip_level.csv',
+    file: SHEETS_BASE + '?sheet=teritip_level',
     dateColumn: 'Tanggal',
     columns: {
       Level_Waduk_Teritip_m: {
@@ -92,12 +102,12 @@ const DATA_SOURCES = [
 ];
 
 // -- Sumur Dalam: dua dataset bulanan, per-sumur (kolom dinamis) --
-// FILE INI MASIH DATA CONTOH/DUMMY — ganti isinya dengan data asli kapan
-// saja. Struktur kolom (Bulan, Sumur_01, Sumur_02, ... / atau
-// Sumur_01_Statis, Sumur_01_Dinamis, ...) tetap harus dipertahankan.
+// Struktur kolom (Bulan, Sumur_01, Sumur_02, ... / atau
+// Sumur_01_Statis, Sumur_01_Dinamis, ...) tetap harus dipertahankan di
+// masing-masing tab Google Sheets.
 const SUMUR_SOURCES = [
   {
-    file: 'data/sumur_debit_gunung_sari.csv',
+    file: SHEETS_BASE + '?sheet=sumur_debit_gunung_sari',
     monthColumn: 'Bulan',
     key: 'sumur_debit_gunung_sari',
     label: 'Debit Sumur — IPA Gunung Sari',
@@ -106,7 +116,7 @@ const SUMUR_SOURCES = [
     isDummy: false
   },
   {
-    file: 'data/sumur_debit_kampung_damai.csv',
+    file: SHEETS_BASE + '?sheet=sumur_debit_kampung_damai',
     monthColumn: 'Bulan',
     key: 'sumur_debit_kampung_damai',
     label: 'Debit Sumur — IPA Kampung Damai',
@@ -115,7 +125,7 @@ const SUMUR_SOURCES = [
     isDummy: false
   },
   {
-    file: 'data/sumur_debit_teritip.csv',
+    file: SHEETS_BASE + '?sheet=sumur_debit_teritip',
     monthColumn: 'Bulan',
     key: 'sumur_debit_teritip',
     label: 'Debit Sumur — IPA Teritip',
@@ -124,7 +134,7 @@ const SUMUR_SOURCES = [
     isDummy: false
   },
   {
-    file: 'data/sumur_debit_gunung_tembak.csv',
+    file: SHEETS_BASE + '?sheet=sumur_debit_gunung_tembak',
     monthColumn: 'Bulan',
     key: 'sumur_debit_gunung_tembak',
     label: 'Debit Sumur — IPA Gunung Tembak',
@@ -133,7 +143,7 @@ const SUMUR_SOURCES = [
     isDummy: false
   },
   {
-    file: 'data/sumur_debit_prapatan.csv',
+    file: SHEETS_BASE + '?sheet=sumur_debit_prapatan',
     monthColumn: 'Bulan',
     key: 'sumur_debit_prapatan',
     label: 'Debit Sumur — IPA Prapatan',
@@ -142,7 +152,7 @@ const SUMUR_SOURCES = [
     isDummy: false
   },
   {
-    file: 'data/sumur_debit_zamp.csv',
+    file: SHEETS_BASE + '?sheet=sumur_debit_zamp',
     monthColumn: 'Bulan',
     key: 'sumur_debit_zamp',
     label: 'Debit Sumur — IPA Zamp',
@@ -151,7 +161,7 @@ const SUMUR_SOURCES = [
     isDummy: false
   },
   {
-    file: 'data/sumur_debit_kp_baru_ulu.csv',
+    file: SHEETS_BASE + '?sheet=sumur_debit_kp_baru_ulu',
     monthColumn: 'Bulan',
     key: 'sumur_debit_kp_baru_ulu',
     label: 'Debit Sumur — IPA Kampung Baru Ulu',
@@ -160,7 +170,7 @@ const SUMUR_SOURCES = [
     isDummy: false
   },
   {
-    file: 'data/sumur_level_gunung_sari.csv',
+    file: SHEETS_BASE + '?sheet=sumur_level_gunung_sari',
     monthColumn: 'Bulan',
     key: 'sumur_level_gunung_sari',
     label: 'Level Statis & Dinamis — IPA Gunung Sari',
@@ -169,7 +179,7 @@ const SUMUR_SOURCES = [
     isDummy: false
   },
   {
-    file: 'data/sumur_level_kampung_damai.csv',
+    file: SHEETS_BASE + '?sheet=sumur_level_kampung_damai',
     monthColumn: 'Bulan',
     key: 'sumur_level_kampung_damai',
     label: 'Level Statis & Dinamis — IPA Kampung Damai',
@@ -178,7 +188,7 @@ const SUMUR_SOURCES = [
     isDummy: false
   },
   {
-    file: 'data/sumur_level_teritip.csv',
+    file: SHEETS_BASE + '?sheet=sumur_level_teritip',
     monthColumn: 'Bulan',
     key: 'sumur_level_teritip',
     label: 'Level Statis & Dinamis — IPA Teritip',
@@ -187,7 +197,7 @@ const SUMUR_SOURCES = [
     isDummy: false
   },
   {
-    file: 'data/sumur_level_gunung_tembak.csv',
+    file: SHEETS_BASE + '?sheet=sumur_level_gunung_tembak',
     monthColumn: 'Bulan',
     key: 'sumur_level_gunung_tembak',
     label: 'Level Statis & Dinamis — IPA Gunung Tembak',
@@ -196,7 +206,7 @@ const SUMUR_SOURCES = [
     isDummy: false
   },
   {
-    file: 'data/sumur_level_prapatan.csv',
+    file: SHEETS_BASE + '?sheet=sumur_level_prapatan',
     monthColumn: 'Bulan',
     key: 'sumur_level_prapatan',
     label: 'Level Statis & Dinamis — IPA Prapatan',
@@ -205,7 +215,7 @@ const SUMUR_SOURCES = [
     isDummy: false
   },
   {
-    file: 'data/sumur_level_zamp.csv',
+    file: SHEETS_BASE + '?sheet=sumur_level_zamp',
     monthColumn: 'Bulan',
     key: 'sumur_level_zamp',
     label: 'Level Statis & Dinamis — IPA Zamp',
@@ -214,7 +224,7 @@ const SUMUR_SOURCES = [
     isDummy: false
   },
   {
-    file: 'data/sumur_level_kampung_baru_ulu.csv',
+    file: SHEETS_BASE + '?sheet=sumur_level_kampung_baru_ulu',
     monthColumn: 'Bulan',
     key: 'sumur_level_kampung_baru_ulu',
     label: 'Level Statis & Dinamis — IPA Kampung Baru Ulu',
@@ -790,7 +800,7 @@ async function init() {
   } catch (err) {
     console.error(err);
     document.querySelector('.panel').innerHTML =
-      `<div class="error-note">Gagal memuat data: ${err.message}<br>Pastikan file HTML ini diakses lewat web server (bukan dibuka langsung dari file), dan folder <code>data/</code> ada di lokasi yang sama.</div>`;
+      `<div class="error-note">Gagal memuat data: ${err.message}<br>Pastikan URL Google Sheets Web App di SHEETS_BASE benar dan sudah di-deploy dengan akses "Anyone".</div>`;
     return;
   }
 
@@ -800,7 +810,7 @@ async function init() {
   const validGroup = GROUPS.find(g => groupAllTabs(g).some(k => datasets[k]));
   if (!validGroup) {
     document.querySelector('.panel').innerHTML =
-      `<div class="error-note">Tidak ada file data yang berhasil dimuat.<br>File yang gagal: ${loadErrors.map(f => `<code>${f}</code>`).join(', ') || '(tidak diketahui)'}<br>Pastikan folder <code>data/</code> berisi semua file CSV yang diperlukan, lalu muat ulang halaman ini.</div>`;
+      `<div class="error-note">Tidak ada data yang berhasil dimuat.<br>Tab yang gagal: ${loadErrors.map(f => `<code>${f}</code>`).join(', ') || '(tidak diketahui)'}<br>Pastikan semua tab sudah dibuat di Google Sheets dengan nama & header yang sesuai, lalu muat ulang halaman ini.</div>`;
     return;
   }
 
