@@ -55,13 +55,9 @@ const GROUPS = [
     ] }
 ];
 
-function groupAllTabs(group) {
-  return group.subgroups ? group.subgroups.flatMap(s => s.tabs) : group.tabs;
-}
-
 function activeSubgroup(group) {
   if (!group.subgroups) return null;
-  return group.subgroups.find(s => s.key === currentCategory) || group.subgroups.find(s => s.tabs.some(k => datasets[k]));
+  return group.subgroups.find(s => s.key === currentCategory) || group.subgroups[0];
 }
 
 function activeTabs() {
@@ -259,6 +255,26 @@ SUMUR_SOURCES.forEach(source => {
   source.localFile = LOCAL_DATA_BASE + source.key + '.csv';
 });
 
+// ---------------------------------------------------------------------------
+// LOOKUP KEY -> SUMBER (dipakai untuk lazy-load: cari tahu source mana yang
+// perlu di-fetch untuk 1 dataset key, TANPA harus fetch semuanya dulu).
+// ---------------------------------------------------------------------------
+const DAILY_KEY_LOOKUP = {};   // key -> { source, colName, cfg }
+DATA_SOURCES.forEach(source => {
+  Object.entries(source.columns).forEach(([colName, cfg]) => {
+    DAILY_KEY_LOOKUP[cfg.key] = { source, colName, cfg };
+  });
+});
+
+const SUMUR_KEY_LOOKUP = {};   // key -> source
+SUMUR_SOURCES.forEach(source => { SUMUR_KEY_LOOKUP[source.key] = source; });
+
+// Label statis per key, dipakai untuk menampilkan tombol submenu SEBELUM
+// datanya selesai di-fetch (jadi menu langsung muncul tanpa nunggu loading).
+const KEY_LABEL_LOOKUP = {};
+Object.values(DAILY_KEY_LOOKUP).forEach(({ cfg }) => { KEY_LABEL_LOOKUP[cfg.key] = cfg.label; });
+Object.values(SUMUR_KEY_LOOKUP).forEach(source => { KEY_LABEL_LOOKUP[source.key] = source.label; });
+
 const MONTHS_ID = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
 
 // ---------------------------------------------------------------------------
@@ -419,39 +435,24 @@ function buildSumurDataset(source, header, rows) {
   };
 }
 
-async function loadAllData() {
-  const datasets = {};
-  const loadErrors = [];
+// ---------------------------------------------------------------------------
+// LAZY LOAD — fetch data hanya untuk dataset yang sedang dibuka, bukan
+// semuanya di awal. Ini yang paling menentukan kecepatan loading pertama:
+// sebelumnya halaman nunggu ~17 dataset selesai fetch sebelum apa pun
+// tampil; sekarang cuma nunggu 1 dataset (yang lagi dibuka), dataset lain
+// baru di-fetch saat user klik tab-nya. Hasil fetch di-cache per source,
+// jadi kalau user bolak-balik ke tab yang sama, tidak fetch ulang.
+// ---------------------------------------------------------------------------
+const sourceLoadPromises = new Map(); // source object -> Promise (cache + dedupe fetch yang lagi jalan)
 
-  // Semua fetch (lokal + Sheets, untuk tiap dataset harian & sumur) ditembak
-  // BERSAMAAN lewat Promise.all, bukan satu-satu berurutan -- ini yang bikin
-  // loading jadi jauh lebih cepat (total waktu ~= fetch terlambat, bukan
-  // jumlah semua fetch dijumlahkan).
-
-  // -- dataset harian (level, ntu, ph, hujan) --
-  const dailyResults = await Promise.all(DATA_SOURCES.map(async source => {
-    try {
-      const { header, rows } = await fetchMergedCSV(source.localFile, source.file, source.dateColumn);
-      return { source, header, rows };
-    } catch (err) {
-      console.error(`Gagal memuat ${source.localFile} / ${source.file}:`, err);
-      return { source, error: err };
-    }
-  }));
-
-  for (const result of dailyResults) {
-    const { source } = result;
-    if (result.error) {
-      loadErrors.push(source.file);
-      continue;
-    }
-    const { header, rows } = result;
-    for (const colName of Object.keys(source.columns)) {
+function loadDailySource(source) {
+  if (sourceLoadPromises.has(source)) return sourceLoadPromises.get(source);
+  const p = fetchMergedCSV(source.localFile, source.file, source.dateColumn).then(({ header, rows }) => {
+    Object.entries(source.columns).forEach(([colName, cfg]) => {
       if (!header.includes(colName)) {
         console.warn(`Kolom "${colName}" tidak ditemukan di ${source.file}, dilewati.`);
-        continue;
+        return;
       }
-      const cfg = source.columns[colName];
       const series = rows
         .map(r => ({ date: new Date(r[source.dateColumn] + 'T00:00:00'), value: toNum(r[colName]) }))
         .filter(r => !isNaN(r.date.getTime()));
@@ -465,31 +466,45 @@ async function loadAllData() {
         ds.maxHist = Math.ceil(mx + 0.5);
       }
       datasets[cfg.key] = ds;
-    }
+    });
+  }).catch(err => {
+    console.error(`Gagal memuat ${source.localFile} / ${source.file}:`, err);
+    sourceLoadPromises.delete(source); // biar bisa dicoba lagi kalau user klik ulang
+    throw err;
+  });
+  sourceLoadPromises.set(source, p);
+  return p;
+}
+
+function loadSumurSource(source) {
+  if (sourceLoadPromises.has(source)) return sourceLoadPromises.get(source);
+  const p = fetchMergedCSV(source.localFile, source.file, source.monthColumn).then(({ header, rows }) => {
+    datasets[source.key] = buildSumurDataset(source, header, rows);
+  }).catch(err => {
+    console.error(`Gagal memuat ${source.localFile} / ${source.file}:`, err);
+    sourceLoadPromises.delete(source);
+    throw err;
+  });
+  sourceLoadPromises.set(source, p);
+  return p;
+}
+
+// Pastikan 1 dataset key sudah ter-fetch & tersedia di `datasets[key]`.
+// Kalau sudah pernah (atau sedang) dimuat, tinggal nunggu promise yang sama
+// (tidak fetch ulang). Melempar error kalau key tidak dikenal / gagal dimuat.
+async function ensureDatasetLoaded(key) {
+  if (datasets[key]) return datasets[key];
+  const daily = DAILY_KEY_LOOKUP[key];
+  if (daily) {
+    await loadDailySource(daily.source);
+    return datasets[key];
   }
-
-  // -- dataset sumur (bulanan, per-sumur) --
-  const sumurResults = await Promise.all(SUMUR_SOURCES.map(async source => {
-    try {
-      const { header, rows } = await fetchMergedCSV(source.localFile, source.file, source.monthColumn);
-      return { source, header, rows };
-    } catch (err) {
-      console.error(`Gagal memuat ${source.localFile} / ${source.file}:`, err);
-      return { source, error: err };
-    }
-  }));
-
-  for (const result of sumurResults) {
-    const { source } = result;
-    if (result.error) {
-      loadErrors.push(source.file);
-      continue;
-    }
-    datasets[source.key] = buildSumurDataset(source, result.header, result.rows);
+  const sumur = SUMUR_KEY_LOOKUP[key];
+  if (sumur) {
+    await loadSumurSource(sumur);
+    return datasets[key];
   }
-
-  datasets.__loadErrors = loadErrors;
-  return datasets;
+  throw new Error(`Dataset "${key}" tidak dikenal.`);
 }
 
 // ---------------------------------------------------------------------------
@@ -514,32 +529,88 @@ const rangeLabelEl = document.getElementById('rangeLabel');
 function currentDataset() { return datasets[currentKey]; }
 
 // ---------------------------------------------------------------------------
+// LOADING / ERROR STATE per dataset (dipakai selectDataset saat fetch)
+// ---------------------------------------------------------------------------
+function getStatusEl() {
+  let el = document.getElementById('datasetStatus');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'datasetStatus';
+    el.className = 'error-note';
+    el.style.cssText = 'padding:24px;text-align:center;';
+    document.querySelector('.panel').appendChild(el);
+  }
+  return el;
+}
+
+function showLoadingState() {
+  document.getElementById('mainGrid').style.display = 'none';
+  document.getElementById('statsRow').style.display = 'none';
+  document.getElementById('tableWrap').style.display = 'none';
+  document.getElementById('tilesWrap').style.display = 'none';
+  const el = getStatusEl();
+  el.style.display = 'block';
+  el.textContent = 'Memuat data...';
+}
+
+function hideLoadingState() {
+  const el = document.getElementById('datasetStatus');
+  if (el) el.style.display = 'none';
+}
+
+function showLoadErrorState(err) {
+  const el = getStatusEl();
+  el.style.display = 'block';
+  el.innerHTML = `Gagal memuat data untuk dataset ini.<br>${err.message}<br>Coba pilih ulang tab ini, atau muat ulang halaman.`;
+}
+
+// ---------------------------------------------------------------------------
+// GANTI DATASET AKTIF — fetch (kalau belum ada di cache), lalu render.
+// Ini titik masuk tunggal dipanggil dari semua tombol menu.
+// ---------------------------------------------------------------------------
+async function selectDataset(key) {
+  currentKey = key;
+  resetFilter();
+  buildMenuMain();
+  buildMenuCategory();
+  buildMenuSub();
+  showLoadingState();
+  try {
+    await ensureDatasetLoaded(key);
+  } catch (err) {
+    showLoadErrorState(err);
+    return;
+  }
+  hideLoadingState();
+  onDatasetChanged();
+  render();
+}
+
+// ---------------------------------------------------------------------------
 // MENU (utama -> kategori [opsional] -> sub)
+// Menu dibangun langsung dari konfigurasi GROUPS/DATA_SOURCES/SUMUR_SOURCES
+// (statis), TIDAK menunggu data selesai di-fetch -- supaya menu & tombol
+// langsung muncul begitu halaman dibuka, baru isinya (grafik/tabel) yang
+// nyusul saat datanya datang.
 // ---------------------------------------------------------------------------
 function buildMenuMain() {
   menuMainEl.innerHTML = '';
-  GROUPS.filter(g => groupAllTabs(g).some(k => datasets[k])).forEach(g => {
+  GROUPS.forEach(g => {
     const btn = document.createElement('div');
     btn.className = 'menu-btn' + (g.key === currentGroup ? ' active' : '');
     btn.textContent = g.label;
     btn.dataset.key = g.key;
     btn.onclick = () => {
+      if (g.key === currentGroup) return;
       currentGroup = g.key;
       const group = GROUPS.find(x => x.key === g.key);
       if (group.subgroups) {
-        const sub = group.subgroups.find(s => s.tabs.some(k => datasets[k]));
-        currentCategory = sub ? sub.key : null;
-        currentKey = sub.tabs.find(k => datasets[k]) || currentKey;
+        currentCategory = group.subgroups[0].key;
+        selectDataset(group.subgroups[0].tabs[0]);
       } else {
         currentCategory = null;
-        currentKey = group.tabs.find(k => datasets[k]) || currentKey;
+        selectDataset(group.tabs[0]);
       }
-      resetFilter();
-      buildMenuMain();
-      buildMenuCategory();
-      buildMenuSub();
-      onDatasetChanged();
-      render();
     };
     menuMainEl.appendChild(btn);
   });
@@ -550,19 +621,15 @@ function buildMenuCategory() {
   const group = GROUPS.find(g => g.key === currentGroup);
   if (!group.subgroups) { menuCategoryEl.style.display = 'none'; return; }
   menuCategoryEl.style.display = 'flex';
-  group.subgroups.filter(s => s.tabs.some(k => datasets[k])).forEach(sub => {
+  group.subgroups.forEach(sub => {
     const btn = document.createElement('div');
     btn.className = 'category-pill' + (sub.key === currentCategory ? ' active' : '');
     btn.textContent = sub.label;
     btn.dataset.key = sub.key;
     btn.onclick = () => {
+      if (sub.key === currentCategory) return;
       currentCategory = sub.key;
-      currentKey = sub.tabs.find(k => datasets[k]) || currentKey;
-      resetFilter();
-      buildMenuCategory();
-      buildMenuSub();
-      onDatasetChanged();
-      render();
+      selectDataset(sub.tabs[0]);
     };
     menuCategoryEl.appendChild(btn);
   });
@@ -570,17 +637,14 @@ function buildMenuCategory() {
 
 function buildMenuSub() {
   menuSubEl.innerHTML = '';
-  activeTabs().filter(k => datasets[k]).forEach(key => {
+  activeTabs().forEach(key => {
     const btn = document.createElement('div');
     btn.className = 'submenu-pill' + (key === currentKey ? ' active' : '');
-    btn.textContent = datasets[key].label;
+    btn.textContent = KEY_LABEL_LOOKUP[key] || key;
     btn.dataset.key = key;
     btn.onclick = () => {
-      currentKey = key;
-      resetFilter();
-      buildMenuSub();
-      onDatasetChanged();
-      render();
+      if (key === currentKey) return;
+      selectDataset(key);
     };
     menuSubEl.appendChild(btn);
   });
@@ -910,49 +974,15 @@ function wireControls() {
 }
 
 async function init() {
-  try {
-    datasets = await loadAllData();
-  } catch (err) {
-    console.error(err);
-    document.querySelector('.panel').innerHTML =
-      `<div class="error-note">Gagal memuat data: ${err.message}<br>Pastikan folder <code>data/</code> (CSV historis) ada di lokasi yang sama dengan halaman ini, dan URL Google Sheets Web App di SHEETS_BASE benar & sudah di-deploy dengan akses "Anyone".</div>`;
-    return;
-  }
-
-  const loadErrors = datasets.__loadErrors || [];
-  delete datasets.__loadErrors;
-
-  const validGroup = GROUPS.find(g => groupAllTabs(g).some(k => datasets[k]));
-  if (!validGroup) {
-    document.querySelector('.panel').innerHTML =
-      `<div class="error-note">Tidak ada data yang berhasil dimuat.<br>Tab yang gagal: ${loadErrors.map(f => `<code>${f}</code>`).join(', ') || '(tidak diketahui)'}<br>Pastikan semua tab sudah dibuat di Google Sheets dengan nama & header yang sesuai, lalu muat ulang halaman ini.</div>`;
-    return;
-  }
-
-  currentGroup = validGroup.key;
-  const startGroup = GROUPS.find(g => g.key === currentGroup);
-  if (startGroup.subgroups) {
-    const sub = startGroup.subgroups.find(s => s.tabs.some(k => datasets[k]));
-    currentCategory = sub.key;
-    currentKey = sub.tabs.find(k => datasets[k]);
-  } else {
-    currentKey = startGroup.tabs.find(k => datasets[k]);
-  }
-
   buildMenuMain();
   buildMenuCategory();
   buildMenuSub();
-  onDatasetChanged();
   wireControls();
-  render();
-
-  if (loadErrors.length > 0) {
-    const warn = document.createElement('div');
-    warn.className = 'error-note';
-    warn.style.cssText = 'padding:12px 16px;margin-top:16px;text-align:left;';
-    warn.innerHTML = `Sebagian file data gagal dimuat dan dilewati: ${loadErrors.map(f => `<code>${f}</code>`).join(', ')}. Dataset lain tetap tampil normal.`;
-    document.querySelector('.panel').appendChild(warn);
-  }
+  // Cuma dataset pertama (Level Waduk Manggar) yang di-fetch saat halaman
+  // dibuka. Dataset lain baru di-fetch saat tab-nya diklik (lihat
+  // selectDataset). Ini yang bikin loading pertama jauh lebih cepat
+  // dibanding fetch semua 17 dataset sekaligus di awal.
+  await selectDataset(currentKey);
 }
 
 init();
