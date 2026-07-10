@@ -1,15 +1,26 @@
 /* ==========================================================================
    Library — Sumber Air Baku
    --------------------------------------------------------------------------
-   Data diambil (fetch) dari Google Sheets lewat Apps Script Web App —
-   sama pola dengan apps/riwayat-air-baku (AP/ATD). Untuk mengubah/menambah
-   data historis, edit langsung di Google Sheets-nya (via form input di
-   apps/input-data-historis.html, atau langsung di spreadsheet).
+   Data grafik sekarang GABUNGAN dari 2 sumber:
+     1. File CSV lokal di apps/library/data/ -> data historis 2014 s/d
+        terakhir kali file ini diperbarui (tidak berubah lagi, jadi aman
+        untuk arsip lama).
+     2. Google Sheets lewat Apps Script Web App (SHEETS_BASE) -> data baru
+        yang diinput lewat apps/input-data-historis.html mulai sekarang.
+
+   Kedua sumber digabung per tanggal/bulan (lihat fetchMergedCSV & mergeRows
+   di bawah). Kalau ada tanggal yang sama di kedua sumber, nilai dari Google
+   Sheets yang dipakai (dianggap paling baru/terkoreksi); tanggal yang cuma
+   ada di salah satu sumber tetap ikut tampil. Jadi grafik akan tetap utuh
+   dari 2014 sampai terus berjalan, walau salah satu sumber gagal dimuat
+   (mis. Google Sheets belum diisi untuk tab tertentu -> tetap tampil data
+   lokal; internet/Apps Script down -> tetap tampil data lokal, tidak blank).
 
    Ganti SHEETS_BASE di bawah dengan URL Web App hasil deploy dari
    google-sheets-backend.gs (Deploy -> New deployment -> Web app -> Anyone).
    Nama tab di parameter ?sheet=... harus sama persis dengan nama tab di
-   spreadsheet (lihat daftar tab di google-sheets-backend.gs).
+   spreadsheet (lihat daftar tab di google-sheets-backend.gs). Nama file CSV
+   lokal (localFile) juga harus sama isinya (nama kolom) dengan tab terkait.
 
    Struktur menu sekarang 2 tingkat:
      Menu utama  -> Waduk Manggar / Waduk Teritip / Sumur Dalam
@@ -64,9 +75,13 @@ function activeTabs() {
 // Nama file & nama kolom CSV TIDAK berubah dari versi sebelumnya, supaya
 // file data yang sudah ada di server tidak perlu diganti.
 // ---------------------------------------------------------------------------
+// LOCAL_DATA_BASE = folder berisi CSV historis lama (arsip 2014 dst).
+const LOCAL_DATA_BASE = 'data/';
+
 const DATA_SOURCES = [
   {
     file: SHEETS_BASE + '?sheet=manggar_level_curahhujan',
+    localFile: LOCAL_DATA_BASE + 'manggar_level_curahhujan.csv',
     dateColumn: 'Tanggal',
     columns: {
       Level_Waduk_Manggar_m: {
@@ -81,6 +96,7 @@ const DATA_SOURCES = [
   },
   {
     file: SHEETS_BASE + '?sheet=kualitas_air_manggar_teritip',
+    localFile: LOCAL_DATA_BASE + 'kualitas_air_manggar_teritip.csv',
     dateColumn: 'Tanggal',
     columns: {
       NTU_Manggar: { key: 'manggar_ntu', label: 'Kekeruhan (NTU) Waduk Manggar', unit: 'NTU', type: 'daily', color: 'rain' },
@@ -91,6 +107,7 @@ const DATA_SOURCES = [
   },
   {
     file: SHEETS_BASE + '?sheet=teritip_level',
+    localFile: LOCAL_DATA_BASE + 'teritip_level.csv',
     dateColumn: 'Tanggal',
     columns: {
       Level_Waduk_Teritip_m: {
@@ -234,6 +251,14 @@ const SUMUR_SOURCES = [
   }
 ];
 
+// Nama tab Google Sheets untuk semua dataset Sumur Dalam persis sama dengan
+// nama file CSV lokalnya (mis. key 'sumur_debit_gunung_sari' ->
+// data/sumur_debit_gunung_sari.csv), jadi localFile diisi otomatis di sini
+// supaya tidak perlu ditulis manual 14x di atas.
+SUMUR_SOURCES.forEach(source => {
+  source.localFile = LOCAL_DATA_BASE + source.key + '.csv';
+});
+
 const MONTHS_ID = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
 
 // ---------------------------------------------------------------------------
@@ -287,6 +312,76 @@ async function fetchCSV(path) {
   return parseCSV(await res.text());
 }
 
+// Gabungkan 1 baris data lokal + 1 baris data Sheets untuk key (tanggal/
+// bulan) yang sama. Kolom dari Sheets menang HANYA kalau isinya tidak
+// kosong -- kalau sel di Sheets kosong, nilai lokal yang lama tetap dipakai
+// (supaya baris yang baru sebagian terisi di Sheets tidak menghapus kolom
+// lain yang sudah ada nilainya di data lokal).
+function mergeRowValues(localRow, sheetRow) {
+  const merged = Object.assign({}, localRow);
+  Object.keys(sheetRow).forEach(col => {
+    const v = sheetRow[col];
+    if (v !== undefined && v !== null && v !== '') merged[col] = v;
+  });
+  return merged;
+}
+
+// Gabungkan seluruh baris data lokal + Sheets berdasarkan kolom kunci
+// (Tanggal untuk dataset harian, Bulan untuk dataset sumur). Baris dengan
+// key yang sama di kedua sumber -> digabung (Sheets menang per-kolom).
+// Baris yang cuma ada di salah satu sumber -> tetap ikut. Hasil diurutkan
+// menaik berdasarkan key (aman karena formatnya ISO: YYYY-MM-DD / YYYY-MM).
+function mergeRows(localRows, sheetRows, keyCol) {
+  const map = new Map();
+  localRows.forEach(r => { if (r[keyCol]) map.set(r[keyCol], r); });
+  sheetRows.forEach(r => {
+    if (!r[keyCol]) return;
+    const existing = map.get(r[keyCol]);
+    map.set(r[keyCol], existing ? mergeRowValues(existing, r) : r);
+  });
+  return Array.from(map.values()).sort((a, b) => (a[keyCol] < b[keyCol] ? -1 : a[keyCol] > b[keyCol] ? 1 : 0));
+}
+
+// Ambil data lokal (arsip lama) DAN Google Sheets (data baru) secara
+// paralel, lalu gabung jadi satu tabel. Kalau salah satu sumber gagal
+// dimuat (mis. tab Sheets belum ada, atau Apps Script sedang down), yang
+// lain tetap dipakai -- jadi grafik tidak blank hanya karena satu sumber
+// bermasalah. Cuma gagal total kalau KEDUA sumber gagal.
+async function fetchMergedCSV(localPath, sheetUrl, keyCol) {
+  const [localRes, sheetRes] = await Promise.allSettled([
+    fetch(localPath).then(res => {
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return res.text();
+    }),
+    fetch(sheetUrl).then(res => {
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return res.text();
+    })
+  ]);
+
+  let header = null, localRows = [], sheetRows = [];
+
+  if (localRes.status === 'fulfilled') {
+    const parsed = parseCSV(localRes.value);
+    header = parsed.header;
+    localRows = parsed.rows;
+  } else {
+    console.warn(`Gagal memuat data lokal ${localPath}:`, localRes.reason);
+  }
+
+  if (sheetRes.status === 'fulfilled') {
+    const parsed = parseCSV(sheetRes.value);
+    header = header ? Array.from(new Set([...header, ...parsed.header])) : parsed.header;
+    sheetRows = parsed.rows;
+  } else {
+    console.warn(`Gagal memuat data Google Sheets ${sheetUrl}:`, sheetRes.reason);
+  }
+
+  if (!header) throw new Error(`Gagal memuat data lokal (${localPath}) maupun Google Sheets (${sheetUrl})`);
+
+  return { header, rows: mergeRows(localRows, sheetRows, keyCol) };
+}
+
 function buildSumurDataset(source, header, rows) {
   if (source.mode === 'single') {
     const wellColumns = header.filter(h => h !== source.monthColumn);
@@ -332,9 +427,9 @@ async function loadAllData() {
   for (const source of DATA_SOURCES) {
     let header, rows;
     try {
-      ({ header, rows } = await fetchCSV(source.file));
+      ({ header, rows } = await fetchMergedCSV(source.localFile, source.file, source.dateColumn));
     } catch (err) {
-      console.error(`Gagal memuat ${source.file}:`, err);
+      console.error(`Gagal memuat ${source.localFile} / ${source.file}:`, err);
       loadErrors.push(source.file);
       continue;
     }
@@ -364,9 +459,9 @@ async function loadAllData() {
   for (const source of SUMUR_SOURCES) {
     let header, rows;
     try {
-      ({ header, rows } = await fetchCSV(source.file));
+      ({ header, rows } = await fetchMergedCSV(source.localFile, source.file, source.monthColumn));
     } catch (err) {
-      console.error(`Gagal memuat ${source.file}:`, err);
+      console.error(`Gagal memuat ${source.localFile} / ${source.file}:`, err);
       loadErrors.push(source.file);
       continue;
     }
@@ -800,7 +895,7 @@ async function init() {
   } catch (err) {
     console.error(err);
     document.querySelector('.panel').innerHTML =
-      `<div class="error-note">Gagal memuat data: ${err.message}<br>Pastikan URL Google Sheets Web App di SHEETS_BASE benar dan sudah di-deploy dengan akses "Anyone".</div>`;
+      `<div class="error-note">Gagal memuat data: ${err.message}<br>Pastikan folder <code>data/</code> (CSV historis) ada di lokasi yang sama dengan halaman ini, dan URL Google Sheets Web App di SHEETS_BASE benar & sudah di-deploy dengan akses "Anyone".</div>`;
     return;
   }
 
