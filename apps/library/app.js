@@ -423,16 +423,29 @@ async function loadAllData() {
   const datasets = {};
   const loadErrors = [];
 
+  // Semua fetch (lokal + Sheets, untuk tiap dataset harian & sumur) ditembak
+  // BERSAMAAN lewat Promise.all, bukan satu-satu berurutan -- ini yang bikin
+  // loading jadi jauh lebih cepat (total waktu ~= fetch terlambat, bukan
+  // jumlah semua fetch dijumlahkan).
+
   // -- dataset harian (level, ntu, ph, hujan) --
-  for (const source of DATA_SOURCES) {
-    let header, rows;
+  const dailyResults = await Promise.all(DATA_SOURCES.map(async source => {
     try {
-      ({ header, rows } = await fetchMergedCSV(source.localFile, source.file, source.dateColumn));
+      const { header, rows } = await fetchMergedCSV(source.localFile, source.file, source.dateColumn);
+      return { source, header, rows };
     } catch (err) {
       console.error(`Gagal memuat ${source.localFile} / ${source.file}:`, err);
+      return { source, error: err };
+    }
+  }));
+
+  for (const result of dailyResults) {
+    const { source } = result;
+    if (result.error) {
       loadErrors.push(source.file);
       continue;
     }
+    const { header, rows } = result;
     for (const colName of Object.keys(source.columns)) {
       if (!header.includes(colName)) {
         console.warn(`Kolom "${colName}" tidak ditemukan di ${source.file}, dilewati.`);
@@ -456,16 +469,23 @@ async function loadAllData() {
   }
 
   // -- dataset sumur (bulanan, per-sumur) --
-  for (const source of SUMUR_SOURCES) {
-    let header, rows;
+  const sumurResults = await Promise.all(SUMUR_SOURCES.map(async source => {
     try {
-      ({ header, rows } = await fetchMergedCSV(source.localFile, source.file, source.monthColumn));
+      const { header, rows } = await fetchMergedCSV(source.localFile, source.file, source.monthColumn);
+      return { source, header, rows };
     } catch (err) {
       console.error(`Gagal memuat ${source.localFile} / ${source.file}:`, err);
+      return { source, error: err };
+    }
+  }));
+
+  for (const result of sumurResults) {
+    const { source } = result;
+    if (result.error) {
       loadErrors.push(source.file);
       continue;
     }
-    datasets[source.key] = buildSumurDataset(source, header, rows);
+    datasets[source.key] = buildSumurDataset(source, result.header, result.rows);
   }
 
   datasets.__loadErrors = loadErrors;
