@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Input Data Historis (Dummy) — Sumber Air Baku</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&display=swap" rel="stylesheet">
 <style>
 :root{
   --bg:#EFF5F6;
@@ -108,16 +108,44 @@ tbody tr:hover{background:var(--primary-pale);}
 .dl-btn:hover{background:var(--primary);}
 
 /* Lock screen (khusus admin) */
-.lock-screen{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:50;padding:20px;}
-.lock-card{background:var(--surface);border:1px solid var(--line-muted);border-radius:var(--radius);padding:32px 28px;max-width:340px;width:100%;text-align:center;box-shadow:0 10px 30px rgba(14,42,50,.08);}
-.lock-brand{font-family:'Space Grotesk',sans-serif;font-size:12px;letter-spacing:.08em;color:var(--ink-soft);text-transform:uppercase;margin-bottom:6px;}
-.lock-card h2{font-family:'Space Grotesk',sans-serif;color:var(--primary);margin:0 0 8px;font-size:20px;}
-.lock-sub{font-size:12.5px;color:var(--ink-soft);margin:0 0 18px;line-height:1.5;}
-.lock-card input{width:100%;padding:11px 12px;border:1px solid var(--line-muted);border-radius:9px;font-size:14px;font-family:'IBM Plex Mono',monospace;margin-bottom:12px;text-align:center;}
-.lock-card button{width:100%;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:13.5px;background:var(--primary);color:#fff;border:none;padding:11px;border-radius:10px;cursor:pointer;}
-.lock-card button:hover{background:var(--primary-light);}
-.lock-error{color:var(--low);font-size:12px;font-weight:600;margin-top:10px;min-height:16px;}
-.lock-hint{font-size:11px;color:var(--ink-soft);margin-top:14px;opacity:.75;}
+/* Lock screen (khusus admin) — gaya disamakan persis dengan login.html asli situs */
+.lock-screen{
+  position:fixed;inset:0;z-index:50;padding:24px;
+  display:flex;align-items:center;justify-content:center;
+  background:#f6f4ee; /* --paper di login.html */
+  --navy:#1f3a5f; --navy-dark:#152840; --line2:#dfdad0; --muted2:#6b7280; --error2:#dc2626;
+}
+.lock-card{
+  background:#ffffff;border:1px solid var(--line2);border-radius:10px;
+  padding:44px 40px;max-width:380px;width:100%;
+  box-shadow:0 4px 12px rgba(28,43,58,.08);
+  text-align:left;
+}
+.lock-brand{font-family:'Inter',sans-serif;font-size:13px;letter-spacing:.03em;color:var(--muted2);text-transform:uppercase;margin-bottom:6px;}
+.lock-card h2{font-family:'Source Serif 4',"Times New Roman",serif;color:var(--navy-dark);margin:0 0 6px;font-size:24px;font-weight:700;}
+.lock-sub{font-family:'Inter',sans-serif;font-size:14px;color:var(--muted2);margin:0 0 28px;line-height:1.5;}
+.lock-card .form-group{margin-bottom:20px;}
+.lock-card label{display:block;font-family:'Inter',sans-serif;font-size:13px;font-weight:600;color:var(--navy-dark);margin-bottom:6px;letter-spacing:.03em;text-transform:uppercase;}
+.lock-card input{
+  width:100%;padding:12px 14px;border:1px solid var(--line2);border-radius:6px;
+  font-size:14px;font-family:'Inter',sans-serif;color:#1c2b3a;background:#fafaf8;
+  text-align:left;margin-bottom:0;
+  transition:border-color .15s ease, background .15s ease;
+}
+.lock-card input:focus{outline:none;border-color:#a9762f;background:#ffffff;}
+.lock-card button{
+  width:100%;font-family:'Inter',sans-serif;font-weight:600;font-size:14px;letter-spacing:.03em;text-transform:uppercase;
+  background:var(--navy);color:#fff;border:none;padding:12px;border-radius:6px;cursor:pointer;
+  transition:background .15s ease, transform .15s ease;
+}
+.lock-card button:hover{background:var(--navy-dark);transform:translateY(-1px);}
+.lock-card button[disabled]{opacity:.6;cursor:not-allowed;}
+.lock-error{
+  display:none;background:#fee2e2;border:1px solid #fecaca;color:var(--error2);
+  padding:12px 14px;border-radius:6px;font-size:13px;margin-top:16px;font-family:'Inter',sans-serif;
+}
+.lock-error:not(:empty){display:block;}
+.lock-hint{font-family:'Inter',sans-serif;font-size:12px;color:var(--muted2);margin-top:20px;text-align:center;line-height:1.5;}
 </style>
 </head>
 <body>
@@ -125,14 +153,29 @@ tbody tr:hover{background:var(--primary-pale);}
 <div class="lock-screen" id="lockScreen">
   <div class="lock-card">
     <div class="lock-brand">Perumda Tirta Manuntung</div>
-    <h2>Input Data Historis</h2>
-    <p class="lock-sub" id="lockMessage">Form ini khusus untuk admin. Anda perlu login terlebih dahulu.</p>
-    <button id="btnGoLogin">Ke halaman login</button>
-    <div class="lock-hint">Memakai sesi login yang sama dengan halaman lain di situs ini — kalau sudah login sebagai admin di tab/halaman lain, cukup muat ulang halaman ini.</div>
+    <h2 class="lock-title">Login Admin</h2>
+    <p class="lock-sub" id="lockMessage">Form Input Data Historis ini khusus untuk administrator.</p>
+
+    <div class="lock-error" id="loginError"></div>
+
+    <form id="loginForm">
+      <div class="form-group">
+        <label for="loginUsername">Username</label>
+        <input type="text" id="loginUsername" autocomplete="username" required autofocus>
+      </div>
+      <div class="form-group">
+        <label for="loginPassword">Password</label>
+        <input type="password" id="loginPassword" autocomplete="current-password" required>
+      </div>
+      <button type="submit" id="btnLoginSubmit">Masuk</button>
+    </form>
+
+    <div class="lock-hint">Memakai akun login yang sama dengan halaman lain di situs ini.</div>
   </div>
 </div>
 
 <div class="wrap" id="appRoot" style="display:none;">
+
 
   <header class="top">
     <div>
@@ -285,13 +328,11 @@ const SYNC_CONFIG_KEY = 'input_data_historis_sync_config';
 // Kalau sudah diisi di sini, halaman langsung tersinkron begitu dibuka, tidak
 // perlu isi kotak "Sinkronisasi Google Sheets" di tampilan lagi.
 // ============================================================================
-const DEFAULT_SYNC_URL = 'https://script.google.com/macros/s/AKfycbz7R-A6amPcX5Wac-a1VMzrsWlLyJNt5D_3qGCPazngPv8iOq80zdMsCbBUz6-dEC4r/exec';
-const DEFAULT_SYNC_SECRET = 'Rahasia123';
+const DEFAULT_SYNC_URL = '';
+const DEFAULT_SYNC_SECRET = '';
 
-// File ini ditaruh sejajar dengan form lain: apps/input-data-historis.html
-// (satu tingkat di bawah root, sama seperti apps/formulir-sab.html) —
-// jadi login.html di root situs cukup satu tingkat di atas.
-const LOGIN_PATH = '../login.html';
+// Login sekarang langsung di halaman ini (POST ke /api/login), tidak lagi
+// redirect ke login.html terpisah — jadi tidak perlu path relatif ke sana.
 
 // =============================================================================
 // STATE
@@ -941,17 +982,15 @@ document.getElementById('btnLogout').onclick = () => {
   localStorage.removeItem('token');
   localStorage.removeItem('role');
   localStorage.removeItem('username');
-  window.location.href = LOGIN_PATH;
+  showLock();
 };
 
 // =============================================================================
-// GERBANG ADMIN — memakai sesi login yang sama dengan halaman lain di situs
-// ini (login.html menyimpan localStorage "token" & "role" setelah berhasil
-// login, lihat api/login.js). TIDAK bikin login terpisah supaya tidak double
-// login. Kalau nanti API sudah punya endpoint /api/verify yang sesungguhnya,
-// idealnya token divalidasi ke server di sini juga (localStorage saja bisa
-// dipalsukan lewat devtools) — untuk sekarang disamakan dengan pola yang
-// sudah dipakai di apps/riwayat-air-baku.
+// GERBANG ADMIN — form login di halaman ini langsung POST ke /api/login,
+// endpoint yang sama dipakai login.html (lihat api/login.js). Berhasil login
+// menyimpan localStorage "token" & "role", persis pola yang sudah dipakai di
+// seluruh situs ini (apps/riwayat-air-baku dst.) — jadi begitu login di sini,
+// halaman lain juga otomatis ikut "login".
 // =============================================================================
 function isAdminLoggedIn() {
   const token = localStorage.getItem('token');
@@ -965,7 +1004,7 @@ function showLock() {
   if (token && role && role !== 'admin') {
     msgEl.textContent = `Akun ini login sebagai "${role}", bukan admin. Silakan login dengan akun admin.`;
   } else {
-    msgEl.textContent = 'Form ini khusus untuk admin. Anda perlu login terlebih dahulu.';
+    msgEl.textContent = 'Form ini khusus untuk admin. Silakan login.';
   }
   document.getElementById('lockScreen').style.display = 'flex';
   document.getElementById('appRoot').style.display = 'none';
@@ -975,7 +1014,36 @@ function showApp() {
   document.getElementById('appRoot').style.display = 'block';
   renderAll();
 }
-document.getElementById('btnGoLogin').onclick = () => { window.location.href = LOGIN_PATH; };
+document.getElementById('loginForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const username = document.getElementById('loginUsername').value;
+  const password = document.getElementById('loginPassword').value;
+  const errorEl = document.getElementById('loginError');
+  const btn = document.getElementById('btnLoginSubmit');
+  errorEl.textContent = '';
+  btn.disabled = true;
+  btn.textContent = 'Memproses...';
+  try {
+    const res = await fetch('/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password })
+    });
+    const data = await res.json();
+    if (data.success) {
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('role', data.role);
+      localStorage.setItem('username', data.username);
+      showApp();
+    } else {
+      errorEl.textContent = data.error || 'Username atau password salah.';
+    }
+  } catch (err) {
+    errorEl.textContent = 'Koneksi ke server gagal. Coba lagi beberapa saat.';
+  }
+  btn.disabled = false;
+  btn.textContent = 'Masuk';
+});
 
 if (isAdminLoggedIn()) showApp(); else showLock();
 </script>
