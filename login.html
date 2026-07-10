@@ -3,192 +3,291 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Login Admin — Sumber Air Baku</title>
+<title>Login Admin — PTMB Portal Internal</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-  :root {
-    --ink: #1c2b3a;
-    --navy: #1f3a5f;
-    --navy-dark: #152840;
-    --paper: #f6f4ee;
-    --card: #ffffff;
-    --line: #dfdad0;
-    --muted: #6b7280;
-    --accent: #a9762f;
-    --accent-soft: #f1e6d3;
-    --error: #dc2626;
-    --radius: 10px;
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  :root{
+    --bg:#EFF5F6;
+    --ink:#0E2A32;
+    --ink-soft:#4C6870;
+    --primary:#0B5566;
+    --primary-light:#1C8CA0;
+    --primary-pale:#DCEEF1;
+    --accent:#D98F3E;
+    --accent-pale:#FBEBD8;
+    --line:#C7DADD;
+    --surface:#FFFFFF;
+    --error:#C6553D;
+    --radius-lg:22px;
+    --radius-md:14px;
   }
 
-  * { box-sizing: border-box; }
-  body {
-    margin: 0;
-    background: var(--paper);
-    color: var(--ink);
-    -webkit-font-smoothing: antialiased;
+  *{box-sizing:border-box; margin:0; padding:0;}
+
+  a{ text-decoration:none; color:inherit; }
+
+  body{
+    font-family:'Inter',sans-serif;
+    color:var(--ink);
+    background:
+      radial-gradient(1100px 500px at 15% -10%, #FFFFFF 0%, transparent 60%),
+      radial-gradient(900px 500px at 100% 0%, var(--primary-pale) 0%, transparent 55%),
+      linear-gradient(180deg, #F4F9FA 0%, var(--bg) 40%, #E7F1F2 100%);
+    min-height:100vh;
+    -webkit-font-smoothing:antialiased;
+    display:flex; flex-direction:column;
   }
 
-  .serif { font-family: 'Source Serif 4', "Times New Roman", Times, serif; }
+  /* ===== NAVBAR (sama seperti beranda) ===== */
+  header.nav{
+    position:sticky; top:0; z-index:50;
+    display:flex; align-items:center; justify-content:space-between;
+    padding:16px 5vw;
+    background:rgba(239,245,246,0.78);
+    backdrop-filter:blur(10px);
+    border-bottom:1px solid var(--line);
+  }
+  .brand{ display:flex; align-items:center; gap:10px; }
+  .brand-mark{
+    width:38px; height:38px; border-radius:10px;
+    background:linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+    display:flex; align-items:center; justify-content:center;
+    color:#fff; font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:14px;
+    box-shadow:0 4px 12px rgba(11,85,102,0.25);
+  }
+  .brand-text{
+    font-family:'Space Grotesk',sans-serif;
+    font-weight:700; font-size:16px; letter-spacing:0.02em; color:var(--ink);
+    line-height:1.1;
+  }
+  .brand-text span{
+    display:block; font-family:'Inter',sans-serif; font-weight:500; font-size:10.5px;
+    letter-spacing:0.06em; color:var(--ink-soft); text-transform:uppercase; margin-top:2px;
+  }
+  nav.links{ display:flex; align-items:center; gap:6px; }
+  .nav-item{ position:relative; }
+  .nav-item > button.nav-link{
+    font-family:'Space Grotesk',sans-serif;
+    font-size:14px; font-weight:600; color:var(--ink-soft);
+    padding:9px 14px; border-radius:999px; transition:all .18s ease;
+    background:none; border:none; cursor:pointer;
+    display:inline-flex; align-items:center; gap:5px;
+  }
+  .nav-item > button.nav-link:hover,
+  .nav-item.open > button.nav-link{ color:var(--primary); background:var(--primary-pale); }
+  .nav-caret{
+    width:8px; height:8px;
+    border-right:1.6px solid currentColor; border-bottom:1.6px solid currentColor;
+    transform:rotate(45deg); margin-top:-3px; transition:transform .18s ease;
+  }
+  .nav-item.open .nav-caret{ transform:rotate(-135deg); margin-top:2px; }
+  .nav-dropdown{
+    position:absolute; top:calc(100% + 8px); left:50%; transform:translateX(-50%);
+    min-width:250px; background:var(--surface);
+    border:1px solid var(--line); border-radius:16px;
+    padding:10px; box-shadow:0 20px 40px -18px rgba(14,42,50,0.28);
+    opacity:0; visibility:hidden; pointer-events:none;
+    transition:opacity .16s ease, transform .16s ease;
+  }
+  .nav-item.open .nav-dropdown{
+    opacity:1; visibility:visible; pointer-events:auto;
+    transform:translateX(-50%) translateY(0);
+  }
+  .nav-dropdown-tag{
+    display:inline-block; font-size:10.5px; font-weight:700; letter-spacing:0.06em;
+    text-transform:uppercase; color:#B5502E; background:#FBE4DA;
+    padding:4px 9px; border-radius:6px; margin:2px 8px 8px;
+  }
+  .nav-dropdown a{
+    display:block; padding:10px 12px; border-radius:10px;
+    font-family:'Inter',sans-serif; font-size:13.5px; font-weight:600; color:var(--ink);
+    transition:background .14s ease;
+  }
+  .nav-dropdown a:hover{ background:var(--bg); color:var(--primary); }
+  nav.links > a{
+    font-family:'Space Grotesk',sans-serif;
+    font-size:14px; font-weight:600; color:var(--ink-soft);
+    padding:9px 16px; border-radius:999px; transition:all .18s ease;
+  }
+  nav.links > a:hover{ color:var(--primary); background:var(--primary-pale); }
+  .btn-login{
+    font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:14px;
+    padding:10px 20px; border-radius:999px;
+    background:var(--ink); color:#fff !important;
+    margin-left:6px; transition:all .18s ease;
+  }
+  .btn-login.active{ background:var(--primary); }
+  .nav-toggle{ display:none; flex-direction:column; gap:5px; background:none; border:none; cursor:pointer; padding:8px; }
+  .nav-toggle span{ width:22px; height:2px; background:var(--ink); border-radius:2px; }
 
-  .masthead {
-    background: var(--card);
-    border-bottom: 1px solid var(--line);
+  /* ===== LOGIN CARD ===== */
+  .login-wrapper{
+    flex:1;
+    display:flex; align-items:center; justify-content:center;
+    padding:48px 6vw;
   }
 
-  .masthead-inner {
-    max-width: 1080px;
-    margin: 0 auto;
-    padding: 22px 24px 16px;
-    display: flex;
-    align-items: center;
-    gap: 18px;
+  .login-card{
+    width:100%; max-width:400px;
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:var(--radius-lg);
+    padding:40px 34px;
+    box-shadow:0 22px 44px -24px rgba(11,85,102,0.28);
   }
 
-  .masthead-text { line-height: 1.3; }
-  .masthead-text .induk { font-size: 13px; color: var(--muted); letter-spacing: .03em; text-transform: uppercase; }
-  .masthead-text h1 { font-size: 22px; margin: 2px 0 2px; color: var(--navy-dark); font-weight: 700; }
-  .masthead-text .sub { font-size: 13px; color: var(--muted); }
-  .masthead-rule { max-width: 1080px; margin: 0 auto; height: 3px; background: var(--navy); }
+  .login-eyebrow{
+    display:inline-flex; align-items:center; gap:8px;
+    font-family:'Space Grotesk',sans-serif; font-size:11.5px; font-weight:700;
+    letter-spacing:0.14em; text-transform:uppercase; color:var(--primary);
+    background:var(--primary-pale); padding:6px 14px; border-radius:999px;
+    margin-bottom:18px;
+  }
+  .login-eyebrow::before{ content:''; width:6px; height:6px; border-radius:50%; background:var(--accent); }
 
-  .login-wrapper {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-height: calc(100vh - 180px);
-    padding: 40px 24px;
+  .login-card h2{
+    font-family:'Space Grotesk',sans-serif; font-size:24px; font-weight:700; color:var(--ink);
+    margin-bottom:8px;
+  }
+  .login-card .subtitle{
+    font-size:13.5px; color:var(--ink-soft); line-height:1.6; margin-bottom:26px;
   }
 
-  .login-card {
-    background: var(--card);
-    border: 1px solid var(--line);
-    border-radius: var(--radius);
-    padding: 44px 40px;
-    max-width: 380px;
-    width: 100%;
-    box-shadow: 0 4px 12px rgba(28, 43, 58, 0.08);
+  .error-message{
+    display:none;
+    background:#FBE4DA; border:1px solid #F3C9AE; color:#B5502E;
+    padding:11px 14px; border-radius:var(--radius-md); font-size:13px; margin-bottom:18px;
+  }
+  .error-message.show{ display:block; }
+
+  .form-group{ margin-bottom:16px; }
+  .form-group label{
+    display:block; font-size:12.5px; font-weight:600; color:var(--ink-soft); margin-bottom:6px;
+  }
+  .form-group input{
+    width:100%; padding:12px 14px;
+    border:1.5px solid var(--line); border-radius:var(--radius-md);
+    font-family:'Inter',sans-serif; font-size:14px; color:var(--ink);
+    background:var(--bg);
+    transition:border-color .15s ease, background .15s ease;
+  }
+  .form-group input:focus{
+    outline:none; border-color:var(--primary-light); background:var(--surface);
   }
 
-  .login-card h2 {
-    font-size: 24px;
-    margin: 0 0 6px;
-    color: var(--navy-dark);
-    font-weight: 700;
+  .submit-btn{
+    width:100%; padding:13px;
+    background:var(--ink); color:#fff;
+    border:none; border-radius:999px;
+    font-family:'Space Grotesk',sans-serif; font-size:14px; font-weight:700; letter-spacing:.02em;
+    cursor:pointer; margin-top:8px;
+    transition:background .18s ease, transform .18s ease;
+  }
+  .submit-btn:hover{ background:var(--primary); }
+  .submit-btn:active{ transform:translateY(1px); }
+  .submit-btn[disabled]{ opacity:.6; cursor:not-allowed; }
+
+  .back-link{
+    display:block; text-align:center; margin-top:22px;
+    font-family:'Space Grotesk',sans-serif; font-size:13px; font-weight:600; color:var(--ink-soft);
+  }
+  .back-link:hover{ color:var(--primary); }
+
+  footer{
+    border-top:1px solid var(--line);
+    padding:22px 6vw;
+    text-align:center;
+    font-size:12.5px; color:var(--ink-soft);
   }
 
-  .login-card .subtitle {
-    font-size: 14px;
-    color: var(--muted);
-    margin: 0 0 28px;
-    line-height: 1.5;
-  }
-
-  .form-group { margin-bottom: 20px; }
-
-  .form-group label {
-    display: block;
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--navy-dark);
-    margin-bottom: 6px;
-    letter-spacing: .03em;
-    text-transform: uppercase;
-  }
-
-  .form-group input {
-    width: 100%;
-    padding: 12px 14px;
-    border: 1px solid var(--line);
-    border-radius: 6px;
-    font-size: 14px;
-    font-family: inherit;
-    color: var(--ink);
-    background: #fafaf8;
-    transition: border-color .15s ease, background .15s ease;
-  }
-
-  .form-group input:focus {
-    outline: none;
-    border-color: var(--accent);
-    background: var(--card);
-  }
-
-  .error-message {
-    display: none;
-    background: #fee2e2;
-    border: 1px solid #fecaca;
-    color: var(--error);
-    padding: 12px 14px;
-    border-radius: 6px;
-    font-size: 13px;
-    margin-bottom: 20px;
-  }
-
-  .error-message.show { display: block; }
-
-  .submit-btn {
-    width: 100%;
-    padding: 12px;
-    background: var(--navy);
-    color: #fff;
-    border: none;
-    border-radius: 6px;
-    font-size: 14px;
-    font-weight: 600;
-    letter-spacing: .03em;
-    text-transform: uppercase;
-    cursor: pointer;
-    transition: background .15s ease, transform .15s ease;
-  }
-
-  .submit-btn:hover { background: var(--navy-dark); transform: translateY(-1px); }
-  .submit-btn:active { transform: translateY(0); }
-  .submit-btn[disabled] { opacity: 0.6; cursor: not-allowed; }
-
-  .back-link {
-    display: block;
-    text-align: center;
-    margin-top: 20px;
-    font-size: 13px;
-    color: var(--muted);
-    text-decoration: none;
-  }
-
-  .back-link:hover { color: var(--navy); }
-
-  footer {
-    background: var(--navy-dark);
-    color: #cdd8e6;
-    padding: 26px 24px;
-    text-align: center;
-    font-size: 12.5px;
-  }
-
-  footer strong { color: #fff; }
-
-  @media (max-width: 640px) {
-    .login-card { padding: 32px 24px; }
-    .login-card h2 { font-size: 20px; }
+  @media (max-width: 760px){
+    nav.links{
+      position:fixed; top:70px; left:0; right:0;
+      background:var(--surface);
+      flex-direction:column; align-items:stretch;
+      padding:14px 6vw; gap:2px;
+      border-bottom:1px solid var(--line);
+      box-shadow:0 12px 24px -12px rgba(14,42,50,0.15);
+      display:none;
+      max-height:calc(100vh - 70px); overflow-y:auto;
+    }
+    nav.links.open{ display:flex; }
+    nav.links > a{ padding:12px 14px; border-radius:10px; }
+    .nav-item{ width:100%; }
+    .nav-item > button.nav-link{ width:100%; justify-content:space-between; padding:12px 14px; }
+    .nav-dropdown{
+      position:static; transform:none; min-width:0; width:100%;
+      box-shadow:none; border:none; padding:0 0 0 10px;
+      opacity:1; visibility:visible; pointer-events:auto;
+      max-height:0; overflow:hidden;
+    }
+    .nav-item.open .nav-dropdown{ max-height:400px; transform:none; padding:4px 0 6px 10px; }
+    .nav-dropdown-tag{ margin-left:12px; }
+    .btn-login{ margin:8px 0 0; text-align:center; }
+    .nav-toggle{ display:flex; }
+    .login-card{ padding:32px 24px; }
   }
 </style>
 </head>
 <body>
 
-<div class="masthead">
-  <div class="masthead-inner">
-    <div class="masthead-text">
-      <div class="induk">Perumda Tirta Manuntung Kota Balikpapan</div>
-      <h1 class="serif">Sub Divisi Sumber Air Baku</h1>
-      <div class="sub">Portal Aplikasi Kerja &amp; Dokumen Internal</div>
-    </div>
+<header class="nav">
+  <div class="brand">
+    <div class="brand-mark">PT</div>
+    <div class="brand-text">PTMB<span>Portal Internal</span></div>
   </div>
-</div>
-<div class="masthead-rule"></div>
+
+  <nav class="links" id="navLinks">
+    <a href="index.html">Home</a>
+
+    <div class="nav-item" data-nav>
+      <button class="nav-link" type="button">Tools <span class="nav-caret"></span></button>
+      <div class="nav-dropdown">
+        <a href="apps/spd.html">Surat Penyediaan Dana (SPD)</a>
+        <a href="apps/berita-acara.html">Berita Acara (BA)</a>
+        <a href="apps/surat-permohonan.html">Surat Permohonan (Eksternal)</a>
+      </div>
+    </div>
+
+    <div class="nav-item" data-nav>
+      <button class="nav-link" type="button">Data Visualization <span class="nav-caret"></span></button>
+      <div class="nav-dropdown">
+        <a href="apps/library/index.html">Data Waduk dan Sumur</a>
+        <a href="apps/riwayat-air-baku/index.html">Data Pengambilan Air Baku</a>
+      </div>
+    </div>
+
+    <div class="nav-item" data-nav>
+      <button class="nav-link" type="button">Development <span class="nav-caret"></span></button>
+      <div class="nav-dropdown">
+        <span class="nav-dropdown-tag">Admin Only</span>
+        <a href="apps/input-data-historis.html">Input Data Waduk Dan Sumur</a>
+        <a href="apps/input-air-baku.html">Input Pengambilan Air Baku</a>
+        <a href="apps/formulir-sab.html">Input Pekerjaan SAB</a>
+      </div>
+    </div>
+
+    <div class="nav-item" data-nav>
+      <button class="nav-link" type="button">About Me <span class="nav-caret"></span></button>
+      <div class="nav-dropdown">
+        <a href="index.html#about">Profil &amp; Portfolio</a>
+        <a href="index.html#about">Kontak</a>
+      </div>
+    </div>
+
+    <a href="login.html" class="btn-login active">Login</a>
+  </nav>
+
+  <button class="nav-toggle" id="navToggle" aria-label="Buka menu">
+    <span></span><span></span><span></span>
+  </button>
+</header>
 
 <div class="login-wrapper">
   <div class="login-card">
-    <h2 class="serif">Login Admin</h2>
+    <div class="login-eyebrow">Sub Divisi Sumber Air Baku</div>
+    <h2>Login Admin</h2>
     <p class="subtitle">Halaman ini khusus untuk administrator. Untuk membuat surat, kembali ke beranda.</p>
 
     <div class="error-message" id="errorMessage"></div>
@@ -212,18 +311,34 @@
 </div>
 
 <footer>
-  <strong>Perumda Tirta Manuntung Kota Balikpapan</strong> — Sub Divisi Sumber Air Baku
+  Perumda Tirta Manuntung Kota Balikpapan — Sub Divisi Sumber Air Baku
 </footer>
+
+<script>
+  const toggle = document.getElementById('navToggle');
+  const links = document.getElementById('navLinks');
+  toggle.addEventListener('click', () => links.classList.toggle('open'));
+
+  document.querySelectorAll('[data-nav]').forEach((item) => {
+    const btn = item.querySelector('.nav-link');
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const wasOpen = item.classList.contains('open');
+      document.querySelectorAll('[data-nav]').forEach(i => i.classList.remove('open'));
+      if(!wasOpen) item.classList.add('open');
+    });
+  });
+  document.addEventListener('click', () => {
+    document.querySelectorAll('[data-nav]').forEach(i => i.classList.remove('open'));
+  });
+</script>
 
 <script>
   const API_URL = '';
 
-  // Kalau datang dari halaman yang dikunci (mis. ?redirect=apps/formulir-sab.html),
-  // balik ke sana setelah login berhasil. Kalau tidak ada, default ke dashboard.
   function getSafeRedirect() {
     const raw = new URLSearchParams(window.location.search).get('redirect');
     if (!raw) return 'admin-dashboard.html';
-    // Hanya izinkan path relatif di dalam situs sendiri (cegah open-redirect).
     if (/^https?:\/\//i.test(raw) || raw.startsWith('//') || raw.startsWith('../') || raw.includes('\\')) {
       return 'admin-dashboard.html';
     }
@@ -278,4 +393,3 @@
 
 </body>
 </html>
-
