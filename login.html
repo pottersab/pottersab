@@ -218,6 +218,18 @@
 <script>
   const API_URL = '';
 
+  // Kalau datang dari halaman yang dikunci (mis. ?redirect=apps/formulir-sab.html),
+  // balik ke sana setelah login berhasil. Kalau tidak ada, default ke dashboard.
+  function getSafeRedirect() {
+    const raw = new URLSearchParams(window.location.search).get('redirect');
+    if (!raw) return 'admin-dashboard.html';
+    // Hanya izinkan path relatif di dalam situs sendiri (cegah open-redirect).
+    if (/^https?:\/\//i.test(raw) || raw.startsWith('//') || raw.startsWith('../') || raw.includes('\\')) {
+      return 'admin-dashboard.html';
+    }
+    return raw;
+  }
+
   const loginForm = document.getElementById('loginForm');
   const usernameInput = document.getElementById('username');
   const passwordInput = document.getElementById('password');
@@ -246,7 +258,7 @@
         localStorage.setItem('token', data.token);
         localStorage.setItem('role', data.role);
         localStorage.setItem('username', data.username);
-        window.location.href = 'admin-dashboard.html';
+        window.location.href = getSafeRedirect();
       } else {
         showError(data.error || 'Username atau password salah');
       }
@@ -266,3 +278,4 @@
 
 </body>
 </html>
+

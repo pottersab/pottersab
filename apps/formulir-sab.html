@@ -98,29 +98,103 @@
     border-radius:50%;display:inline-block;animation:spin .7s linear infinite;vertical-align:-3px;margin-right:6px;
   }
   @keyframes spin{to{transform:rotate(360deg);}}
+
+  /* ===== Gerbang admin ===== */
+  #authGate{
+    min-height:100vh;display:flex;align-items:center;justify-content:center;
+    padding:24px;text-align:center;
+  }
+  #authGate .gate-card{
+    background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+    padding:32px 28px;max-width:340px;width:100%;
+  }
+  #authGate .gate-icon{font-size:28px;margin-bottom:10px;}
+  #authGate h2{font-size:16px;margin:0 0 6px;color:var(--navy-dark);}
+  #authGate p{font-size:13px;color:var(--muted);line-height:1.5;margin:0 0 18px;}
+  #authGate a.gate-btn{
+    display:inline-block;background:var(--navy);color:#fff;text-decoration:none;
+    padding:10px 20px;border-radius:6px;font-size:13px;font-weight:600;
+  }
+  #authGate a.gate-btn:hover{background:var(--navy-dark);}
+  .admin-bar{
+    background:var(--navy-dark);color:#cdd8e6;font-size:12px;
+    padding:6px 20px;display:flex;justify-content:space-between;align-items:center;
+  }
+  .admin-bar b{color:#fff;}
+  .admin-bar a{color:#cdd8e6;text-decoration:underline;cursor:pointer;}
 </style>
 </head>
 <body>
 
-<div class="topbar">
-  <h1>Formulir Pekerjaan SAB</h1>
-  <span>Laporan perbaikan lapangan</span>
+<!-- ===== Gerbang admin: cek token+role sebelum menampilkan formulir ===== -->
+<div id="authGate" style="display:none;">
+  <div class="gate-card">
+    <div class="gate-icon">🔒</div>
+    <h2>Khusus Admin</h2>
+    <p>Formulir Pekerjaan SAB hanya bisa diisi oleh admin yang sudah login. Silakan masuk terlebih dahulu.</p>
+    <a class="gate-btn" href="#" id="gateLoginLink">Masuk sebagai Admin</a>
+  </div>
 </div>
 
-<div class="wrap">
-  <div class="progress-row">
-    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
-    <div class="progress-label" id="progressLabel">Bagian 1</div>
+<div id="appRoot" style="display:none;">
+  <div class="admin-bar">
+    <span>Masuk sebagai <b id="adminUsername">Admin</b></span>
+    <a id="logoutLink">Keluar</a>
   </div>
 
-  <div id="stepArea"></div>
-
-  <div class="nav-row">
-    <button type="button" class="btn btn-ghost" id="backBtn">Kembali</button>
-    <button type="button" class="btn btn-primary" id="nextBtn">Lanjut</button>
+  <div class="topbar">
+    <h1>Formulir Pekerjaan SAB</h1>
+    <span>Laporan perbaikan lapangan</span>
   </div>
-  <div class="status-msg" id="statusMsg"></div>
+
+  <div class="wrap">
+    <div class="progress-row">
+      <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+      <div class="progress-label" id="progressLabel">Bagian 1</div>
+    </div>
+
+    <div id="stepArea"></div>
+
+    <div class="nav-row">
+      <button type="button" class="btn btn-ghost" id="backBtn">Kembali</button>
+      <button type="button" class="btn btn-primary" id="nextBtn">Lanjut</button>
+    </div>
+    <div class="status-msg" id="statusMsg"></div>
+  </div>
 </div>
+
+<script>
+// ============== GERBANG ADMIN (dijalankan lebih dulu) ==============
+(function () {
+  const REDIRECT_PATH = 'apps/formulir-sab.html'; // path relatif dari root situs, dipakai login.html utk balik ke sini
+  const token = localStorage.getItem('token');
+  const role = localStorage.getItem('role');
+  const username = localStorage.getItem('username');
+
+  const gate = document.getElementById('authGate');
+  const app = document.getElementById('appRoot');
+  const loginLink = document.getElementById('gateLoginLink');
+  loginLink.href = '../login.html?redirect=' + encodeURIComponent(REDIRECT_PATH);
+
+  if (!token || role !== 'admin') {
+    // Tampilkan gerbang, lalu redirect otomatis ke login setelah sebentar.
+    gate.style.display = 'flex';
+    setTimeout(() => { window.location.replace(loginLink.href); }, 900);
+    // Hentikan sisa script formulir; jangan render apapun yg butuh data admin.
+    throw new Error('ADMIN_ONLY: akses ditolak, mengalihkan ke login.');
+  }
+
+  // Lolos verifikasi -> tampilkan formulir
+  document.getElementById('adminUsername').textContent = username || 'Admin';
+  document.getElementById('logoutLink').addEventListener('click', () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('role');
+    localStorage.removeItem('username');
+    window.location.href = '../login.html';
+  });
+  app.style.display = 'block';
+})();
+</script>
 
 <script>
 // ============== KONFIGURASI ==============
@@ -448,3 +522,4 @@ render();
 </script>
 </body>
 </html>
+
