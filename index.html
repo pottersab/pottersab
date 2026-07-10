@@ -197,13 +197,18 @@
     min-height:520px;
     aspect-ratio:3 / 4.3;
     overflow:hidden;
-    transition:transform .25s ease, box-shadow .25s ease, border-color .25s ease;
+    z-index:1;
+    will-change:transform, box-shadow;
+    transform:translateY(0) scale(1);
+    transition:transform .6s cubic-bezier(.16,1,.3,1),
+               box-shadow .6s cubic-bezier(.16,1,.3,1),
+               border-color .35s ease;
     box-shadow:0 1px 3px rgba(14,42,50,0.04);
   }
 
   .card:hover{
-    transform:translateY(-6px);
-    box-shadow:0 22px 40px -18px rgba(11,85,102,0.28);
+    transform:translateY(-14px) scale(1.09);
+    box-shadow:0 36px 60px -18px rgba(11,85,102,0.36);
     border-color:var(--primary-light);
   }
 
@@ -471,7 +476,6 @@
 
 <footer>
   <span>© 2026 Potter - Sumber Air Baku</span>
-  <span>Dummy tampilan — konten &amp; tautan belum aktif</span>
 </footer>
 
 <script>
@@ -491,6 +495,17 @@
 
   document.addEventListener('click', () => {
     document.querySelectorAll('[data-nav]').forEach(i => i.classList.remove('open'));
+  });
+
+  // Kartu yang baru di-hover selalu dapat z-index lebih tinggi dari yang
+  // sebelumnya — jadi arah kursor (kiri↔kanan) tidak berpengaruh ke kartu
+  // mana yang tampil paling depan saat animasinya masih tumpang tindih.
+  let cardZCounter = 10;
+  document.querySelectorAll('.card').forEach((card) => {
+    card.addEventListener('mouseenter', () => {
+      cardZCounter += 1;
+      card.style.zIndex = cardZCounter;
+    });
   });
 
   // Mencatat setiap kali kartu/menu dibuka — pola sama dengan index.html
