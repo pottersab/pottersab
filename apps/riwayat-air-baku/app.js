@@ -1,26 +1,24 @@
 /* ==========================================================================
    Data Historis Pengambilan Air Baku
    --------------------------------------------------------------------------
-   Pola & tampilan sengaja dibuat sama persis dengan app "Library" yang
-   sudah jalan (apps/library) — menu utama -> sub menu -> grafik+gauge ->
-   stat cards -> tabel. Bedanya: sumbernya monthly (bukan harian), ada
-   submenu "Rekapitulasi" (tabel pivot instalasi x bulan per tahun), dan
-   dua tombol unduh (PDF untuk tamu, Excel khusus admin).
+   Pola & tampilan sama persis dengan app "Library" (apps/library) — menu
+   utama -> sub menu -> grafik+gauge -> stat cards -> tabel. Bedanya:
+   sumbernya monthly (bukan harian), ada submenu "Rekapitulasi" (tabel pivot
+   instalasi x bulan per tahun), dan dua tombol unduh (PDF untuk tamu, Excel
+   khusus admin).
 
-   Sumber data (sementara): file CSV di folder ./data. Untuk mengubah data
-   historis, edit file CSV yang bersangkutan.
+   Data grafik GABUNGAN dari 2 sumber (sama seperti Library):
+     1. File CSV lokal di apps/riwayat-air-baku/data/ -> arsip historis lama.
+     2. Google Sheets lewat Apps Script Web App (SHEETS_BASE) -> data baru
+        yang diinput lewat apps/input-air-baku.html mulai sekarang.
+   Digabung per bulan lewat fetchMergedCSV/mergeRows di bawah; kalau ada
+   bulan yang sama di kedua sumber, nilai dari Sheets yang dipakai.
 
-   NANTI: kalau aplikasi input data sudah jadi, ganti fungsi loadAllData()
-   supaya fetch dari API-mu alih-alih file CSV statis. Struktur `datasets`
-   dan `REKAP_TABLES` yang dipakai render() dkk sebaiknya dipertahankan sama.
-
-   PENTING soal tombol "Unduh Excel (Admin)":
-   Saya tidak punya isi login.html / api/verify.js yang sebenarnya, jadi
-   fungsi checkAdminStatus() di bawah saya buat dengan asumsi:
-     - Token admin disimpan di localStorage dengan key "adminToken"
-     - GET /api/verify dengan header Authorization: Bearer <token>
-       membalas JSON { valid: true } atau { role: "admin" } kalau sah
-   Sesuaikan fungsi checkAdminStatus() saja kalau ternyata beda.
+   Data juga di-LAZY LOAD per grup (AP / ATD) -- saat halaman dibuka cuma
+   grup yang sedang aktif yang di-fetch, grup lain baru di-fetch saat
+   tab-nya diklik. Ini karena "Jumlah (Total)" & "Rekapitulasi" dihitung
+   dari SEMUA instalasi dalam 1 grup sekaligus, jadi unit fetch-nya per
+   grup (bukan per instalasi seperti di Library).
    ========================================================================== */
 
 // ---------------------------------------------------------------------------
@@ -35,16 +33,20 @@ function allTabsOf(group) {
   return [...group.wellTabs, ...group.aggTabs];
 }
 
-function keyIsAvailable(k) {
-  return !!(datasets[k] || REKAP_TABLES[k]);
-}
-
 // ---------------------------------------------------------------------------
 // KONFIGURASI SUMBER DATA
 // ---------------------------------------------------------------------------
+// Ganti dengan URL Web App Google Apps Script hasil deploy, diakhiri /exec,
+// tanpa parameter (sama dengan yang dipakai apps/input-air-baku.html).
+const SHEETS_BASE = 'https://script.google.com/macros/s/AKfycbz_7JO5J0KybOq0eUXAquUEJv204tuv8C-oQdHWU--YShiG7UxQGXtHHUerem9qhFZCzA/exec';
+// LOCAL_DATA_BASE = folder berisi CSV historis lama (arsip).
+const LOCAL_DATA_BASE = 'data/';
+
 const DATA_SOURCES = [
   {
-    file: 'https://script.google.com/macros/s/AKfycbz_7JO5J0KybOq0eUXAquUEJv204tuv8C-oQdHWU--YShiG7UxQGXtHHUerem9qhFZCzA/exec?sheet=AP',
+    groupKey: 'ap',
+    file: SHEETS_BASE + '?sheet=AP',
+    localFile: LOCAL_DATA_BASE + 'air_permukaan.csv',
     dateColumn: 'Bulan',
     totalKey: 'ap_total',
     totalLabel: 'Jumlah — Air Permukaan (AP)',
@@ -59,7 +61,9 @@ const DATA_SOURCES = [
     }
   },
   {
-    file: 'https://script.google.com/macros/s/AKfycbz_7JO5J0KybOq0eUXAquUEJv204tuv8C-oQdHWU--YShiG7UxQGXtHHUerem9qhFZCzA/exec?sheet=ATD',
+    groupKey: 'atd',
+    file: SHEETS_BASE + '?sheet=ATD',
+    localFile: LOCAL_DATA_BASE + 'air_tanah_dalam.csv',
     dateColumn: 'Bulan',
     totalKey: 'atd_total',
     totalLabel: 'Jumlah — Air Tanah Dalam (ATD)',
@@ -74,6 +78,25 @@ const DATA_SOURCES = [
     }
   }
 ];
+
+// ---------------------------------------------------------------------------
+// LOOKUP KEY -> GRUP & LABEL STATIS (dipakai untuk lazy-load & buat menu
+// TANPA nunggu data selesai di-fetch)
+// ---------------------------------------------------------------------------
+const SOURCE_BY_GROUP = {};
+DATA_SOURCES.forEach(source => { SOURCE_BY_GROUP[source.groupKey] = source; });
+
+const KEY_TO_GROUP = {};
+GROUPS.forEach(g => { allTabsOf(g).forEach(k => { KEY_TO_GROUP[k] = g.key; }); });
+
+const KEY_LABEL_LOOKUP = {};
+DATA_SOURCES.forEach(source => {
+  Object.values(source.columns).forEach(cfg => {
+    KEY_LABEL_LOOKUP[cfg.key] = cfg.label.replace(/^Debit (AP|ATD) — /, '');
+  });
+  if (source.totalKey) KEY_LABEL_LOOKUP[source.totalKey] = 'Jumlah (Total)';
+  if (source.rekapKey) KEY_LABEL_LOOKUP[source.rekapKey] = 'Rekapitulasi';
+});
 
 const MONTHS_ID = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
 
@@ -124,93 +147,172 @@ async function fetchCSV(path) {
   return parseCSV(await res.text());
 }
 
-async function loadAllData() {
-  const datasets = {};
-  const loadErrors = [];
+// Gabungkan 1 baris data lokal + 1 baris data Sheets untuk key (bulan) yang
+// sama. Kolom dari Sheets menang HANYA kalau isinya tidak kosong.
+function mergeRowValues(localRow, sheetRow) {
+  const merged = Object.assign({}, localRow);
+  Object.keys(sheetRow).forEach(col => {
+    const v = sheetRow[col];
+    if (v !== undefined && v !== null && v !== '') merged[col] = v;
+  });
+  return merged;
+}
 
-  for (const source of DATA_SOURCES) {
-    let header, rows;
-    try {
-      ({ header, rows } = await fetchCSV(source.file));
-    } catch (err) {
-      console.error(`Gagal memuat ${source.file}:`, err);
-      loadErrors.push(source.file);
-      continue;
-    }
+// Gabungkan seluruh baris data lokal + Sheets berdasarkan kolom kunci
+// (Bulan). Baris dengan key yang sama -> digabung (Sheets menang per-kolom).
+// Baris yang cuma ada di salah satu sumber -> tetap ikut. Hasil diurutkan
+// menaik (aman karena formatnya ISO: YYYY-MM).
+function mergeRows(localRows, sheetRows, keyCol) {
+  const map = new Map();
+  localRows.forEach(r => { if (r[keyCol]) map.set(r[keyCol], r); });
+  sheetRows.forEach(r => {
+    if (!r[keyCol]) return;
+    const existing = map.get(r[keyCol]);
+    map.set(r[keyCol], existing ? mergeRowValues(existing, r) : r);
+  });
+  return Array.from(map.values()).sort((a, b) => (a[keyCol] < b[keyCol] ? -1 : a[keyCol] > b[keyCol] ? 1 : 0));
+}
 
-    const perColSeries = {};
-    const wellsForRekap = [];
-    for (const colName of Object.keys(source.columns)) {
-      if (!header.includes(colName)) {
-        console.warn(`Kolom "${colName}" tidak ditemukan di ${source.file}, dilewati.`);
-        continue;
-      }
-      const cfg = source.columns[colName];
-      const series = rows
-        .map(r => ({ date: new Date(r[source.dateColumn] + '-01T00:00:00'), value: toNum(r[colName]) }))
-        .filter(r => !isNaN(r.date.getTime()));
-      const ds = {
-        label: cfg.label, unit: cfg.unit, type: 'daily', color: cfg.color,
-        real: true, sourceFile: source.file, data: series
-      };
-      if (cfg.hasGauge) {
-        const [mn, mx] = minMax(series);
-        ds.minHist = Math.floor(mn - Math.abs(mn) * 0.02);
-        ds.maxHist = Math.ceil(mx + Math.abs(mx) * 0.02);
-      }
-      datasets[cfg.key] = ds;
-      perColSeries[colName] = series;
-      wellsForRekap.push({ colName, label: cfg.label.replace(/^Debit (AP|ATD) — /, '') });
-    }
+// Ambil data lokal (arsip lama) DAN Google Sheets (data baru) secara
+// paralel, lalu gabung jadi satu tabel. Kalau salah satu sumber gagal
+// dimuat, yang lain tetap dipakai -- jadi grafik tidak blank hanya karena
+// satu sumber bermasalah. Cuma gagal total kalau KEDUA sumber gagal.
+async function fetchMergedCSV(localPath, sheetUrl, keyCol) {
+  const [localRes, sheetRes] = await Promise.allSettled([
+    fetch(localPath).then(res => {
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return res.text();
+    }),
+    fetch(sheetUrl).then(res => {
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return res.text();
+    })
+  ]);
 
-    // Dataset "Jumlah" (total semua instalasi dalam kategori ini)
-    if (source.totalKey) {
-      const dateSet = new Map();
-      Object.values(perColSeries).forEach(series => {
-        series.forEach(r => {
-          const t = r.date.getTime();
-          if (!dateSet.has(t)) dateSet.set(t, { date: r.date, sum: 0, any: false });
-          const entry = dateSet.get(t);
-          if (r.value !== null && r.value !== undefined) { entry.sum += r.value; entry.any = true; }
-        });
-      });
-      const totalSeries = [...dateSet.values()]
-        .sort((a, b) => a.date - b.date)
-        .map(e => ({ date: e.date, value: e.any ? e.sum : null }));
-      const totalDs = {
-        label: source.totalLabel, unit: 'm³', type: 'daily', color: 'rain',
-        real: true, sourceFile: source.file, data: totalSeries
-      };
-      const [mn, mx] = minMax(totalSeries);
-      if (isFinite(mn) && isFinite(mx)) {
-        totalDs.minHist = Math.floor(mn - Math.abs(mn) * 0.02);
-        totalDs.maxHist = Math.ceil(mx + Math.abs(mx) * 0.02);
-      }
-      datasets[source.totalKey] = totalDs;
-    }
+  let header = null, localRows = [], sheetRows = [];
 
-    // Tabel "Rekapitulasi" (pivot instalasi x bulan, per tahun)
-    if (source.rekapKey) {
-      const rekapRows = rows.map(r => {
-        const date = new Date(r[source.dateColumn] + '-01T00:00:00');
-        const values = {};
-        wellsForRekap.forEach(w => { values[w.colName] = toNum(r[w.colName]); });
-        return { date, values };
-      }).filter(r => !isNaN(r.date.getTime()));
-
-      REKAP_TABLES[source.rekapKey] = {
-        label: 'Rekapitulasi',
-        categoryLabel: source.rekapCategoryLabel,
-        unit: 'm³',
-        sourceFile: source.file,
-        wells: wellsForRekap,
-        data: rekapRows
-      };
-    }
+  if (localRes.status === 'fulfilled') {
+    const parsed = parseCSV(localRes.value);
+    header = parsed.header;
+    localRows = parsed.rows;
+  } else {
+    console.warn(`Gagal memuat data lokal ${localPath}:`, localRes.reason);
   }
 
-  datasets.__loadErrors = loadErrors;
-  return datasets;
+  if (sheetRes.status === 'fulfilled') {
+    const parsed = parseCSV(sheetRes.value);
+    header = header ? Array.from(new Set([...header, ...parsed.header])) : parsed.header;
+    sheetRows = parsed.rows;
+  } else {
+    console.warn(`Gagal memuat data Google Sheets ${sheetUrl}:`, sheetRes.reason);
+  }
+
+  if (!header) throw new Error(`Gagal memuat data lokal (${localPath}) maupun Google Sheets (${sheetUrl})`);
+
+  return { header, rows: mergeRows(localRows, sheetRows, keyCol) };
+}
+
+// Isi `datasets` & `REKAP_TABLES` untuk SATU source (AP atau ATD) dari hasil
+// fetchMergedCSV. Dipisah dari loader supaya bisa dipanggil per grup, bukan
+// harus muat AP+ATD sekaligus.
+function buildSourceDatasets(source, header, rows) {
+  const perColSeries = {};
+  const wellsForRekap = [];
+  for (const colName of Object.keys(source.columns)) {
+    if (!header.includes(colName)) {
+      console.warn(`Kolom "${colName}" tidak ditemukan di ${source.file}, dilewati.`);
+      continue;
+    }
+    const cfg = source.columns[colName];
+    const series = rows
+      .map(r => ({ date: new Date(r[source.dateColumn] + '-01T00:00:00'), value: toNum(r[colName]) }))
+      .filter(r => !isNaN(r.date.getTime()));
+    const ds = {
+      label: cfg.label, unit: cfg.unit, type: 'daily', color: cfg.color,
+      real: true, sourceFile: source.file, data: series
+    };
+    if (cfg.hasGauge) {
+      const [mn, mx] = minMax(series);
+      ds.minHist = Math.floor(mn - Math.abs(mn) * 0.02);
+      ds.maxHist = Math.ceil(mx + Math.abs(mx) * 0.02);
+    }
+    datasets[cfg.key] = ds;
+    perColSeries[colName] = series;
+    wellsForRekap.push({ colName, label: cfg.label.replace(/^Debit (AP|ATD) — /, '') });
+  }
+
+  // Dataset "Jumlah" (total semua instalasi dalam kategori ini)
+  if (source.totalKey) {
+    const dateSet = new Map();
+    Object.values(perColSeries).forEach(series => {
+      series.forEach(r => {
+        const t = r.date.getTime();
+        if (!dateSet.has(t)) dateSet.set(t, { date: r.date, sum: 0, any: false });
+        const entry = dateSet.get(t);
+        if (r.value !== null && r.value !== undefined) { entry.sum += r.value; entry.any = true; }
+      });
+    });
+    const totalSeries = [...dateSet.values()]
+      .sort((a, b) => a.date - b.date)
+      .map(e => ({ date: e.date, value: e.any ? e.sum : null }));
+    const totalDs = {
+      label: source.totalLabel, unit: 'm³', type: 'daily', color: 'rain',
+      real: true, sourceFile: source.file, data: totalSeries
+    };
+    const [mn, mx] = minMax(totalSeries);
+    if (isFinite(mn) && isFinite(mx)) {
+      totalDs.minHist = Math.floor(mn - Math.abs(mn) * 0.02);
+      totalDs.maxHist = Math.ceil(mx + Math.abs(mx) * 0.02);
+    }
+    datasets[source.totalKey] = totalDs;
+  }
+
+  // Tabel "Rekapitulasi" (pivot instalasi x bulan, per tahun)
+  if (source.rekapKey) {
+    const rekapRows = rows.map(r => {
+      const date = new Date(r[source.dateColumn] + '-01T00:00:00');
+      const values = {};
+      wellsForRekap.forEach(w => { values[w.colName] = toNum(r[w.colName]); });
+      return { date, values };
+    }).filter(r => !isNaN(r.date.getTime()));
+
+    REKAP_TABLES[source.rekapKey] = {
+      label: 'Rekapitulasi',
+      categoryLabel: source.rekapCategoryLabel,
+      unit: 'm³',
+      sourceFile: source.file,
+      wells: wellsForRekap,
+      data: rekapRows
+    };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// LAZY LOAD — fetch data hanya untuk grup (AP/ATD) yang sedang dibuka, bukan
+// keduanya di awal. Di-cache per source supaya tidak fetch ulang kalau user
+// bolak-balik antar grup.
+// ---------------------------------------------------------------------------
+const sourceLoadPromises = new Map(); // source -> Promise
+
+function loadGroupSource(source) {
+  if (sourceLoadPromises.has(source)) return sourceLoadPromises.get(source);
+  const p = fetchMergedCSV(source.localFile, source.file, source.dateColumn).then(({ header, rows }) => {
+    buildSourceDatasets(source, header, rows);
+  }).catch(err => {
+    console.error(`Gagal memuat ${source.localFile} / ${source.file}:`, err);
+    sourceLoadPromises.delete(source);
+    throw err;
+  });
+  sourceLoadPromises.set(source, p);
+  return p;
+}
+
+// Pastikan grup (AP/ATD) dari 1 dataset key sudah ter-fetch.
+async function ensureGroupLoaded(key) {
+  const groupKey = KEY_TO_GROUP[key];
+  const source = SOURCE_BY_GROUP[groupKey];
+  if (!source) throw new Error(`Dataset "${key}" tidak dikenal.`);
+  await loadGroupSource(source);
 }
 
 // ---------------------------------------------------------------------------
@@ -236,48 +338,96 @@ function isRekapActive() { return !!REKAP_TABLES[currentKey]; }
 function currentRekap() { return REKAP_TABLES[currentKey]; }
 
 // ---------------------------------------------------------------------------
-// MENU (utama -> sub)
+// LOADING / ERROR STATE per grup (dipakai selectDataset saat fetch)
+// ---------------------------------------------------------------------------
+function getStatusEl() {
+  let el = document.getElementById('datasetStatus');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'datasetStatus';
+    el.className = 'error-note';
+    el.style.cssText = 'padding:24px;text-align:center;';
+    document.querySelector('.panel').appendChild(el);
+  }
+  return el;
+}
+
+function showLoadingState() {
+  document.getElementById('mainGrid').style.display = 'none';
+  document.getElementById('statsRow').style.display = 'none';
+  document.getElementById('tableWrap').style.display = 'none';
+  document.getElementById('rekapWrap').style.display = 'none';
+  const el = getStatusEl();
+  el.style.display = 'block';
+  el.textContent = 'Memuat data...';
+}
+
+function hideLoadingState() {
+  const el = document.getElementById('datasetStatus');
+  if (el) el.style.display = 'none';
+}
+
+function showLoadErrorState(err) {
+  const el = getStatusEl();
+  el.style.display = 'block';
+  el.innerHTML = `Gagal memuat data untuk grup ini.<br>${err.message}<br>Coba pilih ulang tab ini, atau muat ulang halaman.`;
+}
+
+// ---------------------------------------------------------------------------
+// GANTI DATASET AKTIF — fetch grup terkait (kalau belum di-cache), lalu
+// render. Titik masuk tunggal dipanggil dari semua tombol menu.
+// ---------------------------------------------------------------------------
+async function selectDataset(key) {
+  currentKey = key;
+  currentGroup = KEY_TO_GROUP[key];
+  resetFilter();
+  buildMenuMain();
+  buildMenuSub();
+  buildMenuAgg();
+  showLoadingState();
+  try {
+    await ensureGroupLoaded(key);
+  } catch (err) {
+    showLoadErrorState(err);
+    return;
+  }
+  hideLoadingState();
+  onDatasetChanged();
+  render();
+}
+
+// ---------------------------------------------------------------------------
+// MENU (utama -> sub) — dibangun langsung dari GROUPS/DATA_SOURCES (statis),
+// tidak menunggu data selesai di-fetch.
 // ---------------------------------------------------------------------------
 function buildMenuMain() {
   menuMainEl.innerHTML = '';
-  GROUPS.filter(g => allTabsOf(g).some(k => keyIsAvailable(k))).forEach(g => {
+  GROUPS.forEach(g => {
     const btn = document.createElement('div');
     btn.className = 'menu-btn' + (g.key === currentGroup ? ' active' : '');
     btn.textContent = g.label;
     btn.onclick = () => {
-      currentGroup = g.key;
-      const group = GROUPS.find(x => x.key === g.key);
-      currentKey = allTabsOf(group).find(k => keyIsAvailable(k)) || currentKey;
-      resetFilter();
-      buildMenuMain();
-      buildMenuSub();
-      buildMenuAgg();
-      onDatasetChanged();
-      render();
+      if (g.key === currentGroup) return;
+      selectDataset(g.wellTabs[0]);
     };
     menuMainEl.appendChild(btn);
   });
 }
 
 function subMenuLabel(key) {
-  if (REKAP_TABLES[key]) return 'Rekapitulasi';
-  return datasets[key].label.replace(/^Debit (AP|ATD) — /, '').replace(/^Jumlah — .*/, 'Jumlah (Total)');
+  return KEY_LABEL_LOOKUP[key] || key;
 }
 
 function buildMenuSub() {
   menuSubEl.innerHTML = '';
   const group = GROUPS.find(g => g.key === currentGroup);
-  group.wellTabs.filter(k => keyIsAvailable(k)).forEach(key => {
+  group.wellTabs.forEach(key => {
     const btn = document.createElement('div');
     btn.className = 'submenu-pill' + (key === currentKey ? ' active' : '');
     btn.textContent = subMenuLabel(key);
     btn.onclick = () => {
-      currentKey = key;
-      resetFilter();
-      buildMenuSub();
-      buildMenuAgg();
-      onDatasetChanged();
-      render();
+      if (key === currentKey) return;
+      selectDataset(key);
     };
     menuSubEl.appendChild(btn);
   });
@@ -286,17 +436,13 @@ function buildMenuSub() {
 function buildMenuAgg() {
   menuAggEl.innerHTML = '';
   const group = GROUPS.find(g => g.key === currentGroup);
-  group.aggTabs.filter(k => keyIsAvailable(k)).forEach(key => {
+  group.aggTabs.forEach(key => {
     const btn = document.createElement('div');
     btn.className = 'category-pill' + (key === currentKey ? ' active' : '');
     btn.textContent = subMenuLabel(key);
     btn.onclick = () => {
-      currentKey = key;
-      resetFilter();
-      buildMenuSub();
-      buildMenuAgg();
-      onDatasetChanged();
-      render();
+      if (key === currentKey) return;
+      selectDataset(key);
     };
     menuAggEl.appendChild(btn);
   });
@@ -678,43 +824,16 @@ function wireControls() {
 }
 
 async function init() {
-  try {
-    datasets = await loadAllData();
-  } catch (err) {
-    console.error(err);
-    document.querySelector('.panel').innerHTML =
-      `<div class="error-note">Gagal memuat data: ${err.message}<br>Pastikan file ini diakses lewat web server, dan folder <code>data/</code> ada di lokasi yang sama.</div>`;
-    return;
-  }
-
-  const loadErrors = datasets.__loadErrors || [];
-  delete datasets.__loadErrors;
-
-  const validGroup = GROUPS.find(g => allTabsOf(g).some(k => keyIsAvailable(k)));
-  if (!validGroup) {
-    document.querySelector('.panel').innerHTML =
-      `<div class="error-note">Tidak ada file data yang berhasil dimuat.<br>File yang gagal: ${loadErrors.map(f => `<code>${f}</code>`).join(', ') || '(tidak diketahui)'}</div>`;
-    return;
-  }
-
-  currentGroup = validGroup.key;
-  currentKey = allTabsOf(validGroup).find(k => keyIsAvailable(k));
-
   buildMenuMain();
   buildMenuSub();
   buildMenuAgg();
-  onDatasetChanged();
   wireControls();
-  render();
   checkAdminStatus();
-
-  if (loadErrors.length > 0) {
-    const warn = document.createElement('div');
-    warn.className = 'error-note';
-    warn.style.cssText = 'padding:12px 16px;margin-top:16px;text-align:left;';
-    warn.innerHTML = `Sebagian file data gagal dimuat dan dilewati: ${loadErrors.map(f => `<code>${f}</code>`).join(', ')}.`;
-    document.querySelector('.panel').appendChild(warn);
-  }
+  // Cuma grup pertama (Air Permukaan) yang di-fetch saat halaman dibuka.
+  // Grup ATD baru di-fetch saat tab-nya diklik (lihat selectDataset). Ini
+  // yang bikin loading pertama jauh lebih cepat dibanding fetch AP+ATD
+  // sekaligus di awal.
+  await selectDataset(currentKey);
 }
 
 init();
