@@ -165,6 +165,12 @@
     background:linear-gradient(135deg, var(--purple), var(--purple-light));
     opacity:0.25; filter:blur(18px); z-index:0;
   }
+  .profile-photo{
+    position:relative; z-index:1;
+    width:190px; height:190px; border-radius:50%;
+    object-fit:cover; border:5px solid var(--surface);
+    box-shadow:0 20px 40px -16px rgba(11,85,102,0.35);
+  }
   .profile-avatar{
     position:relative; z-index:1;
     width:190px; height:190px; border-radius:50%;
@@ -341,7 +347,7 @@
 
 <section class="profile-hero">
   <div class="profile-photo-wrap">
-    <div class="profile-avatar" style="background:linear-gradient(135deg, var(--primary), var(--primary-light));">D</div>
+    <img src="darto.jpg" alt="Foto Darto" class="profile-photo">
   </div>
   <div class="profile-info">
     <div class="eyebrow">🧑‍💼 Darto</div>
