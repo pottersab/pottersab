@@ -242,7 +242,7 @@
     width:55%;
     margin-left:auto;
   }
-  .empty-row{color:#aaa;font-style:italic;}
+  .ph-ghost{color:#9aa3ad;font-style:italic;}
   footer.note{
     max-width:1180px;
     margin:0 auto 30px;
@@ -1053,6 +1053,22 @@ const defaultSettings = {
   footerCode:'PTMBPP-QR-KEU.AKTN/01-04',
 };
 
+/* Teks contoh ini HANYA dipakai sebagai bayangan (ghost/placeholder) di pratinjau
+   saat kolom terkait masih kosong -- tidak pernah otomatis dimasukkan sebagai isi. */
+const EXAMPLE_TEXT = {
+  kodeUnit: defaultSettings.kodeUnit,
+  uraian: 'Belanja bahan kimia untuk pengolahan air baku bulan berjalan',
+  kodePerk: '91.01.31',
+  keterangan: 'Digunakan untuk biaya retribusi air baku bulan Juli 2026',
+  manajerNama: defaultSettings.manajerNama,
+  manajerJabatan: defaultSettings.manajerJabatan,
+  supervisorNama: defaultSettings.supervisorNama,
+  supervisorJabatan: defaultSettings.supervisorJabatan,
+  direkturNama: defaultSettings.direkturNama,
+  direkturJabatan: defaultSettings.direkturJabatan,
+  footerCode: defaultSettings.footerCode,
+};
+
 function loadSettings(){
   try{
     const raw=localStorage.getItem(SETTINGS_KEY);
@@ -1239,9 +1255,9 @@ function renderPreview(){
     total+=sub;
     return `<tr>
       <td class="center">${idx+1}</td>
-      <td class="uraian">${it.uraian ? escapeAttr(it.uraian) : '<span class="empty-row">(uraian belum diisi)</span>'}</td>
+      <td class="uraian ${it.uraian?'':'ph-ghost'}">${escapeAttr(it.uraian || EXAMPLE_TEXT.uraian)}</td>
       <td class="num">${fmtRupiah(sub)}</td>
-      <td class="center">${escapeAttr(it.kodePerk)}</td>
+      <td class="center ${it.kodePerk?'':'ph-ghost'}">${escapeAttr(it.kodePerk || EXAMPLE_TEXT.kodePerk)}</td>
     </tr>`;
   }).join('');
 
@@ -1250,7 +1266,7 @@ function renderPreview(){
   const tglIndo = state.tanggal ? formatTanggalIndo(state.tanggal) : '...';
 
   const doc = `
-    <div class="doc-kop">KODE UNIT : ${escapeAttr(settings.kodeUnit)}</div>
+    <div class="doc-kop ${settings.kodeUnit?'':'ph-ghost'}">KODE UNIT : ${escapeAttr(settings.kodeUnit || EXAMPLE_TEXT.kodeUnit)}</div>
     <div class="doc-title">SURAT PENYEDIAAN DANA (SPD)</div>
     <div class="doc-nomor">Nomor :&nbsp;&nbsp;&nbsp;&nbsp;${nomorLengkap() || '&mdash;'}</div>
     <table class="doc-table">
@@ -1266,30 +1282,30 @@ function renderPreview(){
     </table>
     <div class="doc-ket">
       <div class="label">Keterangan :</div>
-      <div>${state.keterangan ? escapeAttr(state.keterangan) : '<span class="empty-row">(kosong)</span>'}</div>
+      <div class="${state.keterangan?'':'ph-ghost'}">${escapeAttr(state.keterangan || EXAMPLE_TEXT.keterangan)}</div>
     </div>
     <div class="doc-sign-date">Balikpapan, ${tglIndo}</div>
     <div class="doc-sign">
       <div>
         <div>Diketahui Oleh :</div>
-        <div>${escapeAttr(settings.manajerJabatan)}</div>
+        <div class="${settings.manajerJabatan?'':'ph-ghost'}">${escapeAttr(settings.manajerJabatan || EXAMPLE_TEXT.manajerJabatan)}</div>
         <div class="space"></div>
-        <div class="nama">${escapeAttr(settings.manajerNama)}</div>
+        <div class="nama ${settings.manajerNama?'':'ph-ghost'}">${escapeAttr(settings.manajerNama || EXAMPLE_TEXT.manajerNama)}</div>
       </div>
       <div>
         <div>Dibuat Oleh :</div>
-        <div>${escapeAttr(settings.supervisorJabatan)}</div>
+        <div class="${settings.supervisorJabatan?'':'ph-ghost'}">${escapeAttr(settings.supervisorJabatan || EXAMPLE_TEXT.supervisorJabatan)}</div>
         <div class="space"></div>
-        <div class="nama">${escapeAttr(settings.supervisorNama)}</div>
+        <div class="nama ${settings.supervisorNama?'':'ph-ghost'}">${escapeAttr(settings.supervisorNama || EXAMPLE_TEXT.supervisorNama)}</div>
       </div>
     </div>
     <div class="doc-approve">
       <div>Mengetahui / Menyetujui :</div>
-      <div>${escapeAttr(settings.direkturJabatan)}</div>
+      <div class="${settings.direkturJabatan?'':'ph-ghost'}">${escapeAttr(settings.direkturJabatan || EXAMPLE_TEXT.direkturJabatan)}</div>
       <div class="space"></div>
-      <div class="nama">${escapeAttr(settings.direkturNama)}</div>
+      <div class="nama ${settings.direkturNama?'':'ph-ghost'}">${escapeAttr(settings.direkturNama || EXAMPLE_TEXT.direkturNama)}</div>
     </div>
-    <div class="doc-footer">${escapeAttr(settings.footerCode)}</div>
+    <div class="doc-footer ${settings.footerCode?'':'ph-ghost'}">${escapeAttr(settings.footerCode || EXAMPLE_TEXT.footerCode)}</div>
   `;
   document.getElementById('docPreview').innerHTML = doc;
 }

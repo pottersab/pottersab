@@ -89,6 +89,7 @@
   .sig-nama{font-weight:700;text-decoration:underline;}
   .sig-center{text-align:center;}
   .doc-footer-code{margin-top:18px;border:1px solid #000;text-align:center;font-size:10.5px;padding:3px;width:52%;margin-left:auto;}
+  .ph-ghost{color:#9aa3ad;font-style:italic;}
   .photo-page-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;padding:10px 10px 30px;}
   .photo-page-grid.landscape{grid-template-columns:1fr;justify-items:center;}
   .photo-page-grid .ph-cell{display:flex;align-items:center;justify-content:center;border:1px solid #ddd;background:#fafafa;min-height:460px;}
@@ -608,6 +609,23 @@ const DEFAULT_PERSONS = [
   {nama:'Ir. ALI RACHMAN AS, S.T., M.T.', jabatan:'Direktur Operasional'},
 ];
 
+/* Teks contoh ini HANYA dipakai sebagai bayangan (ghost/placeholder) di pratinjau
+   saat kolom terkait masih kosong -- tidak pernah otomatis dimasukkan sebagai isi. */
+const EXAMPLE_TEXT = {
+  judul: DEFAULTS.judul,
+  nama1: DEFAULTS.nama1,
+  jabatan1: DEFAULTS.jabatan1,
+  nama2: DEFAULTS.nama2,
+  jabatan2: DEFAULTS.jabatan2,
+  periksaPada: DEFAULTS.periksaPada,
+  alasan: DEFAULTS.alasan,
+  tindakLanjut: DEFAULTS.tindakLanjut,
+  diperiksaNama: DEFAULTS.diperiksaNama,
+  diperiksaJabatan: DEFAULTS.diperiksaJabatan,
+  mengetahuiNama: DEFAULTS.mengetahuiNama,
+  mengetahuiJabatan: DEFAULTS.mengetahuiJabatan,
+};
+
 /* =============== Storage =============== */
 const DRAFT_KEY='ba_draft_v1';
 const PERSONS_KEY='ba_persons_v1';
@@ -793,20 +811,20 @@ function renderPreview(){
         <div class="kop-spacer"></div>
       </div>
       <div class="doc-inner">
-        <div class="doc-title">${escapeAttr(state.judul || DEFAULTS.judul)}</div>
+        <div class="doc-title ${state.judul?'':'ph-ghost'}">${escapeAttr(state.judul || EXAMPLE_TEXT.judul)}</div>
         ${state.subjudul ? `<div class="doc-subtitle">(${escapeAttr(state.subjudul)})</div>` : ''}
         <div class="doc-nomor">Nomor :&nbsp;&nbsp;&nbsp;&nbsp;${escapeAttr(nomorLengkap())}</div>
         <p class="doc-p">Pada hari ini ${t.hari} Tanggal ${t.tanggal} Bulan ${t.bulan} Tahun ${t.tahun} kami yang bertandatangan dibawah ini masing &ndash; masing :</p>
-        <p class="doc-person"><span class="num">1.</span><span class="lbl">Nama</span><span>: <b>${escapeAttr(state.nama1)}</b></span></p>
-        <p class="doc-person-jabatan"><span class="num"></span><span class="lbl">Jabatan</span><span>: ${escapeAttr(state.jabatan1)}</span></p>
-        <p class="doc-person"><span class="num">2.</span><span class="lbl">Nama</span><span>: <b>${escapeAttr(state.nama2)}</b></span></p>
-        <p class="doc-person-jabatan"><span class="num"></span><span class="lbl">Jabatan</span><span>: ${escapeAttr(state.jabatan2)}</span></p>
+        <p class="doc-person"><span class="num">1.</span><span class="lbl">Nama</span><span>: <b class="${state.nama1?'':'ph-ghost'}">${escapeAttr(state.nama1 || EXAMPLE_TEXT.nama1)}</b></span></p>
+        <p class="doc-person-jabatan"><span class="num"></span><span class="lbl">Jabatan</span><span>: <span class="${state.jabatan1?'':'ph-ghost'}">${escapeAttr(state.jabatan1 || EXAMPLE_TEXT.jabatan1)}</span></span></p>
+        <p class="doc-person"><span class="num">2.</span><span class="lbl">Nama</span><span>: <b class="${state.nama2?'':'ph-ghost'}">${escapeAttr(state.nama2 || EXAMPLE_TEXT.nama2)}</b></span></p>
+        <p class="doc-person-jabatan"><span class="num"></span><span class="lbl">Jabatan</span><span>: <span class="${state.jabatan2?'':'ph-ghost'}">${escapeAttr(state.jabatan2 || EXAMPLE_TEXT.jabatan2)}</span></span></p>
         <p class="doc-label"><b>Telah melakukan Pemeriksaan Pada :</b></p>
-        <p class="doc-pre">${nl2br(state.periksaPada)}</p>
+        <p class="doc-pre ${state.periksaPada?'':'ph-ghost'}">${nl2br(state.periksaPada || EXAMPLE_TEXT.periksaPada)}</p>
         <p class="doc-label"><b>Alasan :</b></p>
-        <p class="doc-pre">${nl2br(state.alasan)}</p>
+        <p class="doc-pre ${state.alasan?'':'ph-ghost'}">${nl2br(state.alasan || EXAMPLE_TEXT.alasan)}</p>
         <p class="doc-label"><b>Tindak Lanjut :</b></p>
-        <p class="doc-pre">${nl2br(state.tindakLanjut)}</p>
+        <p class="doc-pre ${state.tindakLanjut?'':'ph-ghost'}">${nl2br(state.tindakLanjut || EXAMPLE_TEXT.tindakLanjut)}</p>
         <p class="doc-p" style="margin-top:0;">&nbsp;</p>
         <p class="doc-p">Demikian Berita acara ini dibuat dengan benar dalam rangkap 2 (dua) untuk dipergunakan sebagaimana mestinya.</p>
         <div class="doc-right">Balikpapan, ${tglTtdPanjang}</div>
@@ -814,25 +832,25 @@ function renderPreview(){
         <table class="sig-table">
           <tr><td colspan="3"></td><td colspan="2">Dibuat Oleh :</td></tr>
           <tr>
-            <td class="sig-left-center" style="width:34%;">Diperiksa Oleh :</td><td style="width:4%;">1.</td><td style="width:12%;">Nama</td><td style="width:2%;">:</td><td><b>${escapeAttr(state.nama1)}</b></td>
+            <td class="sig-left-center" style="width:34%;">Diperiksa Oleh :</td><td style="width:4%;">1.</td><td style="width:12%;">Nama</td><td style="width:2%;">:</td><td><b class="${state.nama1?'':'ph-ghost'}">${escapeAttr(state.nama1 || EXAMPLE_TEXT.nama1)}</b></td>
           </tr>
           <tr>
-            <td class="sig-left-center">${escapeAttr(state.diperiksaJabatan)}</td><td></td><td>Jabatan</td><td>:</td><td>${escapeAttr(shortenJabatanForSignature(state.jabatan1))}</td>
+            <td class="sig-left-center ${state.diperiksaJabatan?'':'ph-ghost'}">${escapeAttr(state.diperiksaJabatan || EXAMPLE_TEXT.diperiksaJabatan)}</td><td></td><td>Jabatan</td><td>:</td><td class="${state.jabatan1?'':'ph-ghost'}">${escapeAttr(shortenJabatanForSignature(state.jabatan1 || EXAMPLE_TEXT.jabatan1))}</td>
           </tr>
           <tr><td class="sig-space"></td><td></td><td></td><td></td><td class="sig-space"></td></tr>
           <tr>
-            <td class="sig-nama sig-left-center">${escapeAttr(state.diperiksaNama)}</td><td></td><td>T. Tangan</td><td>:</td><td>.................................</td>
+            <td class="sig-nama sig-left-center ${state.diperiksaNama?'':'ph-ghost'}">${escapeAttr(state.diperiksaNama || EXAMPLE_TEXT.diperiksaNama)}</td><td></td><td>T. Tangan</td><td>:</td><td>.................................</td>
           </tr>
-          <tr><td></td><td>2.</td><td>Nama</td><td>:</td><td><b>${escapeAttr(state.nama2)}</b></td></tr>
-          <tr><td></td><td></td><td>Jabatan</td><td>:</td><td>${escapeAttr(shortenJabatanForSignature(state.jabatan2))}</td></tr>
+          <tr><td></td><td>2.</td><td>Nama</td><td>:</td><td><b class="${state.nama2?'':'ph-ghost'}">${escapeAttr(state.nama2 || EXAMPLE_TEXT.nama2)}</b></td></tr>
+          <tr><td></td><td></td><td>Jabatan</td><td>:</td><td class="${state.jabatan2?'':'ph-ghost'}">${escapeAttr(shortenJabatanForSignature(state.jabatan2 || EXAMPLE_TEXT.jabatan2))}</td></tr>
           <tr><td class="sig-space"></td><td></td><td></td><td></td><td class="sig-space"></td></tr>
           <tr><td></td><td></td><td>T. Tangan</td><td>:</td><td>.................................</td></tr>
         </table>
         <table class="sig-table" style="margin-top:10px;">
           <tr><td class="sig-center">Mengetahui / Menyetujui</td></tr>
-          <tr><td class="sig-center">${escapeAttr(state.mengetahuiJabatan)}</td></tr>
+          <tr><td class="sig-center ${state.mengetahuiJabatan?'':'ph-ghost'}">${escapeAttr(state.mengetahuiJabatan || EXAMPLE_TEXT.mengetahuiJabatan)}</td></tr>
           <tr><td class="sig-space appr-space"></td></tr>
-          <tr><td class="sig-center sig-nama">${escapeAttr(state.mengetahuiNama)}</td></tr>
+          <tr><td class="sig-center sig-nama ${state.mengetahuiNama?'':'ph-ghost'}">${escapeAttr(state.mengetahuiNama || EXAMPLE_TEXT.mengetahuiNama)}</td></tr>
         </table>
 
         <div class="doc-footer-code">PTMBPP-IR-PRD.SAB/01-06</div>
