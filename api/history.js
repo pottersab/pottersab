@@ -27,28 +27,42 @@ module.exports = async (req, res) => {
     }
 
     const { type, startDate, endDate } = req.query;
+    const limit = Math.min(parseInt(req.query.limit, 10) || 50, 200);
+    const offset = Math.max(parseInt(req.query.offset, 10) || 0, 0);
 
-    let query = 'SELECT * FROM history WHERE 1=1';
+    let whereClause = 'WHERE 1=1';
     const params = [];
 
     if (type) {
       params.push(type);
-      query += ` AND document_type = $${params.length}`;
+      whereClause += ` AND document_type = $${params.length}`;
     }
     if (startDate) {
       params.push(startDate);
-      query += ` AND created_at >= $${params.length}`;
+      whereClause += ` AND created_at >= $${params.length}`;
     }
     if (endDate) {
       params.push(endDate);
-      query += ` AND created_at <= $${params.length}::date + interval '1 day'`;
+      whereClause += ` AND created_at <= $${params.length}::date + interval '1 day'`;
     }
 
-    query += ' ORDER BY created_at DESC LIMIT 1000';
+    // Hitung total/admin/guest yang cocok filter yang sama (bukan cuma dari
+    // baris yang sudah dimuat client) supaya stat card tetap akurat
+    // walaupun tabelnya dipaginasi.
+    const countQuery = `SELECT
+        COUNT(*) FILTER (WHERE role = 'admin') AS admin_count,
+        COUNT(*) FILTER (WHERE role = 'guest') AS guest_count,
+        COUNT(*) AS total_count
+       FROM history ${whereClause}`;
+    const dataQuery = `SELECT * FROM history ${whereClause}
+       ORDER BY created_at DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
 
-    const { rows } = await pool.query(query, params);
+    const [{ rows: countRows }, { rows: dataRows }] = await Promise.all([
+      pool.query(countQuery, params),
+      pool.query(dataQuery, [...params, limit, offset])
+    ]);
 
-    const data = rows.map(r => ({
+    const data = dataRows.map(r => ({
       id: Number(r.id),
       documentType: r.document_type,
       documentName: r.document_name,
@@ -58,7 +72,13 @@ module.exports = async (req, res) => {
       createdAt: r.created_at
     }));
 
-    return res.status(200).json({ success: true, data });
+    const s = countRows[0];
+    return res.status(200).json({
+      success: true,
+      data,
+      hasMore: dataRows.length === limit,
+      stats: { total: Number(s.total_count), admin: Number(s.admin_count), guest: Number(s.guest_count) }
+    });
   }
 
   if (req.method === 'POST') {

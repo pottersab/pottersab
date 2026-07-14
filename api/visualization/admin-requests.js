@@ -31,9 +31,13 @@ module.exports = async (req, res) => {
     return res.status(200).json({ logs: rows });
   }
 
+  const limit = Math.min(parseInt(req.query.limit, 10) || 50, 200);
+  const offset = Math.max(parseInt(req.query.offset, 10) || 0, 0);
+
   const { rows } = await pool.query(
     `SELECT id, requested_by, data_type, reason, status, created_at, approved_at, token_expires_at
-     FROM access_requests ORDER BY created_at DESC LIMIT 200`
+     FROM access_requests ORDER BY created_at DESC LIMIT $1 OFFSET $2`,
+    [limit, offset]
   );
-  return res.status(200).json({ requests: rows });
+  return res.status(200).json({ requests: rows, hasMore: rows.length === limit });
 };

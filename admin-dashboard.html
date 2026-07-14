@@ -171,6 +171,39 @@
   .btn-danger { background: #fee2e2; color: var(--error); }
   .btn-danger:hover { background: #fecaca; }
 
+  /* ===== Tabs ===== */
+  .tabs {
+    display: flex;
+    gap: 4px;
+    border-bottom: 2px solid var(--line);
+    margin-bottom: 24px;
+  }
+
+  .tab-btn {
+    padding: 12px 20px;
+    border: none;
+    background: none;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    font-family: inherit;
+    color: var(--muted);
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+    transition: color .15s ease, border-color .15s ease;
+  }
+
+  .tab-btn:hover { color: var(--navy); }
+  .tab-btn.active { color: var(--navy-dark); border-bottom-color: var(--navy); }
+
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  .load-more-row {
+    text-align: center;
+    margin-top: 16px;
+  }
+
   /* ===== Stats ===== */
   .stats {
     display: grid;
@@ -531,8 +564,8 @@
     <div class="masthead-left">
       <div class="masthead-text">
         <div class="induk">Admin Dashboard</div>
-        <h1 class="serif">Riwayat Pembuatan Surat</h1>
-        <div class="sub">Kelola dan lihat semua surat yang telah dibuat</div>
+        <h1 class="serif">Dashboard Admin</h1>
+        <div class="sub">Riwayat surat &amp; log akses data viewer</div>
       </div>
     </div>
     <div class="user-info">
@@ -545,62 +578,76 @@
 <div class="container">
   <div id="message"></div>
 
-  <div class="stats">
-    <div class="stat-card">
-      <div class="stat-label">Total Surat</div>
-      <div class="stat-value" id="totalCount">0</div>
+  <div class="tabs">
+    <button class="tab-btn active" id="tabBtn-history" data-tab="history">Riwayat Surat</button>
+    <button class="tab-btn" id="tabBtn-access" data-tab="access">Log Akses Viewer</button>
+  </div>
+
+  <div class="tab-panel active" id="tabPanel-history">
+    <div class="stats">
+      <div class="stat-card">
+        <div class="stat-label">Total Surat</div>
+        <div class="stat-value" id="totalCount">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Dari Admin</div>
+        <div class="stat-value" id="adminCount">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Dari Guest</div>
+        <div class="stat-value" id="guestCount">0</div>
+      </div>
     </div>
-    <div class="stat-card">
-      <div class="stat-label">Dari Admin</div>
-      <div class="stat-value" id="adminCount">0</div>
+
+    <div class="controls">
+      <div class="control-group">
+        <label for="filterType">Tipe:</label>
+        <select id="filterType">
+          <option value="">Semua</option>
+          <option value="SPD">SPD</option>
+          <option value="Berita Acara">Berita Acara</option>
+          <option value="Formulir SAB">Formulir SAB</option>
+          <option value="Surat Permohonan">Surat Permohonan</option>
+        </select>
+      </div>
+      <div class="control-group">
+        <label for="filterStart">Dari:</label>
+        <input type="date" id="filterStart">
+      </div>
+      <div class="control-group">
+        <label for="filterEnd">Sampai:</label>
+        <input type="date" id="filterEnd">
+      </div>
+      <button class="action-btn btn-primary" id="filterBtn">Filter</button>
+      <button class="action-btn btn-secondary" id="exportBtn">Export CSV</button>
+      <button class="action-btn btn-secondary" id="refreshBtn">Refresh</button>
     </div>
-    <div class="stat-card">
-      <div class="stat-label">Dari Guest</div>
-      <div class="stat-value" id="guestCount">0</div>
+
+    <div class="table-wrapper">
+      <div id="historyContent" class="table-empty">
+        <div class="loading">Memuat data...</div>
+      </div>
+    </div>
+
+    <div class="load-more-row">
+      <button class="action-btn btn-secondary" id="loadMoreHistoryBtn" style="display:none;">Muat Lebih Banyak</button>
     </div>
   </div>
 
-  <div class="controls">
-    <div class="control-group">
-      <label for="filterType">Tipe:</label>
-      <select id="filterType">
-        <option value="">Semua</option>
-        <option value="SPD">SPD</option>
-        <option value="Berita Acara">Berita Acara</option>
-        <option value="Formulir SAB">Formulir SAB</option>
-        <option value="Surat Permohonan">Surat Permohonan</option>
-      </select>
-    </div>
-    <div class="control-group">
-      <label for="filterStart">Dari:</label>
-      <input type="date" id="filterStart">
-    </div>
-    <div class="control-group">
-      <label for="filterEnd">Sampai:</label>
-      <input type="date" id="filterEnd">
-    </div>
-    <button class="action-btn btn-primary" id="filterBtn">Filter</button>
-    <button class="action-btn btn-secondary" id="exportBtn">Export CSV</button>
-    <button class="action-btn btn-secondary" id="refreshBtn">Refresh</button>
-  </div>
-
-  <div class="table-wrapper">
-    <div id="historyContent" class="table-empty">
-      <div class="loading">Memuat data...</div>
-    </div>
-  </div>
-
-  <div style="margin-top:40px; display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;">
-    <div>
-      <div class="section-title" style="font-size:22px; margin-bottom:4px;">Log Akses Data Viewer</div>
+  <div class="tab-panel" id="tabPanel-access">
+    <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:16px;">
       <div class="section-desc" style="margin-bottom:0;">Permintaan akses viewer (Data Pengambilan Air Baku &amp; Data Waduk dan Sumur) dan riwayat lihat/unduh data asli mereka.</div>
+      <button class="action-btn btn-secondary" id="refreshRequestsBtn">Refresh</button>
     </div>
-    <button class="action-btn btn-secondary" id="refreshRequestsBtn">Refresh</button>
-  </div>
 
-  <div class="table-wrapper" style="margin-top:16px;">
-    <div id="accessRequestsContent" class="table-empty">
-      <div class="loading">Memuat data...</div>
+    <div class="table-wrapper">
+      <div id="accessRequestsContent" class="table-empty">
+        <div class="loading">Memuat data...</div>
+      </div>
+    </div>
+
+    <div class="load-more-row">
+      <button class="action-btn btn-secondary" id="loadMoreAccessBtn" style="display:none;">Muat Lebih Banyak</button>
     </div>
   </div>
 </div>
@@ -611,6 +658,7 @@
 
 <script>
   const API_URL = '';
+  const PAGE_SIZE = 50;
   const token = localStorage.getItem('token');
   const username = localStorage.getItem('username');
 
@@ -620,45 +668,99 @@
 
   document.getElementById('userBadge').textContent = username || 'ADMIN';
 
-  let historyData = [];
+  // ===== TABS =====
+  // Tiap tab punya state independen (filter, offset, baris yang sudah
+  // dimuat, apakah masih ada lagi) supaya tidak saling memengaruhi. Tab
+  // yang belum pernah dibuka tidak fetch apa pun -- baru fetch pertama
+  // kali diaktifkan (lihat `loaded`).
+  const historyState = { offset: 0, rows: [], hasMore: true, loaded: false, filters: {} };
+  const accessState = { offset: 0, rows: [], hasMore: true, loaded: false };
 
-  // Load history saat page load
-  window.addEventListener('load', loadHistory);
-  window.addEventListener('load', loadAccessRequests);
+  function switchTab(tab) {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+    document.getElementById('tabPanel-history').classList.toggle('active', tab === 'history');
+    document.getElementById('tabPanel-access').classList.toggle('active', tab === 'access');
+
+    if (tab === 'history' && !historyState.loaded) loadHistory(true, {});
+    if (tab === 'access' && !accessState.loaded) loadAccessRequests(true);
+  }
+
+  document.getElementById('tabBtn-history').addEventListener('click', () => switchTab('history'));
+  document.getElementById('tabBtn-access').addEventListener('click', () => switchTab('access'));
+
+  // Tab "Riwayat Surat" aktif secara default begitu halaman dibuka --
+  // tab "Log Akses Viewer" baru fetch data saat diklik pertama kali.
+  switchTab('history');
 
   // Event listeners
   document.getElementById('logoutBtn').addEventListener('click', logout);
-  document.getElementById('refreshBtn').addEventListener('click', loadHistory);
-  document.getElementById('filterBtn').addEventListener('click', filterHistory);
+  // Refresh = muat ulang tanpa filter (sama seperti perilaku lama), Filter =
+  // tetap mensyaratkan Dari & Sampai terisi (sama seperti perilaku lama).
+  document.getElementById('refreshBtn').addEventListener('click', () => {
+    document.getElementById('filterType').value = '';
+    document.getElementById('filterStart').value = '';
+    document.getElementById('filterEnd').value = '';
+    loadHistory(true, {});
+  });
+  document.getElementById('filterBtn').addEventListener('click', () => {
+    const type = document.getElementById('filterType').value;
+    const startDate = document.getElementById('filterStart').value;
+    const endDate = document.getElementById('filterEnd').value;
+    if (!startDate || !endDate) {
+      showMessage('Pilih rentang tanggal', 'error');
+      return;
+    }
+    loadHistory(true, { type, startDate, endDate });
+  });
   document.getElementById('exportBtn').addEventListener('click', exportCSV);
-  document.getElementById('refreshRequestsBtn').addEventListener('click', loadAccessRequests);
+  document.getElementById('loadMoreHistoryBtn').addEventListener('click', () => loadHistory(false));
+  document.getElementById('refreshRequestsBtn').addEventListener('click', () => loadAccessRequests(true));
+  document.getElementById('loadMoreAccessBtn').addEventListener('click', () => loadAccessRequests(false));
 
-  async function loadHistory() {
+  // ===== Riwayat Surat (history) =====
+  // reset=true mulai dari batch pertama lagi (dipakai saat ganti filter /
+  // refresh / pertama kali tab dibuka); reset=false lanjutkan batch
+  // berikutnya (dipakai tombol "Muat Lebih Banyak"), tetap pakai filter
+  // yang sama dengan batch sebelumnya (historyState.filters).
+  async function loadHistory(reset, filters) {
+    if (reset) {
+      historyState.offset = 0;
+      historyState.rows = [];
+      historyState.hasMore = true;
+      historyState.filters = filters || {};
+    }
+
     try {
-      const response = await fetch(`${API_URL}/api/history`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
+      const f = historyState.filters;
+      let url = `${API_URL}/api/history?limit=${PAGE_SIZE}&offset=${historyState.offset}`;
+      if (f.type) url += `&type=${encodeURIComponent(f.type)}`;
+      if (f.startDate) url += `&startDate=${encodeURIComponent(f.startDate)}`;
+      if (f.endDate) url += `&endDate=${encodeURIComponent(f.endDate)}`;
 
+      const response = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
       if (!response.ok) throw new Error('Failed to load history');
 
       const data = await response.json();
-      historyData = data.data || [];
-      renderTable(historyData);
-      updateStats(historyData);
+      const batch = data.data || [];
+
+      historyState.rows = historyState.rows.concat(batch);
+      historyState.offset += batch.length;
+      historyState.hasMore = !!data.hasMore;
+      historyState.loaded = true;
+
+      renderTable(historyState.rows);
+      updateStats(data.stats || { total: 0, admin: 0, guest: 0 });
+      document.getElementById('loadMoreHistoryBtn').style.display = historyState.hasMore ? 'inline-block' : 'none';
     } catch (err) {
       showMessage('Gagal memuat data history', 'error');
       console.error(err);
     }
   }
 
-  function updateStats(data) {
-    const total = data.length;
-    const admin = data.filter(d => d.role === 'admin').length;
-    const guest = data.filter(d => d.role === 'guest').length;
-
-    document.getElementById('totalCount').textContent = total;
-    document.getElementById('adminCount').textContent = admin;
-    document.getElementById('guestCount').textContent = guest;
+  function updateStats(stats) {
+    document.getElementById('totalCount').textContent = stats.total;
+    document.getElementById('adminCount').textContent = stats.admin;
+    document.getElementById('guestCount').textContent = stats.guest;
   }
 
   function renderTable(data) {
@@ -711,32 +813,6 @@
     container.innerHTML = html;
   }
 
-  async function filterHistory() {
-    const type = document.getElementById('filterType').value;
-    const startDate = document.getElementById('filterStart').value;
-    const endDate = document.getElementById('filterEnd').value;
-
-    if (!startDate || !endDate) {
-      showMessage('Pilih rentang tanggal', 'error');
-      return;
-    }
-
-    try {
-      let url = `${API_URL}/api/history?startDate=${startDate}&endDate=${endDate}`;
-      if (type) url += `&type=${type}`;
-
-      const response = await fetch(url, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-
-      const data = await response.json();
-      renderTable(data.data || []);
-      updateStats(data.data || []);
-    } catch (err) {
-      showMessage('Gagal memfilter data', 'error');
-    }
-  }
-
   async function deleteEntry(id) {
     if (!confirm('Yakin ingin menghapus entry ini?')) return;
 
@@ -748,7 +824,7 @@
 
       if (response.ok) {
         showMessage('Entry berhasil dihapus', 'success');
-        loadHistory();
+        loadHistory(true);
       } else {
         showMessage('Gagal menghapus entry', 'error');
       }
@@ -781,14 +857,28 @@
   const ACTION_LABELS = { view: 'Lihat data asli', download_pdf: 'Unduh PDF' };
   const loadedLogsByRequest = {}; // requestId -> logs array (cache biar tidak fetch ulang tiap toggle)
 
-  async function loadAccessRequests() {
+  async function loadAccessRequests(reset) {
+    if (reset) {
+      accessState.offset = 0;
+      accessState.rows = [];
+      accessState.hasMore = true;
+    }
+
     try {
-      const response = await fetch(`${API_URL}/api/visualization/admin-requests`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
+      const url = `${API_URL}/api/visualization/admin-requests?limit=${PAGE_SIZE}&offset=${accessState.offset}`;
+      const response = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
       if (!response.ok) throw new Error('Failed to load access requests');
+
       const data = await response.json();
-      renderAccessRequests(data.requests || []);
+      const batch = data.requests || [];
+
+      accessState.rows = accessState.rows.concat(batch);
+      accessState.offset += batch.length;
+      accessState.hasMore = !!data.hasMore;
+      accessState.loaded = true;
+
+      renderAccessRequests(accessState.rows);
+      document.getElementById('loadMoreAccessBtn').style.display = accessState.hasMore ? 'inline-block' : 'none';
     } catch (err) {
       document.getElementById('accessRequestsContent').innerHTML = '<div class="table-empty">Gagal memuat data permintaan akses</div>';
       console.error(err);
