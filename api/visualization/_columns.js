@@ -1,7 +1,16 @@
-// Konfigurasi kolom untuk data Air Baku, dipakai bersama oleh migrasi CSV,
-// data.js, export-pdf.js, dan admin-input.js. Mencerminkan struktur kolom
-// CSV asli (air_permukaan.csv / air_tanah_dalam.csv) dan nama kolom Postgres.
-// Kalau kolom instalasi berubah, cukup ubah di sini.
+// Registry semua dataset yang dilayani /api/visualization/*. Dipakai bersama
+// oleh migrasi CSV, data.js, export-pdf.js, dan endpoint admin-input.
+//
+// Tiap entry punya:
+//   kind        - 'wide' (tabel kolom tetap, 1 baris per tanggal/bulan,
+//                  dipakai air baku ap/atd), 'wide-single' (tabel kolom
+//                  tetap tapi cuma 1 kolom nilai yang relevan buat key ini,
+//                  dipakai Manggar/Teritip harian), 'sumur-debit' /
+//                  'sumur-level' (data ternormalisasi per sumur per bulan,
+//                  jumlah sumur per instalasi dinamis lewat tabel sumur_wells)
+//   accessGroup - dipakai checkVizAccess() untuk mencocokkan izin akses:
+//                 1 approval buka SEMUA key yang accessGroup-nya sama.
+//   dummyMax    - batas atas nilai acak kalau data terkunci (lihat _dummy.js)
 
 const AP_COLUMNS = [
   { csv: 'Teritip', db: 'teritip', label: 'Teritip' },
@@ -20,12 +29,100 @@ const ATD_COLUMNS = [
 ];
 
 const DATASETS = {
-  ap: { table: 'air_permukaan', columns: AP_COLUMNS, label: 'Air Permukaan (AP)', dummyMax: 1400000 },
-  atd: { table: 'air_tanah_dalam', columns: ATD_COLUMNS, label: 'Air Tanah Dalam (ATD)', dummyMax: 420000 }
+  ap: {
+    kind: 'wide', accessGroup: 'ap', table: 'air_permukaan', dateCol: 'bulan', dateGranularity: 'month',
+    columns: AP_COLUMNS, label: 'Air Permukaan (AP)', dummyMax: 1400000
+  },
+  atd: {
+    kind: 'wide', accessGroup: 'atd', table: 'air_tanah_dalam', dateCol: 'bulan', dateGranularity: 'month',
+    columns: ATD_COLUMNS, label: 'Air Tanah Dalam (ATD)', dummyMax: 420000
+  },
+
+  // --- Waduk Manggar (harian, sejak 2014) ---
+  manggar_level: {
+    kind: 'wide-single', accessGroup: 'manggar', table: 'manggar_level_curahhujan', dateCol: 'tanggal', dateGranularity: 'day',
+    col: 'level_waduk_manggar_m', csvCol: 'Level_Waduk_Manggar_m', unit: 'm',
+    label: 'Level Waduk Manggar', dummyMax: 14, hasGauge: true
+  },
+  manggar_hujan: {
+    kind: 'wide-single', accessGroup: 'manggar', table: 'manggar_level_curahhujan', dateCol: 'tanggal', dateGranularity: 'day',
+    col: 'curah_hujan_mm', csvCol: 'Curah_Hujan_mm', unit: 'mm',
+    label: 'Curah Hujan Waduk Manggar', dummyMax: 120
+  },
+  manggar_ntu: {
+    kind: 'wide-single', accessGroup: 'manggar', table: 'kualitas_air_manggar_teritip', dateCol: 'tanggal', dateGranularity: 'day',
+    col: 'ntu_manggar', csvCol: 'NTU_Manggar', unit: 'NTU',
+    label: 'Kekeruhan (NTU) Waduk Manggar', dummyMax: 40
+  },
+  manggar_ph: {
+    kind: 'wide-single', accessGroup: 'manggar', table: 'kualitas_air_manggar_teritip', dateCol: 'tanggal', dateGranularity: 'day',
+    col: 'ph_manggar', csvCol: 'PH_Manggar', unit: 'pH',
+    label: 'PH Air Baku Waduk Manggar', dummyMax: 9
+  },
+
+  // --- Waduk Teritip (harian, tanpa curah hujan) ---
+  teritip_level: {
+    kind: 'wide-single', accessGroup: 'teritip', table: 'teritip_level', dateCol: 'tanggal', dateGranularity: 'day',
+    col: 'level_waduk_teritip_m', csvCol: 'Level_Waduk_Teritip_m', unit: 'm',
+    label: 'Level Waduk Teritip', dummyMax: 8, hasGauge: true
+  },
+  teritip_ntu: {
+    kind: 'wide-single', accessGroup: 'teritip', table: 'kualitas_air_manggar_teritip', dateCol: 'tanggal', dateGranularity: 'day',
+    col: 'ntu_teritip', csvCol: 'NTU_Teritip', unit: 'NTU',
+    label: 'Kekeruhan (NTU) Waduk Teritip', dummyMax: 40
+  },
+  teritip_ph: {
+    kind: 'wide-single', accessGroup: 'teritip', table: 'kualitas_air_manggar_teritip', dateCol: 'tanggal', dateGranularity: 'day',
+    col: 'ph_teritip', csvCol: 'PH_Teritip', unit: 'pH',
+    label: 'PH Air Baku Waduk Teritip', dummyMax: 9
+  }
 };
+
+// 7 instalasi Sumur Dalam. Key harus SAMA PERSIS dengan yang sudah dipakai
+// apps/library/app.js (termasuk quirk "kp_baru_ulu" vs "kampung_baru_ulu"
+// yang sudah ada sejak sebelum migrasi ini) supaya tab submenu yang lama
+// tidak perlu diubah. `installation` adalah id kanonik yang dipakai di
+// tabel sumur_wells/sumur_*_readings (konsisten debit & level).
+const SUMUR_INSTALLATIONS = [
+  { installation: 'gunung_sari', label: 'IPA Gunung Sari', debitKey: 'sumur_debit_gunung_sari', levelKey: 'sumur_level_gunung_sari' },
+  { installation: 'kampung_damai', label: 'IPA Kampung Damai', debitKey: 'sumur_debit_kampung_damai', levelKey: 'sumur_level_kampung_damai' },
+  { installation: 'teritip', label: 'IPA Teritip', debitKey: 'sumur_debit_teritip', levelKey: 'sumur_level_teritip' },
+  { installation: 'gunung_tembak', label: 'IPA Gunung Tembak', debitKey: 'sumur_debit_gunung_tembak', levelKey: 'sumur_level_gunung_tembak' },
+  { installation: 'prapatan', label: 'IPA Prapatan', debitKey: 'sumur_debit_prapatan', levelKey: 'sumur_level_prapatan' },
+  { installation: 'zamp', label: 'IPA Zamp', debitKey: 'sumur_debit_zamp', levelKey: 'sumur_level_zamp' },
+  { installation: 'kampung_baru_ulu', label: 'IPA Kampung Baru Ulu', debitKey: 'sumur_debit_kp_baru_ulu', levelKey: 'sumur_level_kampung_baru_ulu' }
+];
+
+SUMUR_INSTALLATIONS.forEach(inst => {
+  DATASETS[inst.debitKey] = {
+    kind: 'sumur-debit', accessGroup: 'sumur_debit', installation: inst.installation,
+    label: `Debit Sumur — ${inst.label}`, unit: 'm³/jam', dummyMax: 80
+  };
+  DATASETS[inst.levelKey] = {
+    kind: 'sumur-level', accessGroup: 'sumur_level', installation: inst.installation,
+    label: `Level Statis & Dinamis — ${inst.label}`, unit: 'm', dummyMax: 60
+  };
+});
 
 function isValidDataType(dataType) {
   return Object.prototype.hasOwnProperty.call(DATASETS, dataType);
 }
 
-module.exports = { DATASETS, isValidDataType };
+// Grup akses (dipakai access_requests.data_type / request.js / approve.js) --
+// beda dari dataType di atas: satu grup mencakup beberapa dataType sekaligus
+// (mis. grup 'manggar' mencakup manggar_level, manggar_hujan, manggar_ntu,
+// manggar_ph -- 1 approval buka semuanya).
+const ACCESS_GROUP_LABELS = {
+  ap: 'Air Permukaan (AP)',
+  atd: 'Air Tanah Dalam (ATD)',
+  manggar: 'Waduk Manggar (Level, Curah Hujan, Kekeruhan, PH)',
+  teritip: 'Waduk Teritip (Level, Kekeruhan, PH)',
+  sumur_debit: 'Debit Sumur Dalam (semua instalasi)',
+  sumur_level: 'Level Statis & Dinamis Sumur Dalam (semua instalasi)'
+};
+
+function isValidAccessGroup(group) {
+  return Object.prototype.hasOwnProperty.call(ACCESS_GROUP_LABELS, group);
+}
+
+module.exports = { DATASETS, SUMUR_INSTALLATIONS, isValidDataType, ACCESS_GROUP_LABELS, isValidAccessGroup };

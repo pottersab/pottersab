@@ -2,6 +2,7 @@ const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const { pool, ensureVizTables } = require('../_db');
 const { SECRET_KEY } = require('../_auth');
+const { ACCESS_GROUP_LABELS } = require('./_columns');
 
 const ONE_HOUR_MS = 60 * 60 * 1000;
 
@@ -59,9 +60,10 @@ module.exports = async (req, res) => {
     [token, expiresAt, id]
   );
 
+  const groupLabel = ACCESS_GROUP_LABELS[request.data_type] || request.data_type;
   return res.status(200).send(page(
     'Akses disetujui',
-    `Permintaan dari <b>${request.requested_by}</b> sudah disetujui. Halaman viewer akan otomatis terbuka dalam beberapa detik, dan akses ini berlaku selama 1 jam.`,
+    `Permintaan dari <b>${request.requested_by}</b> untuk data <b>${groupLabel}</b> sudah disetujui. Halaman viewer akan otomatis terbuka dalam beberapa detik, dan akses ini berlaku selama 1 jam.`,
     true
   ));
 };

@@ -11,10 +11,16 @@ function extractToken(req) {
 }
 
 // Akses data asli diberikan kalau token adalah JWT admin situs (role admin,
-// dari login.html/localStorage yang sudah ada) ATAU token viz-access hasil
-// approve email yang masih berlaku (dicek ulang ke DB supaya konsisten
-// dengan token_expires_at, bukan cuma percaya masa berlaku JWT-nya sendiri).
-async function checkVizAccess(req) {
+// dari login.html/localStorage yang sudah ada -- admin selalu lolos untuk
+// SEMUA grup) ATAU token viz-access hasil approve email yang masih berlaku
+// DAN disetujui untuk grup (accessGroup) yang sama dengan yang diminta.
+// Dicek ulang ke DB (bukan cuma percaya masa berlaku JWT-nya sendiri) supaya
+// konsisten dengan token_expires_at dan data_type yang benar-benar disetujui.
+//
+// requiredGroup wajib diisi oleh pemanggil (data.js/export-pdf.js) dengan
+// accessGroup dataset yang sedang diminta (mis. 'ap', 'manggar',
+// 'sumur_debit') -- satu approval hanya membuka grup itu, bukan semua grup.
+async function checkVizAccess(req, requiredGroup) {
   const token = extractToken(req);
   if (!token) return { granted: false };
 
@@ -31,11 +37,12 @@ async function checkVizAccess(req) {
 
   if (payload.scope === 'viz-access' && payload.requestId) {
     const { rows } = await pool.query(
-      'SELECT status, token_expires_at FROM access_requests WHERE id = $1',
+      'SELECT status, data_type, token_expires_at FROM access_requests WHERE id = $1',
       [payload.requestId]
     );
     const request = rows[0];
     if (!request || request.status !== 'approved') return { granted: false };
+    if (request.data_type !== requiredGroup) return { granted: false };
     if (!request.token_expires_at || new Date(request.token_expires_at).getTime() <= Date.now()) {
       return { granted: false };
     }

@@ -1,7 +1,7 @@
 const { ensureVizTables } = require('../_db');
 const { DATASETS, isValidDataType } = require('./_columns');
 const { checkVizAccess } = require('./_viz-auth');
-const { fetchRealRows } = require('./_repo');
+const { fetchRealRows, fetchWideSingleRows, fetchSumurDebitRows, fetchSumurLevelRows } = require('./_repo');
 const { buildTablePdf } = require('./_pdf-table');
 
 const MONTHS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
@@ -15,13 +15,22 @@ function monthLabel(bulanStr) {
   return `${MONTHS_SHORT[m - 1]} ${y}`;
 }
 
-function filterByYear(rows, year) {
-  if (!year) return rows;
-  return rows.filter(r => r.Bulan.startsWith(`${year}-`));
+function dailyLabel(dateStr) {
+  const [y, m, d] = dateStr.split('-');
+  return `${d}/${m}/${y}`;
 }
 
-function yearsInRows(rows) {
-  return [...new Set(rows.map(r => r.Bulan.slice(0, 4)))].sort();
+function filterByYear(rows, year, dateField) {
+  if (!year) return rows;
+  return rows.filter(r => r[dateField].startsWith(`${year}-`));
+}
+
+function yearsInRows(rows, dateField) {
+  return [...new Set(rows.map(r => r[dateField].slice(0, 4)))].sort();
+}
+
+function pickYear(years, requestedYear) {
+  return (requestedYear && years.includes(String(requestedYear))) ? String(requestedYear) : years[years.length - 1];
 }
 
 module.exports = async (req, res) => {
@@ -33,85 +42,164 @@ module.exports = async (req, res) => {
 
   const { dataType, mode, well, year } = req.query;
   if (!isValidDataType(dataType)) {
-    return res.status(400).json({ error: 'dataType wajib diisi (ap/atd)' });
+    return res.status(400).json({ error: 'dataType tidak dikenal' });
   }
-  if (!['series', 'total', 'rekap'].includes(mode)) {
-    return res.status(400).json({ error: 'mode wajib diisi (series/total/rekap)' });
-  }
+  const source = DATASETS[dataType];
 
-  const access = await checkVizAccess(req);
+  const access = await checkVizAccess(req, source.accessGroup);
   if (!access.granted) {
     return res.status(403).json({ error: 'Akses ditolak. Minta akses dulu lewat tombol "Minta Akses" di halaman.' });
   }
 
-  const source = DATASETS[dataType];
-  const allRows = await fetchRealRows(source);
-
   let pdfBytes, filename;
 
-  if (mode === 'series') {
-    const col = source.columns.find(c => c.db === well);
-    if (!col) return res.status(400).json({ error: 'well tidak dikenal' });
+  if (source.kind === 'wide') {
+    if (!['series', 'total', 'rekap'].includes(mode)) {
+      return res.status(400).json({ error: 'mode wajib diisi (series/total/rekap)' });
+    }
+    const allRows = await fetchRealRows(source);
 
-    const rows = filterByYear(allRows, year);
-    const tableRows = rows.map(r => [monthLabel(r.Bulan), fmtNum(r[col.csv])]);
+    if (mode === 'series') {
+      const col = source.columns.find(c => c.db === well);
+      if (!col) return res.status(400).json({ error: 'well tidak dikenal' });
+      const rows = filterByYear(allRows, year, 'Bulan');
+      const tableRows = rows.map(r => [monthLabel(r.Bulan), fmtNum(r[col.csv])]);
+      pdfBytes = await buildTablePdf({
+        sections: [{
+          title: 'Data Historis Pengambilan Air Baku',
+          subtitle: `Perumda Tirta Manuntung — Sumber Air Baku  |  Debit ${source.label} — ${col.label}  |  ${year ? `Tahun ${year}` : 'Semua Data'}  (m³)`,
+          columns: [{ header: 'Bulan', weight: 1 }, { header: 'Nilai (m³)', weight: 1 }],
+          rows: tableRows
+        }]
+      });
+      filename = `${dataType}_${col.db}_${year || 'semua-data'}.pdf`;
+    }
 
+    if (mode === 'total') {
+      const rows = filterByYear(allRows, year, 'Bulan');
+      const tableRows = rows.map(r => {
+        const sum = source.columns.reduce((s, c) => s + (r[c.csv] || 0), 0);
+        return [monthLabel(r.Bulan), fmtNum(sum)];
+      });
+      pdfBytes = await buildTablePdf({
+        sections: [{
+          title: 'Data Historis Pengambilan Air Baku',
+          subtitle: `Perumda Tirta Manuntung — Sumber Air Baku  |  Jumlah — ${source.label}  |  ${year ? `Tahun ${year}` : 'Semua Data'}  (m³)`,
+          columns: [{ header: 'Bulan', weight: 1 }, { header: 'Total (m³)', weight: 1 }],
+          rows: tableRows
+        }]
+      });
+      filename = `${dataType}_total_${year || 'semua-data'}.pdf`;
+    }
+
+    if (mode === 'rekap') {
+      const years = yearsInRows(allRows, 'Bulan');
+      const activeYear = pickYear(years, year);
+      const yearRows = allRows.filter(r => r.Bulan.startsWith(`${activeYear}-`));
+      const byMonth = {};
+      yearRows.forEach(r => { byMonth[Number(r.Bulan.slice(5, 7))] = r; });
+      const monthTotals = new Array(12).fill(0);
+      const monthHas = new Array(12).fill(false);
+      const tableRows = source.columns.map(col => {
+        const values = MONTHS_SHORT.map((_, i) => {
+          const r = byMonth[i + 1];
+          const v = r ? r[col.csv] : null;
+          if (v !== null && v !== undefined) { monthTotals[i] += v; monthHas[i] = true; }
+          return fmtNum(v);
+        });
+        return [col.label, ...values];
+      });
+      const totalRow = monthTotals.map((t, i) => fmtNum(monthHas[i] ? t : null));
+      tableRows.push(['Jumlah', ...totalRow]);
+      pdfBytes = await buildTablePdf({
+        landscape: true,
+        sections: [{
+          title: 'Data Historis Pengambilan Air Baku — Rekapitulasi',
+          subtitle: `Perumda Tirta Manuntung — Sumber Air Baku  |  ${source.label}  |  Tahun ${activeYear}  |  Satuan m³`,
+          columns: [{ header: 'Instalasi', weight: 1.6 }, ...MONTHS_SHORT.map(m => ({ header: m, weight: 1 }))],
+          rows: tableRows,
+          totalRowIndex: tableRows.length - 1
+        }]
+      });
+      filename = `rekapitulasi_${dataType}_${activeYear}.pdf`;
+    }
+  } else if (source.kind === 'wide-single') {
+    const { dateKey, rows: allRows } = await fetchWideSingleRows(source);
+    const rows = filterByYear(allRows, year, dateKey);
+    const labelFn = dateKey === 'Tanggal' ? dailyLabel : monthLabel;
+    const tableRows = rows.map(r => [labelFn(r[dateKey]), fmtNum(r[source.csvCol])]);
     pdfBytes = await buildTablePdf({
-      title: 'Data Historis Pengambilan Air Baku',
-      subtitle: `Perumda Tirta Manuntung — Sumber Air Baku  |  Debit ${source.label} — ${col.label}  |  ${year ? `Tahun ${year}` : 'Semua Data'}  (m³)`,
-      columns: [{ header: 'Bulan', weight: 1 }, { header: 'Nilai (m³)', weight: 1 }],
-      rows: tableRows
+      sections: [{
+        title: 'Data Waduk dan Sumur',
+        subtitle: `Perumda Tirta Manuntung — Sumber Air Baku  |  ${source.label}  |  ${year ? `Tahun ${year}` : 'Semua Data'}  (${source.unit})`,
+        columns: [{ header: dateKey, weight: 1 }, { header: `Nilai (${source.unit})`, weight: 1 }],
+        rows: tableRows
+      }]
     });
-    filename = `${dataType}_${col.db}_${year || 'semua-data'}.pdf`;
-  }
-
-  if (mode === 'total') {
-    const rows = filterByYear(allRows, year);
-    const tableRows = rows.map(r => {
-      const sum = source.columns.reduce((s, c) => s + (r[c.csv] || 0), 0);
-      return [monthLabel(r.Bulan), fmtNum(sum)];
+    filename = `${dataType}_${year || 'semua-data'}.pdf`;
+  } else if (source.kind === 'sumur-debit') {
+    const { wells, rows: allRows } = await fetchSumurDebitRows(source);
+    const years = yearsInRows(allRows, 'Bulan');
+    const activeYear = pickYear(years, year);
+    const yearRows = allRows.filter(r => r.Bulan.startsWith(`${activeYear}-`));
+    const byMonth = {};
+    yearRows.forEach(r => { byMonth[Number(r.Bulan.slice(5, 7))] = r; });
+    const monthTotals = new Array(12).fill(0);
+    const monthHas = new Array(12).fill(false);
+    const tableRows = wells.map(w => {
+      const values = MONTHS_SHORT.map((_, i) => {
+        const r = byMonth[i + 1];
+        const v = r ? r[w] : null;
+        if (v !== null && v !== undefined) { monthTotals[i] += v; monthHas[i] = true; }
+        return fmtNum(v);
+      });
+      return [w.replace(/_/g, ' '), ...values];
     });
-
+    const totalRow = monthTotals.map((t, i) => fmtNum(monthHas[i] ? t : null));
+    tableRows.push(['Jumlah', ...totalRow]);
     pdfBytes = await buildTablePdf({
-      title: 'Data Historis Pengambilan Air Baku',
-      subtitle: `Perumda Tirta Manuntung — Sumber Air Baku  |  Jumlah — ${source.label}  |  ${year ? `Tahun ${year}` : 'Semua Data'}  (m³)`,
-      columns: [{ header: 'Bulan', weight: 1 }, { header: 'Total (m³)', weight: 1 }],
-      rows: tableRows
+      landscape: true,
+      sections: [{
+        title: 'Data Waduk dan Sumur — Rekapitulasi',
+        subtitle: `${source.label}  |  Tahun ${activeYear}  |  Satuan ${source.unit}`,
+        columns: [{ header: 'Sumur', weight: 1.8 }, ...MONTHS_SHORT.map(m => ({ header: m, weight: 1 }))],
+        rows: tableRows,
+        totalRowIndex: tableRows.length - 1
+      }]
     });
-    filename = `${dataType}_total_${year || 'semua-data'}.pdf`;
-  }
-
-  if (mode === 'rekap') {
-    const years = yearsInRows(allRows);
-    const activeYear = (year && years.includes(String(year))) ? String(year) : years[years.length - 1];
+    filename = `${dataType}_${activeYear}.pdf`;
+  } else if (source.kind === 'sumur-level') {
+    const { wells, rows: allRows } = await fetchSumurLevelRows(source);
+    const years = yearsInRows(allRows, 'Bulan');
+    const activeYear = pickYear(years, year);
     const yearRows = allRows.filter(r => r.Bulan.startsWith(`${activeYear}-`));
     const byMonth = {};
     yearRows.forEach(r => { byMonth[Number(r.Bulan.slice(5, 7))] = r; });
 
-    const monthTotals = new Array(12).fill(0);
-    const monthHas = new Array(12).fill(false);
-
-    const tableRows = source.columns.map(col => {
-      const values = MONTHS_SHORT.map((_, i) => {
-        const r = byMonth[i + 1];
-        const v = r ? r[col.csv] : null;
-        if (v !== null && v !== undefined) { monthTotals[i] += v; monthHas[i] = true; }
-        return fmtNum(v);
+    function buildVariantSection(variant) {
+      const tableRows = wells.map(w => {
+        const values = MONTHS_SHORT.map((_, i) => {
+          const r = byMonth[i + 1];
+          const v = r ? r[w + '_' + variant] : null;
+          return fmtNum(v);
+        });
+        return [w.replace(/_/g, ' '), ...values];
       });
-      return [col.label, ...values];
-    });
-    const totalRow = monthTotals.map((t, i) => fmtNum(monthHas[i] ? t : null));
-    tableRows.push(['Jumlah', ...totalRow]);
+      return {
+        title: 'Data Waduk dan Sumur — Rekapitulasi',
+        subtitle: `${source.label} — ${variant}  |  Tahun ${activeYear}  |  Satuan m`,
+        columns: [{ header: 'Sumur', weight: 1.8 }, ...MONTHS_SHORT.map(m => ({ header: m, weight: 1 }))],
+        rows: tableRows
+      };
+    }
 
     pdfBytes = await buildTablePdf({
-      title: 'Data Historis Pengambilan Air Baku — Rekapitulasi',
-      subtitle: `Perumda Tirta Manuntung — Sumber Air Baku  |  ${source.label}  |  Tahun ${activeYear}  |  Satuan m³`,
-      columns: [{ header: 'Instalasi', weight: 1.6 }, ...MONTHS_SHORT.map(m => ({ header: m, weight: 1 }))],
-      rows: tableRows,
-      totalRowIndex: tableRows.length - 1,
-      landscape: true
+      landscape: true,
+      sections: [buildVariantSection('Statis'), buildVariantSection('Dinamis')]
     });
-    filename = `rekapitulasi_${dataType}_${activeYear}.pdf`;
+    filename = `${dataType}_${activeYear}.pdf`;
+  } else {
+    return res.status(500).json({ error: 'Kind dataset tidak dikenal' });
   }
 
   res.setHeader('Content-Type', 'application/pdf');

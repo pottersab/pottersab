@@ -46,4 +46,60 @@ function buildDummyRows(source) {
   return rows;
 }
 
-module.exports = { buildDummyRows };
+// --- kind: 'wide-single' (Manggar/Teritip harian) --------------------------
+const DUMMY_DAILY_START = '2014-01-01';
+
+function dayRange(startISO, endDate) {
+  const days = [];
+  let d = new Date(startISO + 'T00:00:00');
+  while (d <= endDate) {
+    const y = d.getFullYear(), m = String(d.getMonth() + 1).padStart(2, '0'), day = String(d.getDate()).padStart(2, '0');
+    days.push(`${y}-${m}-${day}`);
+    d.setDate(d.getDate() + 1);
+  }
+  return days;
+}
+
+function buildDummyWideSingleRows(source) {
+  const dateKey = source.dateGranularity === 'day' ? 'Tanggal' : 'Bulan';
+  const dates = source.dateGranularity === 'day'
+    ? dayRange(DUMMY_DAILY_START, new Date())
+    : monthRange(DUMMY_START, new Date());
+  const series = randomWalkSeries(dates.length, source.dummyMax);
+
+  const rows = dates.map((d, i) => ({ [dateKey]: d, [source.csvCol]: series[i] }));
+  return { dateKey, rows };
+}
+
+// --- Sumur Dalam (ternormalisasi, tapi tampil ke client dalam bentuk lebar) -
+// Nama sumur BUKAN data rahasia (cuma nama instalasi), jadi dipakai apa
+// adanya -- yang diacak cuma nilainya.
+const DUMMY_SUMUR_START = '2015-01';
+
+function buildDummySumurDebitRows(wells, dummyMax) {
+  const months = monthRange(DUMMY_SUMUR_START, new Date());
+  const seriesByWell = wells.map(() => randomWalkSeries(months.length, dummyMax));
+  const rows = months.map((bulan, i) => {
+    const row = { Bulan: bulan };
+    wells.forEach((w, wi) => { row[w] = seriesByWell[wi][i]; });
+    return row;
+  });
+  return rows;
+}
+
+function buildDummySumurLevelRows(wells, dummyMax) {
+  const months = monthRange(DUMMY_SUMUR_START, new Date());
+  const statisByWell = wells.map(() => randomWalkSeries(months.length, dummyMax));
+  const dinamisByWell = wells.map(() => randomWalkSeries(months.length, dummyMax));
+  const rows = months.map((bulan, i) => {
+    const row = { Bulan: bulan };
+    wells.forEach((w, wi) => {
+      row[w + '_Statis'] = statisByWell[wi][i];
+      row[w + '_Dinamis'] = dinamisByWell[wi][i];
+    });
+    return row;
+  });
+  return rows;
+}
+
+module.exports = { buildDummyRows, buildDummyWideSingleRows, buildDummySumurDebitRows, buildDummySumurLevelRows };

@@ -1,42 +1,30 @@
 /* ==========================================================================
    Library — Sumber Air Baku
    --------------------------------------------------------------------------
-   Data grafik sekarang GABUNGAN dari 2 sumber:
-     1. File CSV lokal di apps/library/data/ -> data historis 2014 s/d
-        terakhir kali file ini diperbarui (tidak berubah lagi, jadi aman
-        untuk arsip lama).
-     2. Google Sheets lewat Apps Script Web App (SHEETS_BASE) -> data baru
-        yang diinput lewat apps/input-data-historis.html mulai sekarang.
+   Data asli disimpan di Postgres (bukan lagi CSV statis / Google Sheets), dan
+   hanya dikeluarkan oleh /api/visualization/data kalau ada akses valid (JWT
+   admin situs, atau token viz-access hasil approve email -- lihat bagian
+   AKSES DATA VITAL di bawah). Tanpa akses, endpoint itu mengembalikan data
+   CONTOH (dummy) dengan bentuk yang sama, supaya seluruh pipeline render di
+   bawah (chart, gauge, tiles sumur, tabel) tetap jalan tanpa perlu tahu
+   apakah datanya asli atau contoh.
 
-   Kedua sumber digabung per tanggal/bulan (lihat fetchMergedCSV & mergeRows
-   di bawah). Kalau ada tanggal yang sama di kedua sumber, nilai dari Google
-   Sheets yang dipakai (dianggap paling baru/terkoreksi); tanggal yang cuma
-   ada di salah satu sumber tetap ikut tampil. Jadi grafik akan tetap utuh
-   dari 2014 sampai terus berjalan, walau salah satu sumber gagal dimuat
-   (mis. Google Sheets belum diisi untuk tab tertentu -> tetap tampil data
-   lokal; internet/Apps Script down -> tetap tampil data lokal, tidak blank).
+   Akses digerbangi PER GRUP (bukan per key satu-satu): manggar, teritip,
+   sumur_debit, sumur_level -- 1 approval buka semua metrik dalam grup itu
+   (mis. approve grup "manggar" langsung buka Level+Hujan+NTU+PH Manggar).
 
-   Ganti SHEETS_BASE di bawah dengan URL Web App hasil deploy dari
-   google-sheets-backend.gs (Deploy -> New deployment -> Web app -> Anyone).
-   Nama tab di parameter ?sheet=... harus sama persis dengan nama tab di
-   spreadsheet (lihat daftar tab di google-sheets-backend.gs). Nama file CSV
-   lokal (localFile) juga harus sama isinya (nama kolom) dengan tab terkait.
-
-   Struktur menu sekarang 2 tingkat:
+   Struktur menu tetap 2-3 tingkat seperti sebelumnya:
      Menu utama  -> Waduk Manggar / Waduk Teritip / Sumur Dalam
-     Sub menu    -> dataset per menu utama (lihat GROUPS di bawah)
+     Kategori    -> (khusus Sumur Dalam) Debit / Statis-Dinamis
+     Sub menu    -> dataset per menu utama/kategori (lihat GROUPS di bawah)
 
-   Rentang data (untuk grafik/tabel/unduhan) dipilih lewat tombol
-   Tahun -> Bulan (bukan lagi input tanggal bebas), supaya simple & efisien.
+   Data juga di-LAZY LOAD per key -- saat halaman dibuka cuma dataset yang
+   sedang aktif yang di-fetch, dataset lain baru di-fetch saat tab-nya
+   diklik.
    ========================================================================== */
 
-// Ganti dengan URL Web App Google Apps Script hasil deploy (lihat
-// google-sheets-backend.gs). Formatnya diakhiri "/exec", tanpa parameter.
-const SHEETS_BASE = 'https://script.google.com/macros/s/AKfycbz7R-A6amPcX5Wac-a1VMzrsWlLyJNt5D_3qGCPazngPv8iOq80zdMsCbBUz6-dEC4r/exec';
-
-
 // ---------------------------------------------------------------------------
-// KONFIGURASI MENU (menu utama -> sub menu)
+// KONFIGURASI MENU (menu utama -> sub menu) -- tidak berubah dari versi lama
 // ---------------------------------------------------------------------------
 const GROUPS = [
   { key: 'manggar', label: 'Waduk Manggar', tabs: ['manggar_level', 'manggar_ntu', 'manggar_ph', 'manggar_hujan'] },
@@ -67,230 +55,57 @@ function activeTabs() {
 }
 
 // ---------------------------------------------------------------------------
-// KONFIGURASI SUMBER DATA — dataset harian (level, NTU, PH, curah hujan)
-// Nama file & nama kolom CSV TIDAK berubah dari versi sebelumnya, supaya
-// file data yang sudah ada di server tidak perlu diganti.
+// KONFIGURASI DATASET per key (label/unit/gauge/mode) -- dipakai untuk
+// merender hasil fetch API jadi bentuk yang sama seperti `datasets[key]`
+// versi lama (CSV). Nama key & label SAMA PERSIS dengan sebelumnya.
 // ---------------------------------------------------------------------------
-// LOCAL_DATA_BASE = folder berisi CSV historis lama (arsip 2014 dst).
-const LOCAL_DATA_BASE = 'data/';
+const DAILY_KEYS = {
+  manggar_level: { label: 'Level Waduk Manggar', unit: 'm', color: 'primary', hasGauge: true },
+  manggar_hujan: { label: 'Curah Hujan Waduk Manggar', unit: 'mm', color: 'rain', isBar: true },
+  manggar_ntu: { label: 'Kekeruhan (NTU) Waduk Manggar', unit: 'NTU', color: 'rain' },
+  manggar_ph: { label: 'PH Air Baku Waduk Manggar', unit: 'pH', color: 'primary' },
+  teritip_level: { label: 'Level Waduk Teritip', unit: 'm', color: 'primary', hasGauge: true },
+  teritip_ntu: { label: 'Kekeruhan (NTU) Waduk Teritip', unit: 'NTU', color: 'rain' },
+  teritip_ph: { label: 'PH Air Baku Waduk Teritip', unit: 'pH', color: 'primary' }
+};
 
-const DATA_SOURCES = [
-  {
-    file: SHEETS_BASE + '?sheet=manggar_level_curahhujan',
-    localFile: LOCAL_DATA_BASE + 'manggar_level_curahhujan.csv',
-    dateColumn: 'Tanggal',
-    columns: {
-      Level_Waduk_Manggar_m: {
-        key: 'manggar_level', label: 'Level Waduk Manggar', unit: 'm',
-        type: 'daily', color: 'primary', hasGauge: true
-      },
-      Curah_Hujan_mm: {
-        key: 'manggar_hujan', label: 'Curah Hujan Waduk Manggar', unit: 'mm',
-        type: 'daily-bar', color: 'rain'
-      }
-    }
-  },
-  {
-    file: SHEETS_BASE + '?sheet=kualitas_air_manggar_teritip',
-    localFile: LOCAL_DATA_BASE + 'kualitas_air_manggar_teritip.csv',
-    dateColumn: 'Tanggal',
-    columns: {
-      NTU_Manggar: { key: 'manggar_ntu', label: 'Kekeruhan (NTU) Waduk Manggar', unit: 'NTU', type: 'daily', color: 'rain' },
-      PH_Manggar: { key: 'manggar_ph', label: 'PH Air Baku Waduk Manggar', unit: 'pH', type: 'daily', color: 'primary' },
-      NTU_Teritip: { key: 'teritip_ntu', label: 'Kekeruhan (NTU) Waduk Teritip', unit: 'NTU', type: 'daily', color: 'rain' },
-      PH_Teritip: { key: 'teritip_ph', label: 'PH Air Baku Waduk Teritip', unit: 'pH', type: 'daily', color: 'primary' }
-    }
-  },
-  {
-    file: SHEETS_BASE + '?sheet=teritip_level',
-    localFile: LOCAL_DATA_BASE + 'teritip_level.csv',
-    dateColumn: 'Tanggal',
-    columns: {
-      Level_Waduk_Teritip_m: {
-        key: 'teritip_level', label: 'Level Waduk Teritip', unit: 'm',
-        type: 'daily', color: 'primary', hasGauge: true
-      }
-    }
-  }
-];
+const SUMUR_KEYS = {
+  sumur_debit_gunung_sari: { label: 'Debit Sumur — IPA Gunung Sari', unit: 'm³/jam', mode: 'single' },
+  sumur_debit_kampung_damai: { label: 'Debit Sumur — IPA Kampung Damai', unit: 'm³/jam', mode: 'single' },
+  sumur_debit_teritip: { label: 'Debit Sumur — IPA Teritip', unit: 'm³/jam', mode: 'single' },
+  sumur_debit_gunung_tembak: { label: 'Debit Sumur — IPA Gunung Tembak', unit: 'm³/jam', mode: 'single' },
+  sumur_debit_prapatan: { label: 'Debit Sumur — IPA Prapatan', unit: 'm³/jam', mode: 'single' },
+  sumur_debit_zamp: { label: 'Debit Sumur — IPA Zamp', unit: 'm³/jam', mode: 'single' },
+  sumur_debit_kp_baru_ulu: { label: 'Debit Sumur — IPA Kampung Baru Ulu', unit: 'm³/jam', mode: 'single' },
+  sumur_level_gunung_sari: { label: 'Level Statis & Dinamis — IPA Gunung Sari', unit: 'm', mode: 'pair' },
+  sumur_level_kampung_damai: { label: 'Level Statis & Dinamis — IPA Kampung Damai', unit: 'm', mode: 'pair' },
+  sumur_level_teritip: { label: 'Level Statis & Dinamis — IPA Teritip', unit: 'm', mode: 'pair' },
+  sumur_level_gunung_tembak: { label: 'Level Statis & Dinamis — IPA Gunung Tembak', unit: 'm', mode: 'pair' },
+  sumur_level_prapatan: { label: 'Level Statis & Dinamis — IPA Prapatan', unit: 'm', mode: 'pair' },
+  sumur_level_zamp: { label: 'Level Statis & Dinamis — IPA Zamp', unit: 'm', mode: 'pair' },
+  sumur_level_kampung_baru_ulu: { label: 'Level Statis & Dinamis — IPA Kampung Baru Ulu', unit: 'm', mode: 'pair' }
+};
 
-// -- Sumur Dalam: dua dataset bulanan, per-sumur (kolom dinamis) --
-// Struktur kolom (Bulan, Sumur_01, Sumur_02, ... / atau
-// Sumur_01_Statis, Sumur_01_Dinamis, ...) tetap harus dipertahankan di
-// masing-masing tab Google Sheets.
-const SUMUR_SOURCES = [
-  {
-    file: SHEETS_BASE + '?sheet=sumur_debit_gunung_sari',
-    monthColumn: 'Bulan',
-    key: 'sumur_debit_gunung_sari',
-    label: 'Debit Sumur — IPA Gunung Sari',
-    unit: 'm³/jam',
-    mode: 'single',
-    isDummy: false
-  },
-  {
-    file: SHEETS_BASE + '?sheet=sumur_debit_kampung_damai',
-    monthColumn: 'Bulan',
-    key: 'sumur_debit_kampung_damai',
-    label: 'Debit Sumur — IPA Kampung Damai',
-    unit: 'm³/jam',
-    mode: 'single',
-    isDummy: false
-  },
-  {
-    file: SHEETS_BASE + '?sheet=sumur_debit_teritip',
-    monthColumn: 'Bulan',
-    key: 'sumur_debit_teritip',
-    label: 'Debit Sumur — IPA Teritip',
-    unit: 'm³/jam',
-    mode: 'single',
-    isDummy: false
-  },
-  {
-    file: SHEETS_BASE + '?sheet=sumur_debit_gunung_tembak',
-    monthColumn: 'Bulan',
-    key: 'sumur_debit_gunung_tembak',
-    label: 'Debit Sumur — IPA Gunung Tembak',
-    unit: 'm³/jam',
-    mode: 'single',
-    isDummy: false
-  },
-  {
-    file: SHEETS_BASE + '?sheet=sumur_debit_prapatan',
-    monthColumn: 'Bulan',
-    key: 'sumur_debit_prapatan',
-    label: 'Debit Sumur — IPA Prapatan',
-    unit: 'm³/jam',
-    mode: 'single',
-    isDummy: false
-  },
-  {
-    file: SHEETS_BASE + '?sheet=sumur_debit_zamp',
-    monthColumn: 'Bulan',
-    key: 'sumur_debit_zamp',
-    label: 'Debit Sumur — IPA Zamp',
-    unit: 'm³/jam',
-    mode: 'single',
-    isDummy: false
-  },
-  {
-    file: SHEETS_BASE + '?sheet=sumur_debit_kp_baru_ulu',
-    monthColumn: 'Bulan',
-    key: 'sumur_debit_kp_baru_ulu',
-    label: 'Debit Sumur — IPA Kampung Baru Ulu',
-    unit: 'm³/jam',
-    mode: 'single',
-    isDummy: false
-  },
-  {
-    file: SHEETS_BASE + '?sheet=sumur_level_gunung_sari',
-    monthColumn: 'Bulan',
-    key: 'sumur_level_gunung_sari',
-    label: 'Level Statis & Dinamis — IPA Gunung Sari',
-    unit: 'm',
-    mode: 'pair',
-    isDummy: false
-  },
-  {
-    file: SHEETS_BASE + '?sheet=sumur_level_kampung_damai',
-    monthColumn: 'Bulan',
-    key: 'sumur_level_kampung_damai',
-    label: 'Level Statis & Dinamis — IPA Kampung Damai',
-    unit: 'm',
-    mode: 'pair',
-    isDummy: false
-  },
-  {
-    file: SHEETS_BASE + '?sheet=sumur_level_teritip',
-    monthColumn: 'Bulan',
-    key: 'sumur_level_teritip',
-    label: 'Level Statis & Dinamis — IPA Teritip',
-    unit: 'm',
-    mode: 'pair',
-    isDummy: false
-  },
-  {
-    file: SHEETS_BASE + '?sheet=sumur_level_gunung_tembak',
-    monthColumn: 'Bulan',
-    key: 'sumur_level_gunung_tembak',
-    label: 'Level Statis & Dinamis — IPA Gunung Tembak',
-    unit: 'm',
-    mode: 'pair',
-    isDummy: false
-  },
-  {
-    file: SHEETS_BASE + '?sheet=sumur_level_prapatan',
-    monthColumn: 'Bulan',
-    key: 'sumur_level_prapatan',
-    label: 'Level Statis & Dinamis — IPA Prapatan',
-    unit: 'm',
-    mode: 'pair',
-    isDummy: false
-  },
-  {
-    file: SHEETS_BASE + '?sheet=sumur_level_zamp',
-    monthColumn: 'Bulan',
-    key: 'sumur_level_zamp',
-    label: 'Level Statis & Dinamis — IPA Zamp',
-    unit: 'm',
-    mode: 'pair',
-    isDummy: false
-  },
-  {
-    file: SHEETS_BASE + '?sheet=sumur_level_kampung_baru_ulu',
-    monthColumn: 'Bulan',
-    key: 'sumur_level_kampung_baru_ulu',
-    label: 'Level Statis & Dinamis — IPA Kampung Baru Ulu',
-    unit: 'm',
-    mode: 'pair',
-    isDummy: false
-  }
-];
+// key -> grup akses (dipakai checkVizAccess di server & lock banner di sini).
+const KEY_TO_ACCESSGROUP = {};
+Object.keys(DAILY_KEYS).forEach(k => { KEY_TO_ACCESSGROUP[k] = k.startsWith('manggar') ? 'manggar' : 'teritip'; });
+Object.keys(SUMUR_KEYS).forEach(k => { KEY_TO_ACCESSGROUP[k] = k.startsWith('sumur_debit') ? 'sumur_debit' : 'sumur_level'; });
 
-// Nama tab Google Sheets untuk semua dataset Sumur Dalam persis sama dengan
-// nama file CSV lokalnya (mis. key 'sumur_debit_gunung_sari' ->
-// data/sumur_debit_gunung_sari.csv), jadi localFile diisi otomatis di sini
-// supaya tidak perlu ditulis manual 14x di atas.
-SUMUR_SOURCES.forEach(source => {
-  source.localFile = LOCAL_DATA_BASE + source.key + '.csv';
-});
+const GROUP_TO_KEYS = {};
+Object.entries(KEY_TO_ACCESSGROUP).forEach(([k, g]) => { (GROUP_TO_KEYS[g] = GROUP_TO_KEYS[g] || []).push(k); });
 
-// ---------------------------------------------------------------------------
-// LOOKUP KEY -> SUMBER (dipakai untuk lazy-load: cari tahu source mana yang
-// perlu di-fetch untuk 1 dataset key, TANPA harus fetch semuanya dulu).
-// ---------------------------------------------------------------------------
-const DAILY_KEY_LOOKUP = {};   // key -> { source, colName, cfg }
-DATA_SOURCES.forEach(source => {
-  Object.entries(source.columns).forEach(([colName, cfg]) => {
-    DAILY_KEY_LOOKUP[cfg.key] = { source, colName, cfg };
-  });
-});
+const ACCESS_GROUP_LABELS = {
+  manggar: 'Waduk Manggar',
+  teritip: 'Waduk Teritip',
+  sumur_debit: 'Debit Sumur Dalam',
+  sumur_level: 'Level Statis & Dinamis Sumur Dalam'
+};
 
-const SUMUR_KEY_LOOKUP = {};   // key -> source
-SUMUR_SOURCES.forEach(source => { SUMUR_KEY_LOOKUP[source.key] = source; });
-
-// Label statis per key, dipakai untuk menampilkan tombol submenu SEBELUM
-// datanya selesai di-fetch (jadi menu langsung muncul tanpa nunggu loading).
 const KEY_LABEL_LOOKUP = {};
-Object.values(DAILY_KEY_LOOKUP).forEach(({ cfg }) => { KEY_LABEL_LOOKUP[cfg.key] = cfg.label; });
-Object.values(SUMUR_KEY_LOOKUP).forEach(source => { KEY_LABEL_LOOKUP[source.key] = source.label; });
+Object.entries(DAILY_KEYS).forEach(([k, cfg]) => { KEY_LABEL_LOOKUP[k] = cfg.label; });
+Object.entries(SUMUR_KEYS).forEach(([k, cfg]) => { KEY_LABEL_LOOKUP[k] = cfg.label; });
 
 const MONTHS_ID = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
-
-// ---------------------------------------------------------------------------
-// CSV PARSER (sederhana, cukup untuk data numerik + tanggal seperti ini)
-// ---------------------------------------------------------------------------
-function parseCSV(text) {
-  const lines = text.replace(/\r/g, '').split('\n').filter(l => l.length > 0);
-  const header = lines[0].split(',').map(h => h.trim());
-  const rows = lines.slice(1).map(line => {
-    const cells = line.split(',');
-    const row = {};
-    header.forEach((h, i) => { row[h] = (cells[i] !== undefined ? cells[i].trim() : ''); });
-    return row;
-  });
-  return { header, rows };
-}
 
 function toNum(v) {
   if (v === undefined || v === null || v === '') return null;
@@ -311,200 +126,129 @@ function dateStrDisplay(d) {
   return `${day}/${m}/${y}`;
 }
 
-function monthLabel(d) {
-  return d.toLocaleDateString('id-ID', { month: 'short', year: 'numeric' });
-}
-
 function monthLabelLong(d) {
   return d.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
 }
 
 // ---------------------------------------------------------------------------
-// LOAD DATA
+// AKSES — token yang dipakai untuk minta data asli ke API: JWT admin situs
+// (localStorage 'token', dari login.html) selalu lolos untuk SEMUA grup;
+// kalau bukan admin, dipakai token viz-access per grup hasil approve email.
 // ---------------------------------------------------------------------------
-async function fetchCSV(path) {
-  const res = await fetch(path);
-  if (!res.ok) throw new Error(`Gagal memuat ${path} (HTTP ${res.status})`);
-  return parseCSV(await res.text());
+let vizAccess = {}; // group -> { token, expiresAt, requestId, pollTimer, expiryTimer }
+
+function getVizEntry(group) {
+  if (!vizAccess[group]) vizAccess[group] = { token: null, expiresAt: null, requestId: null, pollTimer: null, expiryTimer: null };
+  return vizAccess[group];
 }
 
-// Gabungkan 1 baris data lokal + 1 baris data Sheets untuk key (tanggal/
-// bulan) yang sama. Kolom dari Sheets menang HANYA kalau isinya tidak
-// kosong -- kalau sel di Sheets kosong, nilai lokal yang lama tetap dipakai
-// (supaya baris yang baru sebagian terisi di Sheets tidak menghapus kolom
-// lain yang sudah ada nilainya di data lokal).
-function mergeRowValues(localRow, sheetRow) {
-  const merged = Object.assign({}, localRow);
-  Object.keys(sheetRow).forEach(col => {
-    const v = sheetRow[col];
-    if (v !== undefined && v !== null && v !== '') merged[col] = v;
-  });
-  return merged;
+function tokenForGroup(group) {
+  const admin = localStorage.getItem('token');
+  if (admin) return admin;
+  const entry = vizAccess[group];
+  return entry && entry.token ? entry.token : null;
 }
 
-// Gabungkan seluruh baris data lokal + Sheets berdasarkan kolom kunci
-// (Tanggal untuk dataset harian, Bulan untuk dataset sumur). Baris dengan
-// key yang sama di kedua sumber -> digabung (Sheets menang per-kolom).
-// Baris yang cuma ada di salah satu sumber -> tetap ikut. Hasil diurutkan
-// menaik berdasarkan key (aman karena formatnya ISO: YYYY-MM-DD / YYYY-MM).
-function mergeRows(localRows, sheetRows, keyCol) {
-  const map = new Map();
-  localRows.forEach(r => { if (r[keyCol]) map.set(r[keyCol], r); });
-  sheetRows.forEach(r => {
-    if (!r[keyCol]) return;
-    const existing = map.get(r[keyCol]);
-    map.set(r[keyCol], existing ? mergeRowValues(existing, r) : r);
-  });
-  return Array.from(map.values()).sort((a, b) => (a[keyCol] < b[keyCol] ? -1 : a[keyCol] > b[keyCol] ? 1 : 0));
+function activeAccessGroup() {
+  return KEY_TO_ACCESSGROUP[currentKey];
 }
 
-// Ambil data lokal (arsip lama) DAN Google Sheets (data baru) secara
-// paralel, lalu gabung jadi satu tabel. Kalau salah satu sumber gagal
-// dimuat (mis. tab Sheets belum ada, atau Apps Script sedang down), yang
-// lain tetap dipakai -- jadi grafik tidak blank hanya karena satu sumber
-// bermasalah. Cuma gagal total kalau KEDUA sumber gagal.
-async function fetchMergedCSV(localPath, sheetUrl, keyCol) {
-  const [localRes, sheetRes] = await Promise.allSettled([
-    fetch(localPath).then(res => {
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      return res.text();
-    }),
-    fetch(sheetUrl).then(res => {
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      return res.text();
-    })
-  ]);
-
-  let header = null, localRows = [], sheetRows = [];
-
-  if (localRes.status === 'fulfilled') {
-    const parsed = parseCSV(localRes.value);
-    header = parsed.header;
-    localRows = parsed.rows;
-  } else {
-    console.warn(`Gagal memuat data lokal ${localPath}:`, localRes.reason);
-  }
-
-  if (sheetRes.status === 'fulfilled') {
-    const parsed = parseCSV(sheetRes.value);
-    header = header ? Array.from(new Set([...header, ...parsed.header])) : parsed.header;
-    sheetRows = parsed.rows;
-  } else {
-    console.warn(`Gagal memuat data Google Sheets ${sheetUrl}:`, sheetRes.reason);
-  }
-
-  if (!header) throw new Error(`Gagal memuat data lokal (${localPath}) maupun Google Sheets (${sheetUrl})`);
-
-  return { header, rows: mergeRows(localRows, sheetRows, keyCol) };
+async function fetchApiData(key) {
+  const group = KEY_TO_ACCESSGROUP[key];
+  const headers = {};
+  const token = tokenForGroup(group);
+  if (token) headers['Authorization'] = 'Bearer ' + token;
+  const res = await fetch(`/api/visualization/data?dataType=${key}`, { headers });
+  if (!res.ok) throw new Error(`Gagal memuat data (HTTP ${res.status})`);
+  return res.json(); // { locked, header, rows }
 }
 
-function buildSumurDataset(source, header, rows) {
-  if (source.mode === 'single') {
-    const wellColumns = header.filter(h => h !== source.monthColumn);
-    const data = rows.map(r => {
-      const row = { date: new Date(r[source.monthColumn] + '-01T00:00:00') };
-      wellColumns.forEach(w => { row[w] = toNum(r[w]); });
-      return row;
-    }).filter(r => !isNaN(r.date.getTime()));
-    return {
-      label: source.label, unit: source.unit, type: 'monthly-multi', mode: 'single',
-      color: 'primary', real: !source.isDummy, sourceFile: source.file,
-      data, wellColumns
+// Bangun `datasets[key]` dari hasil fetchApiData, bentuknya sama seperti
+// versi lama (CSV): { label, unit, type, mode, color, real, data, wellColumns }.
+function buildDatasetFromApi(key, header, rows, locked) {
+  const dailyCfg = DAILY_KEYS[key];
+  if (dailyCfg) {
+    const dateField = header[0];
+    const valueField = header[1];
+    const series = rows
+      .map(r => ({ date: new Date(r[dateField] + 'T00:00:00'), value: toNum(r[valueField]) }))
+      .filter(r => !isNaN(r.date.getTime()));
+    const ds = {
+      label: dailyCfg.label, unit: dailyCfg.unit, type: dailyCfg.isBar ? 'daily-bar' : 'daily',
+      color: dailyCfg.color, mode: 'single', real: !locked, data: series
     };
+    if (dailyCfg.hasGauge) {
+      const [mn, mx] = minMax(series);
+      ds.minHist = Math.floor(mn - 0.5);
+      ds.maxHist = Math.ceil(mx + 0.5);
+    }
+    datasets[key] = ds;
+    return;
   }
 
-  // mode === 'pair' -> kolom bernama <Sumur>_Statis / <Sumur>_Dinamis
-  const wellSet = [];
-  header.forEach(h => {
-    if (h === source.monthColumn) return;
-    const m = h.match(/^(.*)_(Statis|Dinamis)$/i);
-    if (m && !wellSet.includes(m[1])) wellSet.push(m[1]);
-  });
+  const sumurCfg = SUMUR_KEYS[key];
+  const wellColumns = sumurCfg.mode === 'single'
+    ? header.slice(1)
+    : [...new Set(header.slice(1).map(h => h.replace(/_(Statis|Dinamis)$/, '')))];
+
   const data = rows.map(r => {
-    const row = { date: new Date(r[source.monthColumn] + '-01T00:00:00') };
-    wellSet.forEach(w => {
-      row[w + '_Statis'] = toNum(r[w + '_Statis']);
-      row[w + '_Dinamis'] = toNum(r[w + '_Dinamis']);
-    });
+    const row = { date: new Date(r.Bulan + '-01T00:00:00') };
+    if (sumurCfg.mode === 'single') {
+      wellColumns.forEach(w => { row[w] = toNum(r[w]); });
+    } else {
+      wellColumns.forEach(w => {
+        row[w + '_Statis'] = toNum(r[w + '_Statis']);
+        row[w + '_Dinamis'] = toNum(r[w + '_Dinamis']);
+      });
+    }
     return row;
   }).filter(r => !isNaN(r.date.getTime()));
-  return {
-    label: source.label, unit: source.unit, type: 'monthly-multi', mode: 'pair',
-    color: 'primary', real: !source.isDummy, sourceFile: source.file,
-    data, wellColumns: wellSet
+
+  datasets[key] = {
+    label: sumurCfg.label, unit: sumurCfg.unit, type: 'monthly-multi', mode: sumurCfg.mode,
+    color: 'primary', real: !locked, data, wellColumns
   };
 }
 
 // ---------------------------------------------------------------------------
-// LAZY LOAD — fetch data hanya untuk dataset yang sedang dibuka, bukan
-// semuanya di awal. Ini yang paling menentukan kecepatan loading pertama:
-// sebelumnya halaman nunggu ~17 dataset selesai fetch sebelum apa pun
-// tampil; sekarang cuma nunggu 1 dataset (yang lagi dibuka), dataset lain
-// baru di-fetch saat user klik tab-nya. Hasil fetch di-cache per source,
-// jadi kalau user bolak-balik ke tab yang sama, tidak fetch ulang.
+// LAZY LOAD — fetch data hanya untuk key yang sedang dibuka, bukan semuanya
+// di awal. Di-cache per key (Promise) supaya tidak fetch ulang kalau user
+// bolak-balik antar tab. Cache di-clear per GRUP tiap kali status akses
+// grup itu berubah (baru approved / token kedaluwarsa) lewat reloadGroupData().
 // ---------------------------------------------------------------------------
-const sourceLoadPromises = new Map(); // source object -> Promise (cache + dedupe fetch yang lagi jalan)
+const sourceLoadPromises = new Map(); // key -> Promise
+const sourceLockStatus = {}; // accessGroup -> boolean (true = sedang locked/dummy)
 
-function loadDailySource(source) {
-  if (sourceLoadPromises.has(source)) return sourceLoadPromises.get(source);
-  const p = fetchMergedCSV(source.localFile, source.file, source.dateColumn).then(({ header, rows }) => {
-    Object.entries(source.columns).forEach(([colName, cfg]) => {
-      if (!header.includes(colName)) {
-        console.warn(`Kolom "${colName}" tidak ditemukan di ${source.file}, dilewati.`);
-        return;
-      }
-      const series = rows
-        .map(r => ({ date: new Date(r[source.dateColumn] + 'T00:00:00'), value: toNum(r[colName]) }))
-        .filter(r => !isNaN(r.date.getTime()));
-      const ds = {
-        label: cfg.label, unit: cfg.unit, type: cfg.type, color: cfg.color, mode: 'single',
-        real: true, sourceFile: source.file, data: series
-      };
-      if (cfg.hasGauge) {
-        const [mn, mx] = minMax(series);
-        ds.minHist = Math.floor(mn - 0.5);
-        ds.maxHist = Math.ceil(mx + 0.5);
-      }
-      datasets[cfg.key] = ds;
-    });
+function loadKeySource(key) {
+  if (sourceLoadPromises.has(key)) return sourceLoadPromises.get(key);
+  const p = fetchApiData(key).then(({ locked, header, rows }) => {
+    sourceLockStatus[KEY_TO_ACCESSGROUP[key]] = locked;
+    buildDatasetFromApi(key, header, rows, locked);
   }).catch(err => {
-    console.error(`Gagal memuat ${source.localFile} / ${source.file}:`, err);
-    sourceLoadPromises.delete(source); // biar bisa dicoba lagi kalau user klik ulang
+    console.error(`Gagal memuat data ${key}:`, err);
+    sourceLoadPromises.delete(key);
     throw err;
   });
-  sourceLoadPromises.set(source, p);
+  sourceLoadPromises.set(key, p);
   return p;
 }
 
-function loadSumurSource(source) {
-  if (sourceLoadPromises.has(source)) return sourceLoadPromises.get(source);
-  const p = fetchMergedCSV(source.localFile, source.file, source.monthColumn).then(({ header, rows }) => {
-    datasets[source.key] = buildSumurDataset(source, header, rows);
-  }).catch(err => {
-    console.error(`Gagal memuat ${source.localFile} / ${source.file}:`, err);
-    sourceLoadPromises.delete(source);
-    throw err;
-  });
-  sourceLoadPromises.set(source, p);
-  return p;
-}
-
-// Pastikan 1 dataset key sudah ter-fetch & tersedia di `datasets[key]`.
-// Kalau sudah pernah (atau sedang) dimuat, tinggal nunggu promise yang sama
-// (tidak fetch ulang). Melempar error kalau key tidak dikenal / gagal dimuat.
 async function ensureDatasetLoaded(key) {
-  if (datasets[key]) return datasets[key];
-  const daily = DAILY_KEY_LOOKUP[key];
-  if (daily) {
-    await loadDailySource(daily.source);
-    return datasets[key];
+  await loadKeySource(key);
+  return datasets[key];
+}
+
+async function reloadGroupData(group) {
+  (GROUP_TO_KEYS[group] || []).forEach(k => { sourceLoadPromises.delete(k); delete datasets[k]; });
+  if (KEY_TO_ACCESSGROUP[currentKey] !== group) return;
+  try {
+    await ensureDatasetLoaded(currentKey);
+  } catch (err) {
+    showLoadErrorState(err);
+    return;
   }
-  const sumur = SUMUR_KEY_LOOKUP[key];
-  if (sumur) {
-    await loadSumurSource(sumur);
-    return datasets[key];
-  }
-  throw new Error(`Dataset "${key}" tidak dikenal.`);
+  onDatasetChanged();
+  render();
 }
 
 // ---------------------------------------------------------------------------
@@ -518,6 +262,7 @@ let filterMode = 'all';   // 'all' | 'year' | 'month'
 let selectedYear = null;
 let selectedMonth = null;
 let chart;
+let isAdmin = false;
 
 const menuMainEl = document.getElementById('menuMain');
 const menuCategoryEl = document.getElementById('menuCategory');
@@ -588,10 +333,6 @@ async function selectDataset(key) {
 
 // ---------------------------------------------------------------------------
 // MENU (utama -> kategori [opsional] -> sub)
-// Menu dibangun langsung dari konfigurasi GROUPS/DATA_SOURCES/SUMUR_SOURCES
-// (statis), TIDAK menunggu data selesai di-fetch -- supaya menu & tombol
-// langsung muncul begitu halaman dibuka, baru isinya (grafik/tabel) yang
-// nyusul saat datanya datang.
 // ---------------------------------------------------------------------------
 function buildMenuMain() {
   menuMainEl.innerHTML = '';
@@ -651,7 +392,6 @@ function buildMenuSub() {
 }
 
 function onDatasetChanged() {
-  const ds = currentDataset();
   const isSumurGroup = currentGroup === 'sumur';
 
   document.getElementById('mainGrid').style.display = isSumurGroup ? 'none' : 'grid';
@@ -659,19 +399,24 @@ function onDatasetChanged() {
   document.getElementById('tableWrap').style.display = isSumurGroup ? 'none' : 'block';
   document.getElementById('tilesWrap').style.display = isSumurGroup ? 'block' : 'none';
 
+  const group = activeAccessGroup();
+  const locked = !!sourceLockStatus[group] && !isAdmin;
   const badge = document.getElementById('statusBadge');
   const note = document.getElementById('noteBox');
-  if (ds.real) {
+
+  if (locked) {
+    badge.textContent = 'Data Contoh (Terkunci)';
+    badge.style.background = 'var(--warn)';
+    note.innerHTML = `<b>Nilai yang tampil sekarang adalah data CONTOH, bukan data asli.</b> Data ini vital bagi perusahaan — klik "Minta Akses" di atas untuk melihat data sebenarnya.`;
+  } else {
     badge.textContent = 'Data Asli';
     badge.style.background = 'var(--good)';
-    note.innerHTML = `Data diambil dari <code>${ds.sourceFile}</code>. Baris yang kosong di sumber (misal parameter tidak diperiksa hari itu) ditampilkan sebagai baris kosong, bukan diisi paksa. Untuk menambah/mengoreksi data, edit file CSV tersebut lalu muat ulang halaman ini.`;
-  } else {
-    badge.textContent = 'Data Contoh / Demo';
-    badge.style.background = 'var(--warn)';
-    note.innerHTML = `Dataset ini masih pakai <b>data acak/simulasi</b> (<code>${ds.sourceFile}</code>) untuk keperluan demo tampilan. Ganti isi file CSV tersebut dengan data asli kapan saja — struktur kolomnya sudah siap dipakai.`;
+    note.innerHTML = `Baris yang kosong (misal parameter tidak diperiksa hari itu) ditampilkan sebagai baris kosong, bukan diisi paksa.`;
   }
 
   buildYearRow();
+  updateLockBanner();
+  updatePdfButton();
 }
 
 // ---------------------------------------------------------------------------
@@ -917,7 +662,7 @@ function render() {
 }
 
 // ---------------------------------------------------------------------------
-// UNDUH EXCEL (.xlsx via SheetJS)
+// UNDUH EXCEL (.xlsx via SheetJS) -- tidak berubah dari versi lama
 //  - Waduk Manggar / Waduk Teritip : Tanggal, [Nama Parameter (satuan)]
 //  - Sumur Dalam                   : Bulan, Nama Sumur, [nilai...]  (semua sumur)
 // ---------------------------------------------------------------------------
@@ -972,57 +717,32 @@ function downloadExcel() {
 }
 
 // ---------------------------------------------------------------------------
-// UNDUH PDF (Tamu, via jsPDF + autotable) — terbuka untuk semua pengunjung,
-// tidak digating seperti Excel. Sertakan grafik untuk Waduk Manggar/Teritip
-// (tidak ada grafik tunggal untuk Sumur Dalam, jadi langsung tabel saja).
+// UNDUH PDF — digenerate di SERVER (pdf-lib) dari data asli, hanya kalau ada
+// akses valid (JWT admin situs, atau token viz-access grup terkait). Server
+// selalu mengekspor tabel lengkap (harian/bulanan untuk Manggar-Teritip,
+// pivot sumur x bulan untuk Sumur Dalam); filter tahun (kalau dipilih) ikut
+// dikirim, filter bulan tidak didukung server jadi diabaikan (tetap unduh
+// satu tahun penuh).
 // ---------------------------------------------------------------------------
 function downloadPdf() {
-  const { jsPDF } = window.jspdf;
-  const ds = currentDataset();
-  const { header, body } = buildExportSheet();
-  const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
-
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(14);
-  doc.text('Library — Sumber Air Baku', 40, 40);
-  doc.setFontSize(10);
-  doc.setFont('helvetica', 'normal');
-  doc.text(`Perumda Tirta Manuntung — Sumber Air Baku  |  ${ds.label}  |  Rentang: ${currentRangeLabel()}`, 40, 58);
-
-  let startY = 78;
-  if (currentGroup !== 'sumur') {
-    try {
-      const chartImg = document.getElementById('mainChart').toDataURL('image/png', 1.0);
-      doc.addImage(chartImg, 'PNG', 40, 72, 560, 220);
-      startY = 305;
-    } catch (e) {
-      console.warn('Gagal menyisipkan grafik ke PDF:', e);
-    }
+  const group = activeAccessGroup();
+  const token = tokenForGroup(group);
+  if (!token) {
+    alert('Unduh PDF perlu akses data asli dulu. Klik "Minta Akses" di atas untuk meminta persetujuan admin.');
+    return;
   }
 
-  doc.autoTable({
-    head: [header],
-    body,
-    startY,
-    styles: { font: 'helvetica', fontSize: 8, cellPadding: 4 },
-    headStyles: { fillColor: [11, 85, 102], textColor: 255 },
-    margin: { left: 40, right: 40 }
-  });
+  const params = new URLSearchParams();
+  params.set('dataType', currentKey);
+  params.set('token', token);
+  if (selectedYear) params.set('year', selectedYear);
 
-  const rangePart = filterMode === 'all' ? 'semua-data' : (filterMode === 'month' ? `${selectedYear}-${String(selectedMonth).padStart(2,'0')}` : `${selectedYear}`);
-  doc.save(`${currentKey}_${rangePart}.pdf`);
+  window.location.href = `/api/visualization/export-pdf?${params.toString()}`;
 }
 
 // ---------------------------------------------------------------------------
-// STATUS ADMIN (gating tombol Unduh Excel)
-// --------------------------------------------------------------------------
-// Sama persis dengan pola di apps/riwayat-air-baku: token disimpan di
-// localStorage dengan key "token", role dengan key "role" (diisi oleh
-// login.html). Tidak ada endpoint /api/verify terpisah — cek langsung ke
-// localStorage seperti admin-dashboard.html.
+// STATUS ADMIN (gating tombol Unduh Excel) -- tidak berubah dari versi lama
 // ---------------------------------------------------------------------------
-let isAdmin = false;
-
 function checkAdminStatus() {
   const token = localStorage.getItem('token');
   const role = localStorage.getItem('role');
@@ -1042,11 +762,187 @@ function updateAdminButton() {
 }
 
 // ---------------------------------------------------------------------------
+// AKSES DATA VITAL — banner "terkunci" + form "Minta Akses" + polling status
+// + auto-unlock setelah admin approve lewat email + auto re-lock setelah
+// token 1 jam habis. Semua dikelola PER GRUP (manggar/teritip/sumur_debit/
+// sumur_level), disimpan di `vizAccess`.
+// ---------------------------------------------------------------------------
+let modalGroup = null;
+
+function updateLockBanner() {
+  const banner = document.getElementById('lockBanner');
+  const statusText = document.getElementById('lockStatusText');
+  if (!banner) return;
+  const group = activeAccessGroup();
+  const locked = !!sourceLockStatus[group] && !isAdmin;
+  if (!locked) { banner.style.display = 'none'; return; }
+  banner.style.display = 'flex';
+  const entry = getVizEntry(group);
+  statusText.textContent = entry.pollTimer ? 'Menunggu persetujuan admin lewat email...' : '';
+}
+
+function updatePdfButton() {
+  const btn = document.getElementById('downloadPdfBtn');
+  if (!btn) return;
+  if (tokenForGroup(activeAccessGroup())) {
+    btn.textContent = 'Unduh PDF';
+    btn.disabled = false;
+  } else {
+    btn.textContent = '🔒 Unduh PDF (Perlu Akses)';
+    btn.disabled = true;
+  }
+}
+
+function openAccessModal() {
+  modalGroup = activeAccessGroup();
+  const overlay = document.getElementById('accessModalOverlay');
+  if (!overlay) return;
+  const groupNameEl = document.getElementById('accessModalGroupName');
+  if (groupNameEl) groupNameEl.textContent = ACCESS_GROUP_LABELS[modalGroup] || modalGroup;
+  overlay.style.display = 'flex';
+  setAccessModalStatus('', '');
+}
+
+function closeAccessModal() {
+  const overlay = document.getElementById('accessModalOverlay');
+  if (overlay) overlay.style.display = 'none';
+}
+
+function setAccessModalStatus(msg, cls) {
+  const el = document.getElementById('accessModalStatus');
+  if (!el) return;
+  el.textContent = msg;
+  el.className = 'status-msg ' + (cls || '');
+}
+
+async function submitAccessRequest() {
+  const nama = document.getElementById('accessNamaInput').value.trim();
+  const alasan = document.getElementById('accessAlasanInput').value.trim();
+  const group = modalGroup;
+
+  if (!nama) {
+    setAccessModalStatus('Isi nama dulu ya.', 'error');
+    return;
+  }
+
+  const btn = document.getElementById('accessModalSubmit');
+  btn.disabled = true;
+  setAccessModalStatus('Mengirim permintaan...', 'pending');
+
+  try {
+    const res = await fetch('/api/visualization/request', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ requestedBy: nama, dataType: group, reason: alasan || undefined })
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) throw new Error(data.error || 'Gagal mengirim permintaan.');
+
+    const entry = getVizEntry(group);
+    entry.requestId = data.requestId;
+    try { sessionStorage.setItem('vizRequestId_' + group, String(entry.requestId)); } catch (e) {}
+
+    setAccessModalStatus('Permintaan terkirim. Menunggu admin menyetujui lewat email — halaman ini akan otomatis update.', 'pending');
+    startPolling(group);
+  } catch (err) {
+    setAccessModalStatus(err.message, 'error');
+  }
+  btn.disabled = false;
+}
+
+function startPolling(group) {
+  const entry = getVizEntry(group);
+  if (entry.pollTimer) clearInterval(entry.pollTimer);
+  updateLockBanner();
+  entry.pollTimer = setInterval(() => checkAccessStatus(group), 4000);
+  checkAccessStatus(group);
+}
+
+async function checkAccessStatus(group) {
+  const entry = getVizEntry(group);
+  if (!entry.requestId) return;
+  try {
+    const res = await fetch(`/api/visualization/status?id=${entry.requestId}`);
+    const data = await res.json();
+
+    if (data.status === 'approved') {
+      clearInterval(entry.pollTimer);
+      entry.pollTimer = null;
+      entry.token = data.token;
+      entry.expiresAt = data.expiresAt;
+      try {
+        sessionStorage.setItem('vizAccessToken_' + group, entry.token);
+        sessionStorage.setItem('vizAccessExpiresAt_' + group, entry.expiresAt);
+        sessionStorage.removeItem('vizRequestId_' + group);
+      } catch (e) {}
+      scheduleTokenExpiry(group);
+      if (modalGroup === group) setAccessModalStatus('Akses disetujui! Memuat data asli...', 'ok');
+      await reloadGroupData(group);
+      if (modalGroup === group) closeAccessModal();
+    } else if (data.status === 'expired' || data.status === 'not_found') {
+      clearInterval(entry.pollTimer);
+      entry.pollTimer = null;
+      entry.requestId = null;
+      try { sessionStorage.removeItem('vizRequestId_' + group); } catch (e) {}
+      updateLockBanner();
+    }
+  } catch (err) {
+    console.warn('Gagal cek status akses:', err);
+  }
+}
+
+function scheduleTokenExpiry(group) {
+  const entry = getVizEntry(group);
+  if (entry.expiryTimer) clearTimeout(entry.expiryTimer);
+  const ms = new Date(entry.expiresAt).getTime() - Date.now();
+  entry.expiryTimer = setTimeout(() => {
+    entry.token = null;
+    entry.expiresAt = null;
+    try {
+      sessionStorage.removeItem('vizAccessToken_' + group);
+      sessionStorage.removeItem('vizAccessExpiresAt_' + group);
+    } catch (e) {}
+    reloadGroupData(group);
+  }, Math.max(ms, 0));
+}
+
+// Kalau ada token viz-access yang masih berlaku (dari sesi sebelumnya di tab
+// yang sama) atau ada permintaan yang masih pending untuk grup tertentu,
+// lanjutkan otomatis tanpa perlu request baru.
+function restoreVizSession() {
+  Object.keys(ACCESS_GROUP_LABELS).forEach(group => {
+    try {
+      const token = sessionStorage.getItem('vizAccessToken_' + group);
+      const expiresAt = sessionStorage.getItem('vizAccessExpiresAt_' + group);
+      if (token && expiresAt && new Date(expiresAt).getTime() > Date.now()) {
+        const entry = getVizEntry(group);
+        entry.token = token;
+        entry.expiresAt = expiresAt;
+        scheduleTokenExpiry(group);
+        return;
+      }
+      const pendingId = sessionStorage.getItem('vizRequestId_' + group);
+      if (pendingId) {
+        const entry = getVizEntry(group);
+        entry.requestId = pendingId;
+        startPolling(group);
+      }
+    } catch (e) {}
+  });
+}
+
+// ---------------------------------------------------------------------------
 // INIT
 // ---------------------------------------------------------------------------
 function wireControls() {
   document.getElementById('downloadPdfBtn').onclick = downloadPdf;
   document.getElementById('downloadExcelBtn').onclick = downloadExcel;
+  const requestBtn = document.getElementById('requestAccessBtn');
+  const cancelBtn = document.getElementById('accessModalCancel');
+  const submitBtn = document.getElementById('accessModalSubmit');
+  if (requestBtn) requestBtn.addEventListener('click', openAccessModal);
+  if (cancelBtn) cancelBtn.addEventListener('click', closeAccessModal);
+  if (submitBtn) submitBtn.addEventListener('click', submitAccessRequest);
 }
 
 async function init() {
@@ -1055,10 +951,10 @@ async function init() {
   buildMenuSub();
   wireControls();
   checkAdminStatus();
+  restoreVizSession();
   // Cuma dataset pertama (Level Waduk Manggar) yang di-fetch saat halaman
   // dibuka. Dataset lain baru di-fetch saat tab-nya diklik (lihat
-  // selectDataset). Ini yang bikin loading pertama jauh lebih cepat
-  // dibanding fetch semua 17 dataset sekaligus di awal.
+  // selectDataset).
   await selectDataset(currentKey);
 }
 

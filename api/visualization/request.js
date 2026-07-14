@@ -1,7 +1,7 @@
 const crypto = require('crypto');
 const nodemailer = require('nodemailer');
 const { pool, ensureVizTables } = require('../_db');
-const { isValidDataType, DATASETS } = require('./_columns');
+const { isValidAccessGroup, ACCESS_GROUP_LABELS } = require('./_columns');
 
 function getBaseUrl(req) {
   if (process.env.APP_BASE_URL) return process.env.APP_BASE_URL.replace(/\/$/, '');
@@ -22,8 +22,8 @@ module.exports = async (req, res) => {
   if (!requestedBy || !String(requestedBy).trim()) {
     return res.status(400).json({ error: 'Nama wajib diisi' });
   }
-  if (dataType && !isValidDataType(dataType)) {
-    return res.status(400).json({ error: 'dataType tidak dikenal' });
+  if (!dataType || !isValidAccessGroup(dataType)) {
+    return res.status(400).json({ error: 'dataType (grup akses) wajib diisi dan harus dikenal' });
   }
 
   const approveSecret = crypto.randomBytes(24).toString('hex');
@@ -31,12 +31,12 @@ module.exports = async (req, res) => {
   const { rows } = await pool.query(
     `INSERT INTO access_requests (requested_by, data_type, reason, status, approve_secret)
      VALUES ($1, $2, $3, 'pending', $4) RETURNING id`,
-    [String(requestedBy).trim(), dataType || null, reason || null, approveSecret]
+    [String(requestedBy).trim(), dataType, reason || null, approveSecret]
   );
   const requestId = rows[0].id;
 
   const approveUrl = `${getBaseUrl(req)}/api/visualization/approve?id=${requestId}&secret=${approveSecret}`;
-  const dataTypeLabel = dataType && DATASETS[dataType] ? DATASETS[dataType].label : 'Data Pengambilan Air Baku';
+  const dataTypeLabel = ACCESS_GROUP_LABELS[dataType];
 
   try {
     const transporter = nodemailer.createTransport({

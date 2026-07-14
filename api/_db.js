@@ -65,6 +65,58 @@ async function ensureVizTables() {
       zamp NUMERIC,
       kampung_baru_ulu NUMERIC
     );
+
+    CREATE TABLE IF NOT EXISTS manggar_level_curahhujan (
+      tanggal DATE PRIMARY KEY,
+      level_waduk_manggar_m NUMERIC,
+      curah_hujan_mm NUMERIC
+    );
+
+    CREATE TABLE IF NOT EXISTS kualitas_air_manggar_teritip (
+      tanggal DATE PRIMARY KEY,
+      ntu_manggar NUMERIC,
+      ph_manggar NUMERIC,
+      ntu_teritip NUMERIC,
+      ph_teritip NUMERIC
+    );
+
+    CREATE TABLE IF NOT EXISTS teritip_level (
+      tanggal DATE PRIMARY KEY,
+      level_waduk_teritip_m NUMERIC
+    );
+
+    -- Daftar sumur aktif per instalasi. Ternormalisasi (bukan kolom tetap)
+    -- karena admin bisa tambah/hapus sumur kapan saja lewat
+    -- apps/input-data-historis.html tanpa perlu ALTER TABLE.
+    -- category ('debit'/'level') dipisah karena data historis asli memakai
+    -- penomoran sumur yang tidak selalu sama persis antara file debit dan
+    -- level (mis. "Sumur_01" di debit vs "Sumur_1" di level) untuk instalasi
+    -- yang sama -- dipisah per kategori supaya tidak memaksakan penyamaan
+    -- yang belum tentu benar.
+    CREATE TABLE IF NOT EXISTS sumur_wells (
+      installation TEXT NOT NULL,
+      category TEXT NOT NULL,
+      well_name TEXT NOT NULL,
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      PRIMARY KEY (installation, category, well_name)
+    );
+
+    CREATE TABLE IF NOT EXISTS sumur_debit_readings (
+      installation TEXT NOT NULL,
+      well_name TEXT NOT NULL,
+      bulan DATE NOT NULL,
+      value NUMERIC,
+      PRIMARY KEY (installation, well_name, bulan)
+    );
+
+    CREATE TABLE IF NOT EXISTS sumur_level_readings (
+      installation TEXT NOT NULL,
+      well_name TEXT NOT NULL,
+      bulan DATE NOT NULL,
+      statis NUMERIC,
+      dinamis NUMERIC,
+      PRIMARY KEY (installation, well_name, bulan)
+    );
   `);
   vizInitialized = true;
 }
