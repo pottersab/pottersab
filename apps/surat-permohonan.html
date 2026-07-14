@@ -701,6 +701,26 @@ function updateAccessBanner(){
   const statusText = document.getElementById('lockStatusText');
   if(statusText) statusText.textContent = pollTimer ? ' Menunggu persetujuan admin lewat email...' : '';
   updateTtdTemplateAccess();
+  updateFormPlaceholders();
+}
+
+// Placeholder "Contoh: ..." di kolom form (beda dari ph-ghost di preview) tetap
+// bawaan HTML, dan sebelumnya tampil untuk siapapun. Supaya konsisten dengan
+// preview, sekarang disembunyikan juga untuk publik pada field yang sama
+// dengan yang di-ghost di preview -- dikembalikan otomatis begitu ada akses.
+const PLACEHOLDER_FIELDS = ['perihal','kepadaIsi','poin1','poin2','ttdNama','ttdJabatan'];
+const ORIGINAL_PLACEHOLDERS = {};
+PLACEHOLDER_FIELDS.forEach(id=>{
+  const el = document.getElementById(id);
+  if(el) ORIGINAL_PLACEHOLDERS[id] = el.getAttribute('placeholder') || '';
+});
+function updateFormPlaceholders(){
+  const access = hasVizAccess();
+  PLACEHOLDER_FIELDS.forEach(id=>{
+    const el = document.getElementById(id);
+    if(!el) return;
+    el.setAttribute('placeholder', access ? ORIGINAL_PLACEHOLDERS[id] : '');
+  });
 }
 
 // Dropdown "Pilih Cepat" berisi nama & jabatan pejabat asli -- cuma boleh dipakai
