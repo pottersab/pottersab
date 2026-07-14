@@ -1,7 +1,7 @@
 const { pool, ensureVizTables } = require('../../lib/db');
 const { requireAdmin } = require('../../lib/auth');
 
-// Admin-only. Dua mode (digabung 1 file supaya tidak menambah jumlah
+// Admin-only. Tiga mode (digabung 1 file supaya tidak menambah jumlah
 // Serverless Functions):
 //   GET /api/visualization/admin-requests
 //     -> daftar access_requests (tanpa approve_secret/token -- sensitif,
@@ -9,11 +9,27 @@ const { requireAdmin } = require('../../lib/auth');
 //   GET /api/visualization/admin-requests?requestId=123
 //     -> daftar access_logs milik request itu (riwayat lihat/unduh data
 //        oleh viewer yang di-approve), terbaru dulu.
+//   DELETE /api/visualization/admin-requests?ids=1,2,3
+//     -> hapus access_requests terpilih (satuan atau massal) + access_logs
+//        miliknya (tidak ada FK, jadi dihapus manual dulu supaya tidak
+//        jadi baris yatim).
 module.exports = async (req, res) => {
   await ensureVizTables();
 
   const user = requireAdmin(req, res);
   if (!user) return;
+
+  if (req.method === 'DELETE') {
+    const idsParam = req.query.ids;
+    if (!idsParam) return res.status(400).json({ error: 'ids wajib diisi' });
+    const ids = String(idsParam).split(',').map(s => s.trim()).filter(Boolean);
+    if (ids.length === 0) return res.status(400).json({ error: 'ids tidak valid' });
+
+    await pool.query('DELETE FROM access_logs WHERE request_id = ANY($1::bigint[])', [ids]);
+    await pool.query('DELETE FROM access_requests WHERE id = ANY($1::bigint[])', [ids]);
+
+    return res.status(200).json({ success: true, deleted: ids.length });
+  }
 
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });

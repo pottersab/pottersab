@@ -204,6 +204,20 @@
     margin-top: 16px;
   }
 
+  .bulk-bar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: #fee2e2;
+    border: 1px solid #fecaca;
+    border-radius: var(--radius);
+    padding: 10px 16px;
+    margin-bottom: 16px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--error);
+  }
+
   /* ===== Stats ===== */
   .stats {
     display: grid;
@@ -623,6 +637,11 @@
       <button class="action-btn btn-secondary" id="refreshBtn">Refresh</button>
     </div>
 
+    <div class="bulk-bar" id="bulkBarHistory" style="display:none;">
+      <span id="bulkCountHistory">0</span> dipilih
+      <button class="action-btn btn-danger" id="bulkDeleteHistoryBtn">Hapus Terpilih</button>
+    </div>
+
     <div class="table-wrapper">
       <div id="historyContent" class="table-empty">
         <div class="loading">Memuat data...</div>
@@ -638,6 +657,11 @@
     <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:16px;">
       <div class="section-desc" style="margin-bottom:0;">Permintaan akses viewer (Data Pengambilan Air Baku &amp; Data Waduk dan Sumur) dan riwayat lihat/unduh data asli mereka.</div>
       <button class="action-btn btn-secondary" id="refreshRequestsBtn">Refresh</button>
+    </div>
+
+    <div class="bulk-bar" id="bulkBarAccess" style="display:none;">
+      <span id="bulkCountAccess">0</span> dipilih
+      <button class="action-btn btn-danger" id="bulkDeleteAccessBtn">Hapus Terpilih</button>
     </div>
 
     <div class="table-wrapper">
@@ -675,6 +699,22 @@
   // kali diaktifkan (lihat `loaded`).
   const historyState = { offset: 0, rows: [], hasMore: true, loaded: false, filters: {} };
   const accessState = { offset: 0, rows: [], hasMore: true, loaded: false };
+
+  // Pilihan checkbox multi-select, disimpan sebagai id (string) supaya
+  // konsisten dipakai di query DELETE (?ids=1,2,3) dan dicek ulang setiap
+  // render supaya centang tidak hilang saat "Muat Lebih Banyak" menambah
+  // baris baru.
+  const selectedHistoryIds = new Set();
+  const selectedAccessIds = new Set();
+
+  function updateBulkBar(kind) {
+    const ids = kind === 'history' ? selectedHistoryIds : selectedAccessIds;
+    const rows = kind === 'history' ? historyState.rows : accessState.rows;
+    document.getElementById(kind === 'history' ? 'bulkBarHistory' : 'bulkBarAccess').style.display = ids.size > 0 ? 'flex' : 'none';
+    document.getElementById(kind === 'history' ? 'bulkCountHistory' : 'bulkCountAccess').textContent = ids.size;
+    const selectAll = document.getElementById(kind === 'history' ? 'selectAllHistory' : 'selectAllAccess');
+    if (selectAll) selectAll.checked = rows.length > 0 && ids.size === rows.length;
+  }
 
   function switchTab(tab) {
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
@@ -716,6 +756,8 @@
   document.getElementById('loadMoreHistoryBtn').addEventListener('click', () => loadHistory(false));
   document.getElementById('refreshRequestsBtn').addEventListener('click', () => loadAccessRequests(true));
   document.getElementById('loadMoreAccessBtn').addEventListener('click', () => loadAccessRequests(false));
+  document.getElementById('bulkDeleteHistoryBtn').addEventListener('click', bulkDeleteHistory);
+  document.getElementById('bulkDeleteAccessBtn').addEventListener('click', bulkDeleteAccess);
 
   // ===== Riwayat Surat (history) =====
   // reset=true mulai dari batch pertama lagi (dipakai saat ganti filter /
@@ -728,6 +770,8 @@
       historyState.rows = [];
       historyState.hasMore = true;
       historyState.filters = filters || {};
+      selectedHistoryIds.clear();
+      updateBulkBar('history');
     }
 
     try {
@@ -750,6 +794,7 @@
 
       renderTable(historyState.rows);
       updateStats(data.stats || { total: 0, admin: 0, guest: 0 });
+      updateBulkBar('history');
       document.getElementById('loadMoreHistoryBtn').style.display = historyState.hasMore ? 'inline-block' : 'none';
     } catch (err) {
       showMessage('Gagal memuat data history', 'error');
@@ -775,6 +820,7 @@
       <table>
         <thead>
           <tr>
+            <th style="width:36px;"><input type="checkbox" id="selectAllHistory"></th>
             <th>Tipe Dokumen</th>
             <th>Nama Dokumen</th>
             <th>Pembuat</th>
@@ -789,9 +835,11 @@
       const date = new Date(item.createdAt);
       const timeAgo = getTimeAgo(date);
       const formattedDate = date.toLocaleString('id-ID');
+      const checked = selectedHistoryIds.has(String(item.id)) ? 'checked' : '';
 
       html += `
         <tr>
+          <td><input type="checkbox" class="row-check-history" value="${item.id}" ${checked}></td>
           <td><span class="doc-type">${item.documentType}</span></td>
           <td>${escapeHtml(item.documentName)}</td>
           <td>
@@ -811,25 +859,84 @@
 
     html += '</tbody></table>';
     container.innerHTML = html;
+
+    document.getElementById('selectAllHistory').addEventListener('change', (e) => {
+      const checked = e.target.checked;
+      container.querySelectorAll('.row-check-history').forEach(cb => {
+        cb.checked = checked;
+        if (checked) selectedHistoryIds.add(cb.value); else selectedHistoryIds.delete(cb.value);
+      });
+      updateBulkBar('history');
+    });
+    container.querySelectorAll('.row-check-history').forEach(cb => {
+      cb.addEventListener('change', () => {
+        if (cb.checked) selectedHistoryIds.add(cb.value); else selectedHistoryIds.delete(cb.value);
+        updateBulkBar('history');
+      });
+    });
   }
 
   async function deleteEntry(id) {
     if (!confirm('Yakin ingin menghapus entry ini?')) return;
 
     try {
-      const response = await fetch(`${API_URL}/api/history?id=${id}`, {
+      const response = await fetch(`${API_URL}/api/history?ids=${id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
 
       if (response.ok) {
         showMessage('Entry berhasil dihapus', 'success');
-        loadHistory(true);
+        loadHistory(true, historyState.filters);
       } else {
         showMessage('Gagal menghapus entry', 'error');
       }
     } catch (err) {
       showMessage('Gagal menghapus entry', 'error');
+    }
+  }
+
+  async function bulkDeleteHistory() {
+    const ids = Array.from(selectedHistoryIds);
+    if (ids.length === 0) return;
+    if (!confirm(`Yakin ingin menghapus ${ids.length} entri terpilih?`)) return;
+
+    try {
+      const response = await fetch(`${API_URL}/api/history?ids=${ids.join(',')}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      if (response.ok) {
+        showMessage(`${ids.length} entri berhasil dihapus`, 'success');
+        loadHistory(true, historyState.filters);
+      } else {
+        showMessage('Gagal menghapus entri terpilih', 'error');
+      }
+    } catch (err) {
+      showMessage('Gagal menghapus entri terpilih', 'error');
+    }
+  }
+
+  async function bulkDeleteAccess() {
+    const ids = Array.from(selectedAccessIds);
+    if (ids.length === 0) return;
+    if (!confirm(`Yakin ingin menghapus ${ids.length} permintaan akses terpilih? Riwayat lihat/unduh terkait juga ikut terhapus.`)) return;
+
+    try {
+      const response = await fetch(`${API_URL}/api/visualization/admin-requests?ids=${ids.join(',')}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      if (response.ok) {
+        showMessage(`${ids.length} permintaan akses berhasil dihapus`, 'success');
+        loadAccessRequests(true);
+      } else {
+        showMessage('Gagal menghapus permintaan terpilih', 'error');
+      }
+    } catch (err) {
+      showMessage('Gagal menghapus permintaan terpilih', 'error');
     }
   }
 
@@ -862,6 +969,8 @@
       accessState.offset = 0;
       accessState.rows = [];
       accessState.hasMore = true;
+      selectedAccessIds.clear();
+      updateBulkBar('access');
     }
 
     try {
@@ -878,6 +987,7 @@
       accessState.loaded = true;
 
       renderAccessRequests(accessState.rows);
+      updateBulkBar('access');
       document.getElementById('loadMoreAccessBtn').style.display = accessState.hasMore ? 'inline-block' : 'none';
     } catch (err) {
       document.getElementById('accessRequestsContent').innerHTML = '<div class="table-empty">Gagal memuat data permintaan akses</div>';
@@ -896,6 +1006,7 @@
       <table>
         <thead>
           <tr>
+            <th style="width:36px;"><input type="checkbox" id="selectAllAccess"></th>
             <th>Nama</th>
             <th>Diminta dari / Alasan</th>
             <th>Status</th>
@@ -911,9 +1022,11 @@
       const statusBadge = r.status === 'approved'
         ? '<span class="user-role" style="background:#dcfce7;color:#166534;">APPROVED</span>'
         : '<span class="user-role">PENDING</span>';
+      const checked = selectedAccessIds.has(String(r.id)) ? 'checked' : '';
 
       html += `
         <tr>
+          <td><input type="checkbox" class="row-check-access" value="${r.id}" ${checked}></td>
           <td>${escapeHtml(r.requested_by)}</td>
           <td>${escapeHtml(r.data_type || '-')}${r.reason ? '<div style="font-size:11px;color:var(--muted);">' + escapeHtml(r.reason) + '</div>' : ''}</td>
           <td>${statusBadge}</td>
@@ -924,13 +1037,28 @@
           <td><button class="action-btn btn-secondary" data-toggle-logs="${r.id}">Lihat Riwayat</button></td>
         </tr>
         <tr id="logsRow-${r.id}" style="display:none;">
-          <td colspan="5" id="logsCell-${r.id}" style="background:var(--paper);"></td>
+          <td colspan="6" id="logsCell-${r.id}" style="background:var(--paper);"></td>
         </tr>
       `;
     });
 
     html += '</tbody></table>';
     container.innerHTML = html;
+
+    document.getElementById('selectAllAccess').addEventListener('change', (e) => {
+      const checked = e.target.checked;
+      container.querySelectorAll('.row-check-access').forEach(cb => {
+        cb.checked = checked;
+        if (checked) selectedAccessIds.add(cb.value); else selectedAccessIds.delete(cb.value);
+      });
+      updateBulkBar('access');
+    });
+    container.querySelectorAll('.row-check-access').forEach(cb => {
+      cb.addEventListener('change', () => {
+        if (cb.checked) selectedAccessIds.add(cb.value); else selectedAccessIds.delete(cb.value);
+        updateBulkBar('access');
+      });
+    });
 
     container.querySelectorAll('[data-toggle-logs]').forEach(btn => {
       btn.addEventListener('click', () => toggleRequestLogs(btn.getAttribute('data-toggle-logs'), btn));

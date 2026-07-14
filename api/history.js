@@ -112,10 +112,15 @@ module.exports = async (req, res) => {
     const user = requireAdmin(req, res);
     if (!user) return;
 
-    const { id } = req.query;
-    await pool.query('DELETE FROM history WHERE id = $1', [id]);
+    // ?ids=1,2,3 (bulk) tetap kompatibel dengan ?id=1 (satuan, dipakai kode lama).
+    const idsParam = req.query.ids || req.query.id;
+    if (!idsParam) return res.status(400).json({ error: 'ids wajib diisi' });
+    const ids = String(idsParam).split(',').map(s => s.trim()).filter(Boolean);
+    if (ids.length === 0) return res.status(400).json({ error: 'ids tidak valid' });
 
-    return res.status(200).json({ success: true });
+    await pool.query('DELETE FROM history WHERE id = ANY($1::bigint[])', [ids]);
+
+    return res.status(200).json({ success: true, deleted: ids.length });
   }
 
   return res.status(405).json({ error: 'Method not allowed' });
