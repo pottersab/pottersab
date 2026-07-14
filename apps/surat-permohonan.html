@@ -90,6 +90,32 @@
   .doc-footer-preview{position:absolute;left:0;right:0;bottom:10mm;text-align:center;font-size:9.5px;line-height:1.5;color:#000;padding:0 19.05mm;}
   .doc-footer-preview b{display:block;}
   .ph-ghost{color:#9aa3ad;font-style:italic;}
+
+  /* ===== Akses viewer: lock/viewer banner + modal "Minta Akses" ===== */
+  .lock-banner{display:none;align-items:center;justify-content:space-between;gap:14px;background:var(--accent-soft);border:1px solid var(--accent);border-radius:9px;padding:12px 16px;margin-bottom:16px;font-size:13px;flex-wrap:wrap;grid-column:1/-1;}
+  .lock-banner b{color:var(--navy-dark);}
+  .lock-banner .req-btn{background:var(--navy);color:#fff;border:none;border-radius:7px;padding:9px 14px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;}
+  .lock-banner .req-btn:hover{background:var(--navy-dark);}
+  .lock-status{display:block;font-size:11.5px;color:var(--muted);margin-top:2px;}
+  .viewer-banner{display:none;align-items:center;gap:10px;background:#e7f4ee;border:1px solid #8fbfa4;border-radius:9px;padding:10px 16px;margin-bottom:16px;font-size:13px;color:#245c40;grid-column:1/-1;}
+
+  .modal-overlay{display:none;position:fixed;inset:0;background:rgba(14,42,50,.55);align-items:center;justify-content:center;z-index:1000;padding:20px;}
+  .modal{background:#fff;border-radius:10px;padding:22px 24px;max-width:380px;width:100%;}
+  .modal h3{margin:0 0 6px;font-size:16px;color:var(--navy-dark);}
+  .modal p{font-size:12.5px;color:var(--muted);margin:0 0 14px;line-height:1.5;}
+  .modal label{display:block;font-size:12px;color:var(--muted);margin:10px 0 4px;}
+  .modal input,.modal textarea{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:7px;font-size:13.5px;font-family:inherit;}
+  .modal textarea{min-height:56px;resize:vertical;}
+  .modal-actions{display:flex;gap:10px;margin-top:16px;}
+  .modal-actions button{flex:1;padding:10px;border-radius:7px;font-size:13px;font-weight:700;cursor:pointer;border:none;}
+  .modal-cancel{background:#fff;color:var(--muted);border:1px solid var(--line) !important;}
+  .modal-submit{background:var(--navy);color:#fff;}
+  .btn-whatsapp{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;margin-top:10px;font-family:inherit;font-weight:700;font-size:13px;padding:10px 16px;border-radius:7px;border:none;background:#25D366;color:#fff;cursor:pointer;}
+  .btn-whatsapp:hover{background:#1DA851;}
+  .modal-status{font-size:12px;text-align:center;margin-top:10px;min-height:16px;color:var(--muted);}
+  .modal-status.error{color:var(--danger);}
+  .modal-status.ok{color:#245c40;}
+  .modal-status.pending{color:var(--muted);}
   .photo-page-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;padding:20px 20px 30px;}
   .photo-page-grid.landscape{grid-template-columns:1fr;justify-items:center;}
   .photo-page-grid .ph-cell{display:flex;align-items:center;justify-content:center;border:1px solid #ddd;background:#fafafa;min-height:420px;}
@@ -346,6 +372,15 @@
 </div>
 
 <div class="wrap">
+
+  <div class="lock-banner" id="lockBanner">
+    <div>🔒 Contoh isi surat <b>disembunyikan</b> di pratinjau &mdash; form tetap bisa kamu isi &amp; unduh sendiri, tapi contoh referensi cuma tampil untuk yang sudah punya akses.<span class="lock-status" id="lockStatusText"></span></div>
+    <button type="button" class="req-btn" id="requestAccessBtn">Minta Akses</button>
+  </div>
+  <div class="viewer-banner" id="viewerBanner">
+    ✅ Kamu punya akses data &mdash; contoh isi surat ditampilkan sebagai referensi (teks abu-abu miring pada preview).
+  </div>
+
   <div>
 
     <div class="card">
@@ -451,6 +486,23 @@
       <h2 style="margin-bottom:0;border-bottom:none;">Pratinjau</h2>
     </div>
     <div id="docPreviewContainer"></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="accessModalOverlay">
+  <div class="modal">
+    <h3>Minta Akses Data Asli</h3>
+    <p>Isi nama kamu &mdash; admin akan menerima notifikasi lewat email dan kamu bisa chat admin lewat WhatsApp jika kebutuhan mendesak, jangan tutup jendela ini sampai akses diberikan.</p>
+    <label for="accessNamaInput">Nama</label>
+    <input type="text" id="accessNamaInput" placeholder="Nama kamu">
+    <label for="accessAlasanInput">Keperluan (opsional)</label>
+    <textarea id="accessAlasanInput" placeholder="Contoh: untuk cek format sebelum tanda tangan"></textarea>
+    <div class="modal-actions">
+      <button type="button" class="modal-cancel" id="accessModalCancel">Batal</button>
+      <button type="button" class="modal-submit" id="accessModalSubmit">Kirim Permintaan</button>
+    </div>
+    <button type="button" class="btn-whatsapp" id="accessModalWhatsapp">💬 Chat Admin via WhatsApp</button>
+    <div class="modal-status" id="accessModalStatus"></div>
   </div>
 </div>
 
@@ -612,6 +664,181 @@ const TEMBUSAN_ITEMS = [
   'Arsip.'
 ];
 const DEFAULT_PERSONS = [];
+
+// ---------------------------------------------------------------------------
+// AKSES VIEWER -- pakai token site-wide yang sama dengan Data Visualization
+// (apps/library, apps/riwayat-air-baku). Kalau user sudah pernah di-approve
+// di halaman viz manapun (atau di sini), token vizAccessToken/vizAccessExpiresAt
+// yang sama otomatis dikenali di sini juga, dan sebaliknya. Admin situs (token
+// + role admin) selalu punya akses tanpa approval terpisah.
+// ---------------------------------------------------------------------------
+const ACCESS_DATATYPE = 'surat_permohonan';
+const ACCESS_DATATYPE_LABEL = 'Generator Surat Permohonan';
+let vizRequestId = null;
+let pollTimer = null;
+let expiryTimer = null;
+
+function hasVizAccess(){
+  const token = localStorage.getItem('token');
+  const role = localStorage.getItem('role');
+  if(token && role === 'admin') return true;
+  const vizToken = localStorage.getItem('vizAccessToken');
+  const vizExpiresAt = localStorage.getItem('vizAccessExpiresAt');
+  return !!(vizToken && vizExpiresAt && new Date(vizExpiresAt).getTime() > Date.now());
+}
+// Field kosong: kalau ada akses -> ph-ghost (contoh ditampilkan); kalau publik -> polos, tanpa ghost sama sekali.
+function ghostClass(val){ return val ? '' : (hasVizAccess() ? 'ph-ghost' : ''); }
+function ghostText(val, example){ return val || (hasVizAccess() ? example : ''); }
+
+function updateAccessBanner(){
+  const lockBanner = document.getElementById('lockBanner');
+  const viewerBanner = document.getElementById('viewerBanner');
+  if(!lockBanner || !viewerBanner) return;
+  const access = hasVizAccess();
+  lockBanner.style.display = access ? 'none' : 'flex';
+  viewerBanner.style.display = access ? 'flex' : 'none';
+  const statusText = document.getElementById('lockStatusText');
+  if(statusText) statusText.textContent = pollTimer ? ' Menunggu persetujuan admin lewat email...' : '';
+}
+
+function openAccessModal(){
+  const overlay = document.getElementById('accessModalOverlay');
+  if(!overlay) return;
+  overlay.style.display = 'flex';
+  setAccessModalStatus('', '');
+}
+function closeAccessModal(){
+  const overlay = document.getElementById('accessModalOverlay');
+  if(overlay) overlay.style.display = 'none';
+}
+function setAccessModalStatus(msg, cls){
+  const el = document.getElementById('accessModalStatus');
+  if(!el) return;
+  el.textContent = msg;
+  el.className = 'modal-status ' + (cls || '');
+}
+
+const ADMIN_WHATSAPP_NUMBER = '6281381146320';
+function openWhatsappChat(){
+  // window.open() harus jadi statement PERTAMA yang jalan di handler ini, sebelum
+  // baca DOM/rangkai URL -- kalau tidak, sebagian browser/popup blocker tidak lagi
+  // menganggapnya hasil klik langsung dan diam-diam memblokirnya.
+  const win = window.open('', '_blank');
+  const nama = document.getElementById('accessNamaInput').value.trim();
+  const namaPart = nama ? ` ${nama}` : '';
+  const message = `Halo, saya${namaPart} baru saja mengirim permintaan akses data ${ACCESS_DATATYPE_LABEL} di website, mohon persetujuannya.`;
+  const url = `https://wa.me/${ADMIN_WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
+  if(win) win.location.href = url;
+  else window.open(url, '_blank');
+}
+
+async function submitAccessRequest(){
+  const nama = document.getElementById('accessNamaInput').value.trim();
+  const alasan = document.getElementById('accessAlasanInput').value.trim();
+  if(!nama){ setAccessModalStatus('Isi nama dulu ya.', 'error'); return; }
+
+  const btn = document.getElementById('accessModalSubmit');
+  btn.disabled = true;
+  setAccessModalStatus('Mengirim permintaan...', 'pending');
+  try{
+    const res = await fetch('/api/visualization/request', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ requestedBy: nama, dataType: ACCESS_DATATYPE, reason: alasan || undefined })
+    });
+    const data = await res.json();
+    if(!res.ok || !data.success) throw new Error(data.error || 'Gagal mengirim permintaan.');
+    vizRequestId = data.requestId;
+    try{ localStorage.setItem('vizRequestId', String(vizRequestId)); }catch(e){}
+    setAccessModalStatus('Permintaan terkirim. Menunggu admin menyetujui lewat email -- halaman ini akan otomatis update.', 'pending');
+    startPolling();
+  }catch(err){
+    setAccessModalStatus(err.message, 'error');
+  }
+  btn.disabled = false;
+}
+
+function startPolling(){
+  if(pollTimer) clearInterval(pollTimer);
+  updateAccessBanner();
+  pollTimer = setInterval(checkAccessStatus, 4000);
+  checkAccessStatus();
+}
+
+async function checkAccessStatus(){
+  if(!vizRequestId) return;
+  try{
+    const res = await fetch(`/api/visualization/status?id=${vizRequestId}`);
+    const data = await res.json();
+    if(data.status === 'approved'){
+      clearInterval(pollTimer);
+      pollTimer = null;
+      try{
+        localStorage.setItem('vizAccessToken', data.token);
+        localStorage.setItem('vizAccessExpiresAt', data.expiresAt);
+        localStorage.removeItem('vizRequestId');
+      }catch(e){}
+      scheduleTokenExpiry(data.expiresAt);
+      setAccessModalStatus('Akses disetujui! Memuat contoh isi surat...', 'ok');
+      updateAccessBanner();
+      renderPreview();
+      closeAccessModal();
+    } else if(data.status === 'expired' || data.status === 'not_found'){
+      clearInterval(pollTimer);
+      pollTimer = null;
+      vizRequestId = null;
+      try{ localStorage.removeItem('vizRequestId'); }catch(e){}
+      updateAccessBanner();
+    }
+  }catch(err){
+    console.warn('Gagal cek status akses:', err);
+  }
+}
+
+function scheduleTokenExpiry(expiresAt){
+  if(expiryTimer) clearTimeout(expiryTimer);
+  const target = expiresAt || localStorage.getItem('vizAccessExpiresAt');
+  if(!target) return;
+  const ms = new Date(target).getTime() - Date.now();
+  expiryTimer = setTimeout(()=>{
+    try{
+      localStorage.removeItem('vizAccessToken');
+      localStorage.removeItem('vizAccessExpiresAt');
+    }catch(e){}
+    updateAccessBanner();
+    renderPreview();
+  }, Math.max(ms, 0));
+}
+
+// Kalau ada token viz-access yang masih berlaku (dari approval di halaman ini ATAU
+// apps/library / apps/riwayat-air-baku -- sama-sama pakai localStorage key ini),
+// atau ada permintaan yang masih pending, lanjutkan otomatis tanpa perlu request baru.
+function restoreVizSession(){
+  try{
+    const token = localStorage.getItem('vizAccessToken');
+    const expiresAt = localStorage.getItem('vizAccessExpiresAt');
+    if(token && expiresAt && new Date(expiresAt).getTime() > Date.now()){
+      scheduleTokenExpiry(expiresAt);
+      return;
+    }
+    const pendingId = localStorage.getItem('vizRequestId');
+    if(pendingId){
+      vizRequestId = pendingId;
+      startPolling();
+    }
+  }catch(e){}
+}
+
+function wireAccessControls(){
+  const requestBtn = document.getElementById('requestAccessBtn');
+  const cancelBtn = document.getElementById('accessModalCancel');
+  const submitBtn = document.getElementById('accessModalSubmit');
+  const whatsappBtn = document.getElementById('accessModalWhatsapp');
+  if(requestBtn) requestBtn.addEventListener('click', openAccessModal);
+  if(cancelBtn) cancelBtn.addEventListener('click', closeAccessModal);
+  if(submitBtn) submitBtn.addEventListener('click', submitAccessRequest);
+  if(whatsappBtn) whatsappBtn.addEventListener('click', openWhatsappChat);
+}
 
 /* =============== Storage =============== */
 const DRAFT_KEY='spr_draft_v2';
@@ -801,10 +1028,10 @@ function renderPreview(){
   document.getElementById('nomorPreview').innerHTML = 'Nomor : ' + escapeAttr(nomorLengkap());
 
   const tglPanjang = formatTanggalPanjang(state.tanggalSurat);
-  const perihalIsGhost = !((state.perihal||'').trim());
-  const kepadaIsGhost = !((state.kepadaIsi||'').trim());
-  const perihalLines = wrapTextLines(perihalIsGhost ? EXAMPLE_TEXT.perihal : state.perihal, PERIHAL_MAXW, PERIHAL_FONT);
-  const kepadaLines = wrapTextLines(kepadaIsGhost ? EXAMPLE_TEXT.kepadaIsi : state.kepadaIsi, KEPADA_MAXW, KEPADA_FONT);
+  const perihalIsGhost = !!ghostClass(state.perihal);
+  const kepadaIsGhost = !!ghostClass(state.kepadaIsi);
+  const perihalLines = wrapTextLines(ghostText(state.perihal, EXAMPLE_TEXT.perihal), PERIHAL_MAXW, PERIHAL_FONT);
+  const kepadaLines = wrapTextLines(ghostText(state.kepadaIsi, EXAMPLE_TEXT.kepadaIsi), KEPADA_MAXW, KEPADA_FONT);
 
   const perihalHtml = perihalLines.map((l,i)=>{
     const isLast = i===perihalLines.length-1;
@@ -845,16 +1072,16 @@ function renderPreview(){
         </table>
         <div style="height:14px;"></div>
         <div class="doc-list">
-          <div class="doc-list-item"><span class="num">1.</span><span>Memperhatikan <span class="${state.poin1?'':'ph-ghost'}">${escapeAttr(state.poin1 || EXAMPLE_TEXT.poin1)}</span></span></div>
-          <div class="doc-list-item"><span class="num">2.</span><span>Berkenaan dengan hal tersebut, <span class="${state.poin2?'':'ph-ghost'}">${escapeAttr(state.poin2 || EXAMPLE_TEXT.poin2)}</span></span></div>
+          <div class="doc-list-item"><span class="num">1.</span><span>Memperhatikan <span class="${ghostClass(state.poin1)}">${escapeAttr(ghostText(state.poin1, EXAMPLE_TEXT.poin1))}</span></span></div>
+          <div class="doc-list-item"><span class="num">2.</span><span>Berkenaan dengan hal tersebut, <span class="${ghostClass(state.poin2)}">${escapeAttr(ghostText(state.poin2, EXAMPLE_TEXT.poin2))}</span></span></div>
           <div class="doc-list-item"><span class="num">3.</span><span>${POIN3_TEXT}</span></div>
         </div>
         <div style="height:60px;"></div>
         <div class="doc-sign">
-          <div class="${state.ttdJabatan?'':'ph-ghost'}">${escapeAttr(state.ttdJabatan || EXAMPLE_TEXT.ttdJabatan)}</div>
+          <div class="${ghostClass(state.ttdJabatan)}">${escapeAttr(ghostText(state.ttdJabatan, EXAMPLE_TEXT.ttdJabatan))}</div>
           <div>${escapeAttr(state.ttdPerusahaan || '')}</div>
           <div style="height:60px;"></div>
-          <div class="nama ${state.ttdNama?'':'ph-ghost'}">${escapeAttr(state.ttdNama || EXAMPLE_TEXT.ttdNama)}</div>
+          <div class="nama ${ghostClass(state.ttdNama)}">${escapeAttr(ghostText(state.ttdNama, EXAMPLE_TEXT.ttdNama))}</div>
         </div>
         <div style="height:24px;"></div>
         <div class="doc-tembusan">
@@ -1226,6 +1453,9 @@ bindFields();
 bindNamaJabatanAutofill();
 bindTtdTemplate();
 renderPhotoGrid();
+wireAccessControls();
+restoreVizSession();
+updateAccessBanner();
 renderPreview();
 </script>
 </body>
