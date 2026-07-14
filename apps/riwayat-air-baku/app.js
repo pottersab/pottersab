@@ -270,6 +270,7 @@ let isAdmin = false;
 let vizToken = null;
 let vizTokenExpiresAt = null;
 let vizRequestId = null;
+let modalGroup = null; // grup yang sedang diminta saat modal "Minta Akses" dibuka (buat label & pesan WhatsApp)
 let pollTimer = null;
 let expiryTimer = null;
 
@@ -741,9 +742,17 @@ function updatePdfButton() {
   }
 }
 
+function currentGroupLabel(group) {
+  const g = GROUPS.find(x => x.key === group);
+  return g ? g.label : (group || 'ini');
+}
+
 function openAccessModal() {
+  modalGroup = currentGroup;
   const overlay = document.getElementById('accessModalOverlay');
   if (!overlay) return;
+  const groupNameEl = document.getElementById('accessModalGroupName');
+  if (groupNameEl) groupNameEl.textContent = currentGroupLabel(modalGroup);
   overlay.style.display = 'flex';
   const status = document.getElementById('accessModalStatus');
   status.textContent = '';
@@ -760,6 +769,18 @@ function setAccessModalStatus(msg, cls) {
   if (!el) return;
   el.textContent = msg;
   el.className = 'status-msg ' + (cls || '');
+}
+
+// Tombol darurat: buka WhatsApp admin dengan pesan otomatis, tidak
+// menyentuh database sama sekali (tidak wajib isi nama dulu).
+const ADMIN_WHATSAPP_NUMBER = '6281381146320';
+
+function openWhatsappChat() {
+  const nama = document.getElementById('accessNamaInput').value.trim();
+  const groupLabel = currentGroupLabel(modalGroup);
+  const namaPart = nama ? ` ${nama}` : '';
+  const message = `Halo, saya${namaPart} baru saja mengirim permintaan akses data ${groupLabel} di website, mohon persetujuannya.`;
+  window.open(`https://wa.me/${ADMIN_WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`, '_blank');
 }
 
 async function submitAccessRequest() {
@@ -878,9 +899,11 @@ function wireControls() {
   const requestBtn = document.getElementById('requestAccessBtn');
   const cancelBtn = document.getElementById('accessModalCancel');
   const submitBtn = document.getElementById('accessModalSubmit');
+  const whatsappBtn = document.getElementById('accessModalWhatsapp');
   if (requestBtn) requestBtn.addEventListener('click', openAccessModal);
   if (cancelBtn) cancelBtn.addEventListener('click', closeAccessModal);
   if (submitBtn) submitBtn.addEventListener('click', submitAccessRequest);
+  if (whatsappBtn) whatsappBtn.addEventListener('click', openWhatsappChat);
 }
 
 async function init() {

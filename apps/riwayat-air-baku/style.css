@@ -141,6 +141,13 @@ h1{
   padding:9px 16px;border-radius:8px;border:none;background:var(--primary-pale);color:var(--primary);cursor:pointer;
 }
 .btn-ghost:hover{background:var(--line-muted);}
+.btn-whatsapp{
+  display:flex;align-items:center;justify-content:center;gap:6px;
+  width:100%;margin-top:10px;
+  font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:13.5px;
+  padding:10px 16px;border-radius:8px;border:none;background:#25D366;color:#fff;cursor:pointer;
+}
+.btn-whatsapp:hover{background:#1DA851;}
 .access-modal .status-msg{margin-top:10px;font-size:12.5px;min-height:16px;}
 .access-modal .status-msg.error{color:var(--low);}
 .access-modal .status-msg.ok{color:var(--good);}

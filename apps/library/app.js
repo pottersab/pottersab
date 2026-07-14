@@ -805,6 +805,18 @@ function closeAccessModal() {
   if (overlay) overlay.style.display = 'none';
 }
 
+// Tombol darurat: buka WhatsApp admin dengan pesan otomatis, tidak
+// menyentuh database sama sekali (tidak wajib isi nama dulu).
+const ADMIN_WHATSAPP_NUMBER = '6281381146320';
+
+function openWhatsappChat() {
+  const nama = document.getElementById('accessNamaInput').value.trim();
+  const groupLabel = ACCESS_GROUP_LABELS[modalGroup] || modalGroup || 'ini';
+  const namaPart = nama ? ` ${nama}` : '';
+  const message = `Halo, saya${namaPart} baru saja mengirim permintaan akses data ${groupLabel} di website, mohon persetujuannya.`;
+  window.open(`https://wa.me/${ADMIN_WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`, '_blank');
+}
+
 function setAccessModalStatus(msg, cls) {
   const el = document.getElementById('accessModalStatus');
   if (!el) return;
@@ -929,9 +941,11 @@ function wireControls() {
   const requestBtn = document.getElementById('requestAccessBtn');
   const cancelBtn = document.getElementById('accessModalCancel');
   const submitBtn = document.getElementById('accessModalSubmit');
+  const whatsappBtn = document.getElementById('accessModalWhatsapp');
   if (requestBtn) requestBtn.addEventListener('click', openAccessModal);
   if (cancelBtn) cancelBtn.addEventListener('click', closeAccessModal);
   if (submitBtn) submitBtn.addEventListener('click', submitAccessRequest);
+  if (whatsappBtn) whatsappBtn.addEventListener('click', openWhatsappChat);
 }
 
 async function init() {
