@@ -776,11 +776,25 @@ function setAccessModalStatus(msg, cls) {
 const ADMIN_WHATSAPP_NUMBER = '6281381146320';
 
 function openWhatsappChat() {
+  // window.open() harus jadi statement PERTAMA yang jalan di handler ini --
+  // dipanggil kosong dulu (tab blank langsung terbuka selagi masih dalam
+  // konteks klik user), baru URL wa.me yang sebenarnya di-set belakangan.
+  // Kalau window.open dipanggil belakangan dengan URL yang baru selesai
+  // dirangkai (butuh baca DOM + encodeURIComponent dulu), sebagian browser/
+  // popup blocker tidak lagi menganggapnya sebagai hasil klik langsung dan
+  // diam-diam memblokirnya -- persis gejala "diklik tapi tidak terjadi apa-apa".
+  const win = window.open('', '_blank');
+
   const nama = document.getElementById('accessNamaInput').value.trim();
   const groupLabel = currentGroupLabel(modalGroup);
   const namaPart = nama ? ` ${nama}` : '';
   const message = `Halo, saya${namaPart} baru saja mengirim permintaan akses data ${groupLabel} di website, mohon persetujuannya.`;
-  window.open(`https://wa.me/${ADMIN_WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`, '_blank');
+  // Format wa.me resmi (bukan skema whatsapp://) -- otomatis fallback ke
+  // web.whatsapp.com kalau device tidak punya app WhatsApp terinstall.
+  const url = `https://wa.me/${ADMIN_WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
+
+  if (win) win.location.href = url;
+  else window.open(url, '_blank'); // fallback kalau tab pertama tetap diblokir
 }
 
 async function submitAccessRequest() {
