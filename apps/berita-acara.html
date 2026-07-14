@@ -282,7 +282,7 @@
       </div>
     </div>
 
-    <a href="../login.html" class="ptmb-btn-login">Login</a>
+    <a href="../login.html" class="ptmb-btn-login" id="authNavBtn">Login</a>
   </nav>
 
   <button class="ptmb-nav-toggle" id="ptmbNavToggle" aria-label="Buka menu">
@@ -308,6 +308,32 @@
     document.addEventListener('click', () => {
       document.querySelectorAll('[data-ptmb-nav]').forEach(i => i.classList.remove('ptmb-open'));
     });
+  })();
+</script>
+
+<script>
+  (function(){
+    const authBtn = document.getElementById('authNavBtn');
+    if(!authBtn) return;
+    const token = localStorage.getItem('token');
+    const role = localStorage.getItem('role');
+    const username = localStorage.getItem('username');
+
+    if(token && role === 'admin'){
+      authBtn.textContent = 'Logout';
+      authBtn.href = '#';
+      authBtn.title = 'Login sebagai ' + (username || 'Admin');
+      authBtn.style.background = '#B5502E';
+      authBtn.addEventListener('click', function(e){
+        e.preventDefault();
+        if(confirm('Keluar dari akun admin?')){
+          localStorage.removeItem('token');
+          localStorage.removeItem('role');
+          localStorage.removeItem('username');
+          window.location.href = '../login.html';
+        }
+      });
+    }
   })();
 </script>
 
