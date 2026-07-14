@@ -9,8 +9,6 @@
 <link rel="stylesheet" href="style.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 </head>
 <body>
 <header class="ptmb-navbar">
@@ -129,6 +127,30 @@
   <div class="menu-sub" id="menuSub"></div>
   <!-- Menu agregat: Jumlah (Total) & Rekapitulasi, dipisah dari daftar instalasi -->
   <div class="menu-category" id="menuAgg"></div>
+
+  <div class="lock-banner" id="lockBanner" style="display:none;">
+    <div class="lock-banner-text">
+      🔒 Yang ditampilkan sekarang adalah <b>data contoh</b>, bukan data asli — data ini vital bagi perusahaan.
+      <span id="lockStatusText"></span>
+    </div>
+    <button type="button" class="dl-btn" id="requestAccessBtn">Minta Akses</button>
+  </div>
+
+  <div class="access-modal-overlay" id="accessModalOverlay" style="display:none;">
+    <div class="access-modal">
+      <h3>Minta Akses Data Asli</h3>
+      <p class="hint">Isi nama kamu. Admin akan menerima notifikasi lewat email dan bisa menyetujui lewat satu klik — tidak perlu memasukkan kode apa pun di sini.</p>
+      <label for="accessNamaInput">Nama</label>
+      <input type="text" id="accessNamaInput" placeholder="Nama kamu">
+      <label for="accessAlasanInput">Keperluan (opsional)</label>
+      <textarea id="accessAlasanInput" placeholder="Contoh: untuk laporan bulanan"></textarea>
+      <div class="access-modal-actions">
+        <button type="button" class="btn-ghost" id="accessModalCancel">Batal</button>
+        <button type="button" class="dl-btn" id="accessModalSubmit">Kirim Permintaan</button>
+      </div>
+      <div class="status-msg" id="accessModalStatus"></div>
+    </div>
+  </div>
 
   <div class="panel">
     <div class="controls">

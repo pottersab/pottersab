@@ -403,10 +403,10 @@
 
 <script>
 // ============== KONFIGURASI ==============
-// Ganti dengan URL Web App hasil deploy Code_AirBaku.gs (lihat komentar di file itu)
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz_7JO5J0KybOq0eUXAquUEJv204tuv8C-oQdHWU--YShiG7UxQGXtHHUerem9qhFZCzA/exec";
-// Harus SAMA PERSIS dengan SHARED_SECRET di Code_AirBaku.gs
-const SHARED_SECRET = "Rahasia123";
+// Data disimpan langsung ke Postgres lewat api/visualization/admin-input.js
+// (admin-only, pakai JWT admin situs yang sama dengan login.html). Google
+// Apps Script/Sheets tidak dipakai lagi untuk input data ini.
+const ADMIN_INPUT_URL = "/api/visualization/admin-input";
 // ==========================================
 
 const AP_FIELDS = [
@@ -485,6 +485,11 @@ function clearAllFields() {
   updateTotal();
 }
 
+function authHeaders() {
+  const token = localStorage.getItem('token');
+  return token ? { 'Authorization': 'Bearer ' + token } : {};
+}
+
 async function loadMonthData() {
   const bulan = currentBulan();
   if (!bulan) { setLoadStatus('Pilih bulan terlebih dahulu.', 'error'); return; }
@@ -492,25 +497,24 @@ async function loadMonthData() {
   clearAllFields();
 
   try {
-    const [apRes, atdRes] = await Promise.all([
-      fetch(`${SCRIPT_URL}?sheet=AP&format=json&bulan=${encodeURIComponent(bulan)}`).then(r => r.json()),
-      fetch(`${SCRIPT_URL}?sheet=ATD&format=json&bulan=${encodeURIComponent(bulan)}`).then(r => r.json())
-    ]);
+    const res = await fetch(`${ADMIN_INPUT_URL}?bulan=${encodeURIComponent(bulan)}`, { headers: authHeaders() });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
 
-    if (apRes.found) {
+    if (data.ap.found) {
       AP_FIELDS.forEach(f => {
-        const v = apRes.values[f.key];
+        const v = data.ap.values[f.key];
         if (v !== undefined && v !== '') document.getElementById(fieldId('ap', f.key)).value = v;
       });
     }
-    if (atdRes.found) {
+    if (data.atd.found) {
       ATD_FIELDS.forEach(f => {
-        const v = atdRes.values[f.key];
+        const v = data.atd.values[f.key];
         if (v !== undefined && v !== '') document.getElementById(fieldId('atd', f.key)).value = v;
       });
     }
 
-    if (apRes.found || atdRes.found) {
+    if (data.ap.found || data.atd.found) {
       setLoadStatus('Data bulan ini ditemukan dan dimuat. Ubah lalu simpan untuk update.', 'ok');
     } else {
       setLoadStatus('Belum ada data untuk bulan ini. Isi semua kolom lalu simpan sebagai data baru.', 'info');
@@ -536,16 +540,16 @@ async function submitData() {
   setStatus('Mengirim data...', 'info');
 
   try {
-    const res = await fetch(SCRIPT_URL, {
+    const res = await fetch(ADMIN_INPUT_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // hindari preflight CORS ke Apps Script
-      body: JSON.stringify({ secret: SHARED_SECRET, bulan, ap, atd })
+      headers: Object.assign({ 'Content-Type': 'application/json' }, authHeaders()),
+      body: JSON.stringify({ bulan, ap, atd })
     });
     const data = await res.json();
-    if (data.status === 'ok') {
+    if (res.ok && data.success) {
       setStatus('Tersimpan. Data akan otomatis muncul di halaman "Data Historis Pengambilan Air Baku".', 'ok');
     } else {
-      setStatus('Gagal: ' + (data.message || 'terjadi kesalahan.'), 'error');
+      setStatus('Gagal: ' + (data.error || 'terjadi kesalahan.'), 'error');
     }
   } catch (err) {
     setStatus('Gagal mengirim data: ' + err.message, 'error');

@@ -5,6 +5,8 @@
   "private": true,
   "dependencies": {
     "pg": "^8.11.3",
-    "jsonwebtoken": "^9.0.2"
+    "jsonwebtoken": "^9.0.2",
+    "nodemailer": "^6.9.14",
+    "pdf-lib": "^1.17.1"
   }
 }

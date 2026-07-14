@@ -1,24 +1,22 @@
 /* ==========================================================================
    Data Historis Pengambilan Air Baku
    --------------------------------------------------------------------------
-   Pola & tampilan sama persis dengan app "Library" (apps/library) — menu
-   utama -> sub menu -> grafik+gauge -> stat cards -> tabel. Bedanya:
-   sumbernya monthly (bukan harian), ada submenu "Rekapitulasi" (tabel pivot
-   instalasi x bulan per tahun), dan dua tombol unduh (PDF untuk tamu, Excel
-   khusus admin).
+   Pola & tampilan sama dengan app "Library" (apps/library) — menu utama ->
+   sub menu -> grafik+gauge -> stat cards -> tabel. Bedanya: sumbernya
+   monthly (bukan harian), ada submenu "Rekapitulasi" (tabel pivot instalasi
+   x bulan per tahun), dan dua tombol unduh (PDF untuk tamu, Excel khusus
+   admin).
 
-   Data grafik GABUNGAN dari 2 sumber (sama seperti Library):
-     1. File CSV lokal di apps/riwayat-air-baku/data/ -> arsip historis lama.
-     2. Google Sheets lewat Apps Script Web App (SHEETS_BASE) -> data baru
-        yang diinput lewat apps/input-air-baku.html mulai sekarang.
-   Digabung per bulan lewat fetchMergedCSV/mergeRows di bawah; kalau ada
-   bulan yang sama di kedua sumber, nilai dari Sheets yang dipakai.
+   Data asli disimpan di Postgres (bukan lagi CSV statis / Google Sheets),
+   dan hanya dikeluarkan oleh /api/visualization/data kalau ada akses valid
+   (JWT admin situs, atau token viz-access hasil approve email). Tanpa akses,
+   endpoint itu mengembalikan data CONTOH (dummy) dengan bentuk yang sama
+   supaya seluruh pipeline render di bawah ini (chart, gauge, rekap, stat)
+   tetap jalan tanpa perlu tahu apakah datanya asli atau contoh.
 
    Data juga di-LAZY LOAD per grup (AP / ATD) -- saat halaman dibuka cuma
    grup yang sedang aktif yang di-fetch, grup lain baru di-fetch saat
-   tab-nya diklik. Ini karena "Jumlah (Total)" & "Rekapitulasi" dihitung
-   dari SEMUA instalasi dalam 1 grup sekaligus, jadi unit fetch-nya per
-   grup (bukan per instalasi seperti di Library).
+   tab-nya diklik.
    ========================================================================== */
 
 // ---------------------------------------------------------------------------
@@ -34,19 +32,11 @@ function allTabsOf(group) {
 }
 
 // ---------------------------------------------------------------------------
-// KONFIGURASI SUMBER DATA
+// KONFIGURASI SUMBER DATA (groupKey harus sama dengan dataType di API)
 // ---------------------------------------------------------------------------
-// Ganti dengan URL Web App Google Apps Script hasil deploy, diakhiri /exec,
-// tanpa parameter (sama dengan yang dipakai apps/input-air-baku.html).
-const SHEETS_BASE = 'https://script.google.com/macros/s/AKfycbz_7JO5J0KybOq0eUXAquUEJv204tuv8C-oQdHWU--YShiG7UxQGXtHHUerem9qhFZCzA/exec';
-// LOCAL_DATA_BASE = folder berisi CSV historis lama (arsip).
-const LOCAL_DATA_BASE = 'data/';
-
 const DATA_SOURCES = [
   {
     groupKey: 'ap',
-    file: SHEETS_BASE + '?sheet=AP',
-    localFile: LOCAL_DATA_BASE + 'air_permukaan.csv',
     dateColumn: 'Bulan',
     totalKey: 'ap_total',
     totalLabel: 'Jumlah — Air Permukaan (AP)',
@@ -62,8 +52,6 @@ const DATA_SOURCES = [
   },
   {
     groupKey: 'atd',
-    file: SHEETS_BASE + '?sheet=ATD',
-    localFile: LOCAL_DATA_BASE + 'air_tanah_dalam.csv',
     dateColumn: 'Bulan',
     totalKey: 'atd_total',
     totalLabel: 'Jumlah — Air Tanah Dalam (ATD)',
@@ -90,30 +78,17 @@ const KEY_TO_GROUP = {};
 GROUPS.forEach(g => { allTabsOf(g).forEach(k => { KEY_TO_GROUP[k] = g.key; }); });
 
 const KEY_LABEL_LOOKUP = {};
+const KEY_TO_COLNAME = {};
 DATA_SOURCES.forEach(source => {
-  Object.values(source.columns).forEach(cfg => {
+  Object.entries(source.columns).forEach(([colName, cfg]) => {
     KEY_LABEL_LOOKUP[cfg.key] = cfg.label.replace(/^Debit (AP|ATD) — /, '');
+    KEY_TO_COLNAME[cfg.key] = colName;
   });
   if (source.totalKey) KEY_LABEL_LOOKUP[source.totalKey] = 'Jumlah (Total)';
   if (source.rekapKey) KEY_LABEL_LOOKUP[source.rekapKey] = 'Rekapitulasi';
 });
 
 const MONTHS_ID = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
-
-// ---------------------------------------------------------------------------
-// CSV PARSER
-// ---------------------------------------------------------------------------
-function parseCSV(text) {
-  const lines = text.replace(/\r/g, '').split('\n').filter(l => l.length > 0);
-  const header = lines[0].split(',').map(h => h.trim());
-  const rows = lines.slice(1).map(line => {
-    const cells = line.split(',');
-    const row = {};
-    header.forEach((h, i) => { row[h] = (cells[i] !== undefined ? cells[i].trim() : ''); });
-    return row;
-  });
-  return { header, rows };
-}
 
 function toNum(v) {
   if (v === undefined || v === null || v === '') return null;
@@ -139,88 +114,32 @@ function monthLabelLong(d) {
 }
 
 // ---------------------------------------------------------------------------
-// LOAD DATA
+// AKSES — token yang dipakai untuk minta data asli ke API: JWT admin situs
+// (localStorage 'token', dari login.html) kalau ada, atau token viz-access
+// hasil approve email (lihat bagian AKSES DATA VITAL di bawah).
 // ---------------------------------------------------------------------------
-async function fetchCSV(path) {
-  const res = await fetch(path);
-  if (!res.ok) throw new Error(`Gagal memuat ${path} (HTTP ${res.status})`);
-  return parseCSV(await res.text());
+function currentAccessToken() {
+  return localStorage.getItem('token') || vizToken || null;
 }
 
-// Gabungkan 1 baris data lokal + 1 baris data Sheets untuk key (bulan) yang
-// sama. Kolom dari Sheets menang HANYA kalau isinya tidak kosong.
-function mergeRowValues(localRow, sheetRow) {
-  const merged = Object.assign({}, localRow);
-  Object.keys(sheetRow).forEach(col => {
-    const v = sheetRow[col];
-    if (v !== undefined && v !== null && v !== '') merged[col] = v;
-  });
-  return merged;
-}
-
-// Gabungkan seluruh baris data lokal + Sheets berdasarkan kolom kunci
-// (Bulan). Baris dengan key yang sama -> digabung (Sheets menang per-kolom).
-// Baris yang cuma ada di salah satu sumber -> tetap ikut. Hasil diurutkan
-// menaik (aman karena formatnya ISO: YYYY-MM).
-function mergeRows(localRows, sheetRows, keyCol) {
-  const map = new Map();
-  localRows.forEach(r => { if (r[keyCol]) map.set(r[keyCol], r); });
-  sheetRows.forEach(r => {
-    if (!r[keyCol]) return;
-    const existing = map.get(r[keyCol]);
-    map.set(r[keyCol], existing ? mergeRowValues(existing, r) : r);
-  });
-  return Array.from(map.values()).sort((a, b) => (a[keyCol] < b[keyCol] ? -1 : a[keyCol] > b[keyCol] ? 1 : 0));
-}
-
-// Ambil data lokal (arsip lama) DAN Google Sheets (data baru) secara
-// paralel, lalu gabung jadi satu tabel. Kalau salah satu sumber gagal
-// dimuat, yang lain tetap dipakai -- jadi grafik tidak blank hanya karena
-// satu sumber bermasalah. Cuma gagal total kalau KEDUA sumber gagal.
-async function fetchMergedCSV(localPath, sheetUrl, keyCol) {
-  const [localRes, sheetRes] = await Promise.allSettled([
-    fetch(localPath).then(res => {
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      return res.text();
-    }),
-    fetch(sheetUrl).then(res => {
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      return res.text();
-    })
-  ]);
-
-  let header = null, localRows = [], sheetRows = [];
-
-  if (localRes.status === 'fulfilled') {
-    const parsed = parseCSV(localRes.value);
-    header = parsed.header;
-    localRows = parsed.rows;
-  } else {
-    console.warn(`Gagal memuat data lokal ${localPath}:`, localRes.reason);
-  }
-
-  if (sheetRes.status === 'fulfilled') {
-    const parsed = parseCSV(sheetRes.value);
-    header = header ? Array.from(new Set([...header, ...parsed.header])) : parsed.header;
-    sheetRows = parsed.rows;
-  } else {
-    console.warn(`Gagal memuat data Google Sheets ${sheetUrl}:`, sheetRes.reason);
-  }
-
-  if (!header) throw new Error(`Gagal memuat data lokal (${localPath}) maupun Google Sheets (${sheetUrl})`);
-
-  return { header, rows: mergeRows(localRows, sheetRows, keyCol) };
+async function fetchApiData(dataType) {
+  const headers = {};
+  const token = currentAccessToken();
+  if (token) headers['Authorization'] = 'Bearer ' + token;
+  const res = await fetch(`/api/visualization/data?dataType=${dataType}`, { headers });
+  if (!res.ok) throw new Error(`Gagal memuat data (HTTP ${res.status})`);
+  return res.json(); // { locked, header, rows }
 }
 
 // Isi `datasets` & `REKAP_TABLES` untuk SATU source (AP atau ATD) dari hasil
-// fetchMergedCSV. Dipisah dari loader supaya bisa dipanggil per grup, bukan
+// fetchApiData. Dipisah dari loader supaya bisa dipanggil per grup, bukan
 // harus muat AP+ATD sekaligus.
 function buildSourceDatasets(source, header, rows) {
   const perColSeries = {};
   const wellsForRekap = [];
   for (const colName of Object.keys(source.columns)) {
     if (!header.includes(colName)) {
-      console.warn(`Kolom "${colName}" tidak ditemukan di ${source.file}, dilewati.`);
+      console.warn(`Kolom "${colName}" tidak ditemukan di data ${source.groupKey}, dilewati.`);
       continue;
     }
     const cfg = source.columns[colName];
@@ -229,7 +148,7 @@ function buildSourceDatasets(source, header, rows) {
       .filter(r => !isNaN(r.date.getTime()));
     const ds = {
       label: cfg.label, unit: cfg.unit, type: 'daily', color: cfg.color,
-      real: true, sourceFile: source.file, data: series
+      real: true, data: series
     };
     if (cfg.hasGauge) {
       const [mn, mx] = minMax(series);
@@ -257,7 +176,7 @@ function buildSourceDatasets(source, header, rows) {
       .map(e => ({ date: e.date, value: e.any ? e.sum : null }));
     const totalDs = {
       label: source.totalLabel, unit: 'm³', type: 'daily', color: 'rain',
-      real: true, sourceFile: source.file, data: totalSeries
+      real: true, data: totalSeries
     };
     const [mn, mx] = minMax(totalSeries);
     if (isFinite(mn) && isFinite(mx)) {
@@ -280,7 +199,6 @@ function buildSourceDatasets(source, header, rows) {
       label: 'Rekapitulasi',
       categoryLabel: source.rekapCategoryLabel,
       unit: 'm³',
-      sourceFile: source.file,
       wells: wellsForRekap,
       data: rekapRows
     };
@@ -290,16 +208,19 @@ function buildSourceDatasets(source, header, rows) {
 // ---------------------------------------------------------------------------
 // LAZY LOAD — fetch data hanya untuk grup (AP/ATD) yang sedang dibuka, bukan
 // keduanya di awal. Di-cache per source supaya tidak fetch ulang kalau user
-// bolak-balik antar grup.
+// bolak-balik antar grup. Cache di-clear tiap kali status akses berubah
+// (baru approved / token kedaluwarsa) lewat reloadAllGroupsData().
 // ---------------------------------------------------------------------------
 const sourceLoadPromises = new Map(); // source -> Promise
+const sourceLockStatus = {}; // groupKey -> boolean (true = sedang locked/dummy)
 
 function loadGroupSource(source) {
   if (sourceLoadPromises.has(source)) return sourceLoadPromises.get(source);
-  const p = fetchMergedCSV(source.localFile, source.file, source.dateColumn).then(({ header, rows }) => {
+  const p = fetchApiData(source.groupKey).then(({ locked, header, rows }) => {
+    sourceLockStatus[source.groupKey] = locked;
     buildSourceDatasets(source, header, rows);
   }).catch(err => {
-    console.error(`Gagal memuat ${source.localFile} / ${source.file}:`, err);
+    console.error(`Gagal memuat data ${source.groupKey}:`, err);
     sourceLoadPromises.delete(source);
     throw err;
   });
@@ -315,6 +236,18 @@ async function ensureGroupLoaded(key) {
   await loadGroupSource(source);
 }
 
+async function reloadAllGroupsData() {
+  sourceLoadPromises.clear();
+  try {
+    await ensureGroupLoaded(currentKey);
+  } catch (err) {
+    showLoadErrorState(err);
+    return;
+  }
+  onDatasetChanged();
+  render();
+}
+
 // ---------------------------------------------------------------------------
 // APP STATE
 // ---------------------------------------------------------------------------
@@ -326,6 +259,12 @@ let filterMode = 'all';
 let selectedYear = null;
 let chart;
 let isAdmin = false;
+
+let vizToken = null;
+let vizTokenExpiresAt = null;
+let vizRequestId = null;
+let pollTimer = null;
+let expiryTimer = null;
 
 const menuMainEl = document.getElementById('menuMain');
 const menuSubEl = document.getElementById('menuSub');
@@ -451,17 +390,27 @@ function buildMenuAgg() {
 function onDatasetChanged() {
   const badge = document.getElementById('statusBadge');
   const note = document.getElementById('noteBox');
-  badge.textContent = 'Data Asli';
-  badge.style.background = 'var(--good)';
+  const locked = !!sourceLockStatus[currentGroup];
+
+  if (locked) {
+    badge.textContent = 'Data Contoh (Terkunci)';
+    badge.style.background = 'var(--warn)';
+  } else {
+    badge.textContent = 'Data Asli';
+    badge.style.background = 'var(--good)';
+  }
 
   if (isRekapActive()) {
     const rk = currentRekap();
-    note.innerHTML = `Rekapitulasi bulanan (Januari—Desember) tiap instalasi ${rk.categoryLabel} dalam satu tahun, diambil dari <code>${rk.sourceFile}</code> (satuan ${rk.unit}). Sel kosong berarti data belum tercatat pada bulan tersebut. Pilih tahun di atas untuk berpindah periode.`;
+    note.innerHTML = `Rekapitulasi bulanan (Januari—Desember) tiap instalasi ${rk.categoryLabel} dalam satu tahun (satuan ${rk.unit}). Sel kosong berarti data belum tercatat pada bulan tersebut. Pilih tahun di atas untuk berpindah periode.`;
   } else {
     const ds = currentDataset();
-    note.innerHTML = `Data diambil dari <code>${ds.sourceFile}</code> (satuan ${ds.unit}/bulan). Sel kosong berarti data belum tercatat pada bulan tersebut, bukan nol. Untuk menambah/mengoreksi data, edit file CSV terkait lalu muat ulang halaman ini.`;
+    note.innerHTML = `Data bulanan (satuan ${ds.unit}). Sel kosong berarti data belum tercatat pada bulan tersebut, bukan nol.` +
+      (locked ? ' <b>Nilai yang tampil sekarang adalah data CONTOH, bukan data asli.</b>' : '');
   }
   buildYearRow();
+  updateLockBanner(locked);
+  updatePdfButton();
 }
 
 // ---------------------------------------------------------------------------
@@ -701,92 +650,36 @@ function downloadRekapExcel() {
 }
 
 // ---------------------------------------------------------------------------
-// UNDUH PDF (Tamu, via jsPDF + autotable)
+// UNDUH PDF — sekarang digenerate di SERVER (pdf-lib) dari data asli, hanya
+// kalau ada akses valid (JWT admin situs, atau token viz-access). Browser
+// cuma diarahkan ke endpoint export-pdf; tidak ada lagi generate PDF di
+// client dari data yang sudah dimuat.
 // ---------------------------------------------------------------------------
 function downloadPdf() {
-  if (isRekapActive()) {
-    downloadRekapPdf();
+  const token = currentAccessToken();
+  if (!token) {
+    alert('Unduh PDF perlu akses data asli dulu. Klik "Minta Akses" di atas untuk meminta persetujuan admin.');
     return;
   }
-  const { jsPDF } = window.jspdf;
-  const ds = currentDataset();
-  const rows = filteredData();
-  const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
 
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(14);
-  doc.text('Data Historis Pengambilan Air Baku', 40, 40);
-  doc.setFontSize(10);
-  doc.setFont('helvetica', 'normal');
-  doc.text(`Perumda Tirta Manuntung — Sumber Air Baku  |  ${ds.label}  |  Rentang: ${currentRangeLabel()}`, 40, 58);
+  const source = SOURCE_BY_GROUP[currentGroup];
+  const params = new URLSearchParams();
+  params.set('dataType', currentGroup);
+  params.set('token', token);
 
-  try {
-    const chartImg = document.getElementById('mainChart').toDataURL('image/png', 1.0);
-    doc.addImage(chartImg, 'PNG', 40, 72, 560, 220);
-  } catch (e) {
-    console.warn('Gagal menyisipkan grafik ke PDF:', e);
+  if (isRekapActive()) {
+    params.set('mode', 'rekap');
+    params.set('year', rekapActiveYear());
+  } else if (currentKey === source.totalKey) {
+    params.set('mode', 'total');
+    if (filterMode === 'year' && selectedYear) params.set('year', selectedYear);
+  } else {
+    params.set('mode', 'series');
+    params.set('well', (KEY_TO_COLNAME[currentKey] || '').toLowerCase());
+    if (filterMode === 'year' && selectedYear) params.set('year', selectedYear);
   }
 
-  const head = [['Bulan', `${ds.label} (${ds.unit})`]];
-  const body = rows.map(r => [
-    dateStrDisplay(r.date),
-    r.value !== null && r.value !== undefined ? r.value.toLocaleString('id-ID', { maximumFractionDigits: 0 }) : '-'
-  ]);
-
-  doc.autoTable({
-    head, body,
-    startY: 305,
-    styles: { font: 'helvetica', fontSize: 8, cellPadding: 4 },
-    headStyles: { fillColor: [11, 85, 102], textColor: 255 },
-    margin: { left: 40, right: 40 }
-  });
-
-  const rangePart = filterMode === 'all' ? 'semua-data' : `${selectedYear}`;
-  doc.save(`${currentKey}_${rangePart}.pdf`);
-}
-
-function downloadRekapPdf() {
-  const { jsPDF } = window.jspdf;
-  const rk = currentRekap();
-  const years = yearsInData(rk.data);
-  const yearsToExport = (filterMode === 'year' && selectedYear) ? [selectedYear] : years;
-
-  const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
-
-  yearsToExport.forEach((year, idx) => {
-    if (idx > 0) doc.addPage();
-    const { wellRows, totalRow } = rekapPivotForYear(rk, year);
-
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(14);
-    doc.text('Data Historis Pengambilan Air Baku — Rekapitulasi', 40, 40);
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`Perumda Tirta Manuntung — Sumber Air Baku  |  ${rk.categoryLabel}  |  Tahun ${year}  |  Satuan ${rk.unit}`, 40, 58);
-
-    const head = [['Instalasi', ...MONTHS_ID]];
-    const body = wellRows.map(row => [row.label, ...row.values.map(fmtNum)]);
-    body.push(['Jumlah', ...totalRow.map(fmtNum)]);
-    const totalRowIndex = body.length - 1;
-
-    doc.autoTable({
-      head, body,
-      startY: 78,
-      styles: { font: 'helvetica', fontSize: 8, cellPadding: 5, halign: 'right' },
-      columnStyles: { 0: { halign: 'left', fontStyle: 'bold', cellWidth: 110 } },
-      headStyles: { fillColor: [11, 85, 102], textColor: 255 },
-      didParseCell: (data) => {
-        if (data.row.index === totalRowIndex) {
-          data.cell.styles.fillColor = [220, 238, 241];
-          data.cell.styles.fontStyle = 'bold';
-        }
-      },
-      margin: { left: 40, right: 40 }
-    });
-  });
-
-  const rangePart = (filterMode === 'year' && selectedYear) ? `${selectedYear}` : 'semua-tahun';
-  doc.save(`rekapitulasi_${currentKey.replace('_rekap', '')}_${rangePart}.pdf`);
+  window.location.href = `/api/visualization/export-pdf?${params.toString()}`;
 }
 
 // ---------------------------------------------------------------------------
@@ -794,8 +687,6 @@ function downloadRekapPdf() {
 // --------------------------------------------------------------------------
 // Disesuaikan persis dengan pola login.html/admin-dashboard.html asli:
 // token disimpan di localStorage dengan key "token", role dengan key "role".
-// Tidak ada endpoint /api/verify di project ini — admin-dashboard.html pun
-// hanya mengecek localStorage langsung, jadi di sini disamakan.
 // ---------------------------------------------------------------------------
 function checkAdminStatus() {
   const token = localStorage.getItem('token');
@@ -816,11 +707,171 @@ function updateAdminButton() {
 }
 
 // ---------------------------------------------------------------------------
+// AKSES DATA VITAL — banner "terkunci" + form "Minta Akses" + polling status
+// + auto-unlock setelah admin approve lewat email + auto re-lock setelah
+// token 1 jam habis.
+// ---------------------------------------------------------------------------
+function updateLockBanner(locked) {
+  const banner = document.getElementById('lockBanner');
+  const statusText = document.getElementById('lockStatusText');
+  if (!banner) return;
+  if (!locked || isAdmin) { banner.style.display = 'none'; return; }
+  banner.style.display = 'flex';
+  statusText.textContent = pollTimer ? 'Menunggu persetujuan admin lewat email...' : '';
+}
+
+function updatePdfButton() {
+  const btn = document.getElementById('downloadPdfBtn');
+  if (!btn) return;
+  if (currentAccessToken()) {
+    btn.textContent = 'Unduh PDF';
+    btn.disabled = false;
+  } else {
+    btn.textContent = '🔒 Unduh PDF (Perlu Akses)';
+    btn.disabled = true;
+  }
+}
+
+function openAccessModal() {
+  const overlay = document.getElementById('accessModalOverlay');
+  if (!overlay) return;
+  overlay.style.display = 'flex';
+  const status = document.getElementById('accessModalStatus');
+  status.textContent = '';
+  status.className = 'status-msg';
+}
+
+function closeAccessModal() {
+  const overlay = document.getElementById('accessModalOverlay');
+  if (overlay) overlay.style.display = 'none';
+}
+
+function setAccessModalStatus(msg, cls) {
+  const el = document.getElementById('accessModalStatus');
+  if (!el) return;
+  el.textContent = msg;
+  el.className = 'status-msg ' + (cls || '');
+}
+
+async function submitAccessRequest() {
+  const nama = document.getElementById('accessNamaInput').value.trim();
+  const alasan = document.getElementById('accessAlasanInput').value.trim();
+
+  if (!nama) {
+    setAccessModalStatus('Isi nama dulu ya.', 'error');
+    return;
+  }
+
+  const btn = document.getElementById('accessModalSubmit');
+  btn.disabled = true;
+  setAccessModalStatus('Mengirim permintaan...', 'pending');
+
+  try {
+    const res = await fetch('/api/visualization/request', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ requestedBy: nama, dataType: currentGroup, reason: alasan || undefined })
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) throw new Error(data.error || 'Gagal mengirim permintaan.');
+
+    vizRequestId = data.requestId;
+    try { sessionStorage.setItem('vizRequestId', String(vizRequestId)); } catch (e) {}
+
+    setAccessModalStatus('Permintaan terkirim. Menunggu admin menyetujui lewat email — halaman ini akan otomatis update.', 'pending');
+    startPolling();
+  } catch (err) {
+    setAccessModalStatus(err.message, 'error');
+  }
+  btn.disabled = false;
+}
+
+function startPolling() {
+  if (pollTimer) clearInterval(pollTimer);
+  updateLockBanner(true);
+  pollTimer = setInterval(checkAccessStatus, 4000);
+  checkAccessStatus();
+}
+
+async function checkAccessStatus() {
+  if (!vizRequestId) return;
+  try {
+    const res = await fetch(`/api/visualization/status?id=${vizRequestId}`);
+    const data = await res.json();
+
+    if (data.status === 'approved') {
+      clearInterval(pollTimer);
+      pollTimer = null;
+      vizToken = data.token;
+      vizTokenExpiresAt = data.expiresAt;
+      try {
+        sessionStorage.setItem('vizAccessToken', vizToken);
+        sessionStorage.setItem('vizAccessExpiresAt', vizTokenExpiresAt);
+        sessionStorage.removeItem('vizRequestId');
+      } catch (e) {}
+      scheduleTokenExpiry();
+      setAccessModalStatus('Akses disetujui! Memuat data asli...', 'ok');
+      await reloadAllGroupsData();
+      closeAccessModal();
+    } else if (data.status === 'expired' || data.status === 'not_found') {
+      clearInterval(pollTimer);
+      pollTimer = null;
+      vizRequestId = null;
+      try { sessionStorage.removeItem('vizRequestId'); } catch (e) {}
+      updateLockBanner(true);
+    }
+  } catch (err) {
+    console.warn('Gagal cek status akses:', err);
+  }
+}
+
+function scheduleTokenExpiry() {
+  if (expiryTimer) clearTimeout(expiryTimer);
+  const ms = new Date(vizTokenExpiresAt).getTime() - Date.now();
+  expiryTimer = setTimeout(() => {
+    vizToken = null;
+    vizTokenExpiresAt = null;
+    try {
+      sessionStorage.removeItem('vizAccessToken');
+      sessionStorage.removeItem('vizAccessExpiresAt');
+    } catch (e) {}
+    reloadAllGroupsData();
+  }, Math.max(ms, 0));
+}
+
+// Kalau ada token viz-access yang masih berlaku (dari sesi sebelumnya di tab
+// yang sama), atau ada permintaan yang masih pending, lanjutkan otomatis
+// tanpa perlu request baru.
+function restoreVizSession() {
+  try {
+    const token = sessionStorage.getItem('vizAccessToken');
+    const expiresAt = sessionStorage.getItem('vizAccessExpiresAt');
+    if (token && expiresAt && new Date(expiresAt).getTime() > Date.now()) {
+      vizToken = token;
+      vizTokenExpiresAt = expiresAt;
+      scheduleTokenExpiry();
+      return;
+    }
+    const pendingId = sessionStorage.getItem('vizRequestId');
+    if (pendingId) {
+      vizRequestId = pendingId;
+      startPolling();
+    }
+  } catch (e) {}
+}
+
+// ---------------------------------------------------------------------------
 // INIT
 // ---------------------------------------------------------------------------
 function wireControls() {
   document.getElementById('downloadPdfBtn').onclick = downloadPdf;
   document.getElementById('downloadExcelBtn').onclick = downloadExcel;
+  const requestBtn = document.getElementById('requestAccessBtn');
+  const cancelBtn = document.getElementById('accessModalCancel');
+  const submitBtn = document.getElementById('accessModalSubmit');
+  if (requestBtn) requestBtn.addEventListener('click', openAccessModal);
+  if (cancelBtn) cancelBtn.addEventListener('click', closeAccessModal);
+  if (submitBtn) submitBtn.addEventListener('click', submitAccessRequest);
 }
 
 async function init() {
@@ -829,6 +880,7 @@ async function init() {
   buildMenuAgg();
   wireControls();
   checkAdminStatus();
+  restoreVizSession();
   // Cuma grup pertama (Air Permukaan) yang di-fetch saat halaman dibuka.
   // Grup ATD baru di-fetch saat tab-nya diklik (lihat selectDataset). Ini
   // yang bikin loading pertama jauh lebih cepat dibanding fetch AP+ATD
