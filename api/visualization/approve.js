@@ -1,8 +1,8 @@
 const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
-const { pool, ensureVizTables } = require('../_db');
-const { SECRET_KEY } = require('../_auth');
-const { ACCESS_GROUP_LABELS } = require('./_columns');
+const { pool, ensureVizTables } = require('../../lib/db');
+const { SECRET_KEY } = require('../../lib/auth');
+const { ACCESS_GROUP_LABELS } = require('../../lib/visualization/columns');
 
 const ONE_HOUR_MS = 60 * 60 * 1000;
 

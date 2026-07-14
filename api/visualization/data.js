@@ -1,8 +1,8 @@
-const { ensureVizTables } = require('../_db');
-const { DATASETS, isValidDataType } = require('./_columns');
-const { checkVizAccess } = require('./_viz-auth');
-const { buildDummyRows, buildDummyWideSingleRows, buildDummySumurDebitRows, buildDummySumurLevelRows } = require('./_dummy');
-const { fetchRealRows, fetchWideSingleRows, fetchSumurWells, fetchSumurDebitRows, fetchSumurLevelRows } = require('./_repo');
+const { ensureVizTables } = require('../../lib/db');
+const { DATASETS, isValidDataType } = require('../../lib/visualization/columns');
+const { checkVizAccess } = require('../../lib/visualization/viz-auth');
+const { buildDummyRows, buildDummyWideSingleRows, buildDummySumurDebitRows, buildDummySumurLevelRows } = require('../../lib/visualization/dummy');
+const { fetchRealRows, fetchWideSingleRows, fetchSumurWells, fetchSumurDebitRows, fetchSumurLevelRows } = require('../../lib/visualization/repo');
 
 module.exports = async (req, res) => {
   if (req.method !== 'GET') {

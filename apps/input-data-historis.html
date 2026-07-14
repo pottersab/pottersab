@@ -550,7 +550,7 @@ function renderDailyPanel() {
     setStatus('loadDailyStatus', 'Memuat...', false);
     clearFields();
     try {
-      const res = await fetch(`/api/visualization/admin-library-daily?group=${currentGroup}&tanggal=${tanggal}`, { headers: authHeaders() });
+      const res = await fetch(`/api/visualization/admin-library?action=daily&group=${currentGroup}&tanggal=${tanggal}`, { headers: authHeaders() });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
       fields.forEach(f => {
@@ -575,7 +575,7 @@ function renderDailyPanel() {
     const btn = document.getElementById('btnSaveDaily');
     btn.disabled = true;
     try {
-      const res = await fetch('/api/visualization/admin-library-daily', {
+      const res = await fetch('/api/visualization/admin-library?action=daily', {
         method: 'POST',
         headers: Object.assign({ 'Content-Type': 'application/json' }, authHeaders()),
         body: JSON.stringify(body)
@@ -605,7 +605,7 @@ async function renderSumurPanel() {
 
   let wells;
   try {
-    const res = await fetch(`/api/visualization/admin-library-wells?installation=${currentSub}&category=${currentCategory}`, { headers: authHeaders() });
+    const res = await fetch(`/api/visualization/admin-library?action=wells&installation=${currentSub}&category=${currentCategory}`, { headers: authHeaders() });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
     wells = data.wells;
@@ -675,7 +675,7 @@ async function renderSumurPanel() {
     if (!name) return;
     if (wells.includes(name)) { alert('Nama sumur sudah ada.'); return; }
     try {
-      const res = await fetch('/api/visualization/admin-library-wells', {
+      const res = await fetch('/api/visualization/admin-library?action=wells', {
         method: 'POST',
         headers: Object.assign({ 'Content-Type': 'application/json' }, authHeaders()),
         body: JSON.stringify({ installation: currentSub, category: currentCategory, wellName: name })
@@ -694,7 +694,7 @@ async function renderSumurPanel() {
       if (!confirm(`Hapus "${name}" dari daftar sumur ${loc.label}? Data historis sumur ini TIDAK akan terhapus, cuma tidak muncul lagi di daftar.`)) return;
       try {
         const params = new URLSearchParams({ installation: currentSub, category: currentCategory, wellName: name });
-        const res = await fetch(`/api/visualization/admin-library-wells?${params.toString()}`, { method: 'DELETE', headers: authHeaders() });
+        const res = await fetch(`/api/visualization/admin-library?action=wells&${params.toString()}`, { method: 'DELETE', headers: authHeaders() });
         const data = await res.json();
         if (!res.ok || !data.success) throw new Error(data.error || 'Gagal menghapus sumur.');
         renderAll();
@@ -722,7 +722,7 @@ async function renderSumurPanel() {
     clearFields();
     try {
       const params = new URLSearchParams({ installation: currentSub, category: currentCategory, bulan });
-      const res = await fetch(`/api/visualization/admin-library-sumur?${params.toString()}`, { headers: authHeaders() });
+      const res = await fetch(`/api/visualization/admin-library?action=sumur&${params.toString()}`, { headers: authHeaders() });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
       let found = false;
@@ -765,7 +765,7 @@ async function renderSumurPanel() {
       btn.disabled = true;
       try {
         const params = new URLSearchParams({ installation: currentSub, category: currentCategory });
-        const res = await fetch(`/api/visualization/admin-library-sumur?${params.toString()}`, {
+        const res = await fetch(`/api/visualization/admin-library?action=sumur&${params.toString()}`, {
           method: 'POST',
           headers: Object.assign({ 'Content-Type': 'application/json' }, authHeaders()),
           body: JSON.stringify({ bulan, values })

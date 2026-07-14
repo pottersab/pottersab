@@ -13,8 +13,8 @@
 
 const fs = require('fs');
 const path = require('path');
-const { pool, ensureVizTables } = require('../api/_db');
-const { SUMUR_INSTALLATIONS } = require('../api/visualization/_columns');
+const { pool, ensureVizTables } = require('../lib/db');
+const { SUMUR_INSTALLATIONS } = require('../lib/visualization/columns');
 
 const DATA_DIR = path.join(__dirname, '..', 'apps', 'library', 'data');
 

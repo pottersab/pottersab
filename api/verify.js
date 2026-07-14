@@ -1,4 +1,4 @@
-const { getUserFromRequest } = require('./_auth');
+const { getUserFromRequest } = require('../lib/auth');
 
 module.exports = async (req, res) => {
   const user = getUserFromRequest(req);

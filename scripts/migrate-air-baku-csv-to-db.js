@@ -12,8 +12,8 @@
 
 const fs = require('fs');
 const path = require('path');
-const { pool, ensureVizTables } = require('../api/_db');
-const { DATASETS } = require('../api/visualization/_columns');
+const { pool, ensureVizTables } = require('../lib/db');
+const { DATASETS } = require('../lib/visualization/columns');
 
 function parseCSV(text) {
   const lines = text.replace(/\r/g, '').split('\n').filter(l => l.length > 0);

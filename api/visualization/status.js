@@ -1,4 +1,4 @@
-const { pool, ensureVizTables } = require('../_db');
+const { pool, ensureVizTables } = require('../../lib/db');
 
 module.exports = async (req, res) => {
   if (req.method !== 'GET') {

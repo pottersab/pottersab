@@ -1,6 +1,6 @@
-const { pool, ensureVizTables } = require('../_db');
-const { requireAdmin } = require('../_auth');
-const { DATASETS } = require('./_columns');
+const { pool, ensureVizTables } = require('../../lib/db');
+const { requireAdmin } = require('../../lib/auth');
+const { DATASETS } = require('../../lib/visualization/columns');
 
 function toNumOrNull(v) {
   if (v === undefined || v === null || v === '') return null;

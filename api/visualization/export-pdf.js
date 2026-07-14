@@ -1,8 +1,8 @@
-const { ensureVizTables } = require('../_db');
-const { DATASETS, isValidDataType } = require('./_columns');
-const { checkVizAccess } = require('./_viz-auth');
-const { fetchRealRows, fetchWideSingleRows, fetchSumurDebitRows, fetchSumurLevelRows } = require('./_repo');
-const { buildTablePdf } = require('./_pdf-table');
+const { ensureVizTables } = require('../../lib/db');
+const { DATASETS, isValidDataType } = require('../../lib/visualization/columns');
+const { checkVizAccess } = require('../../lib/visualization/viz-auth');
+const { fetchRealRows, fetchWideSingleRows, fetchSumurDebitRows, fetchSumurLevelRows } = require('../../lib/visualization/repo');
+const { buildTablePdf } = require('../../lib/visualization/pdf-table');
 
 const MONTHS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
 

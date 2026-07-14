@@ -1,5 +1,5 @@
 const jwt = require('jsonwebtoken');
-const { SECRET_KEY } = require('./_auth');
+const { SECRET_KEY } = require('../lib/auth');
 
 const ADMIN_CREDS = {
   username: process.env.ADMIN_USERNAME || 'potter',

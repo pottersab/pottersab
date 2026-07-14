@@ -725,7 +725,7 @@
     if (!confirm('Yakin ingin menghapus entry ini?')) return;
 
     try {
-      const response = await fetch(`${API_URL}/api/history/${id}`, {
+      const response = await fetch(`${API_URL}/api/history?id=${id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -743,7 +743,7 @@
 
   async function exportCSV() {
     try {
-      const response = await fetch(`${API_URL}/api/history/export`, {
+      const response = await fetch(`${API_URL}/api/history?export=1`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
 

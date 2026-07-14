@@ -1,7 +1,7 @@
 const crypto = require('crypto');
 const nodemailer = require('nodemailer');
-const { pool, ensureVizTables } = require('../_db');
-const { isValidAccessGroup, ACCESS_GROUP_LABELS } = require('./_columns');
+const { pool, ensureVizTables } = require('../../lib/db');
+const { isValidAccessGroup, ACCESS_GROUP_LABELS } = require('../../lib/visualization/columns');
 
 function getBaseUrl(req) {
   if (process.env.APP_BASE_URL) return process.env.APP_BASE_URL.replace(/\/$/, '');

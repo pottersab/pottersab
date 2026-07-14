@@ -1,12 +1,30 @@
-const { pool, ensureTable } = require('./_db');
-const { getUserFromRequest, requireAdmin } = require('./_auth');
+const { pool, ensureTable } = require('../lib/db');
+const { getUserFromRequest, requireAdmin } = require('../lib/auth');
 
+// Digabung dari history.js + history/[id].js (DELETE) + history/export.js
+// (CSV) supaya jumlah file di api/ tetap di bawah batas 12 Serverless
+// Functions di Vercel Hobby plan. DELETE pakai ?id=, export CSV pakai
+// ?export=1 -- logic masing-masing tidak berubah dari file aslinya.
 module.exports = async (req, res) => {
   await ensureTable();
 
   if (req.method === 'GET') {
     const user = requireAdmin(req, res);
     if (!user) return;
+
+    if (req.query.export !== undefined) {
+      const { rows } = await pool.query('SELECT * FROM history ORDER BY created_at DESC');
+
+      let csv = 'ID,Tipe Dokumen,Nama Dokumen,Pembuat,Role,Tanggal\n';
+      rows.forEach(r => {
+        const tanggal = new Date(r.created_at).toLocaleString('id-ID');
+        csv += `${r.id},"${r.document_type}","${r.document_name}","${r.created_by}","${r.role}","${tanggal}"\n`;
+      });
+
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', 'attachment; filename=history.csv');
+      return res.status(200).send(csv);
+    }
 
     const { type, startDate, endDate } = req.query;
 
@@ -68,6 +86,16 @@ module.exports = async (req, res) => {
       success: true,
       entry: { id, documentType, documentName, details, createdBy, role, createdAt: new Date().toISOString() }
     });
+  }
+
+  if (req.method === 'DELETE') {
+    const user = requireAdmin(req, res);
+    if (!user) return;
+
+    const { id } = req.query;
+    await pool.query('DELETE FROM history WHERE id = $1', [id]);
+
+    return res.status(200).json({ success: true });
   }
 
   return res.status(405).json({ error: 'Method not allowed' });
