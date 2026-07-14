@@ -91,40 +91,52 @@ h1{font-family:'Space Grotesk',sans-serif;font-size:28px;margin:2px 0 0;font-wei
 .lock-screen{
   position:fixed;inset:0;z-index:50;padding:24px;
   display:flex;align-items:center;justify-content:center;
-  background:#f6f4ee; /* --paper di login.html */
-  --navy:#1f3a5f; --navy-dark:#152840; --line2:#dfdad0; --muted2:#6b7280; --error2:#dc2626;
+  background:
+    radial-gradient(1100px 500px at 15% -10%, #FFFFFF 0%, transparent 60%),
+    radial-gradient(900px 500px at 100% 0%, var(--primary-pale) 0%, transparent 55%),
+    linear-gradient(180deg, #F4F9FA 0%, var(--bg) 40%, #E7F1F2 100%);
 }
 .lock-card{
-  background:#ffffff;border:1px solid var(--line2);border-radius:10px;
-  padding:44px 40px;max-width:380px;width:100%;
-  box-shadow:0 4px 12px rgba(28,43,58,.08);
+  width:100%;max-width:400px;
+  background:var(--surface);border:1px solid var(--line-muted);border-radius:22px;
+  padding:40px 34px;
+  box-shadow:0 22px 44px -24px rgba(11,85,102,0.28);
   text-align:left;
 }
-.lock-brand{font-family:'Inter',sans-serif;font-size:13px;letter-spacing:.03em;color:var(--muted2);text-transform:uppercase;margin-bottom:6px;}
-.lock-card h2{font-family:'Source Serif 4',"Times New Roman",serif;color:var(--navy-dark);margin:0 0 6px;font-size:24px;font-weight:700;}
-.lock-sub{font-family:'Inter',sans-serif;font-size:14px;color:var(--muted2);margin:0 0 28px;line-height:1.5;}
-.lock-card .form-group{margin-bottom:20px;}
-.lock-card label{display:block;font-family:'Inter',sans-serif;font-size:13px;font-weight:600;color:var(--navy-dark);margin-bottom:6px;letter-spacing:.03em;text-transform:uppercase;}
+.lock-brand{
+  display:inline-flex;align-items:center;gap:8px;
+  font-family:'Space Grotesk',sans-serif;font-size:11.5px;font-weight:700;
+  letter-spacing:0.14em;text-transform:uppercase;color:var(--primary);
+  background:var(--primary-pale);padding:6px 14px;border-radius:999px;
+  margin-bottom:18px;
+}
+.lock-brand::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--accent-rain);}
+.lock-card .lock-title{font-family:'Space Grotesk',sans-serif;color:var(--ink);margin:0 0 8px;font-size:24px;font-weight:700;}
+.lock-sub{font-size:13.5px;color:var(--ink-soft);margin:0 0 26px;line-height:1.6;}
+.lock-card .form-group{margin-bottom:16px;}
+.lock-card label{display:block;font-size:12.5px;font-weight:600;color:var(--ink-soft);margin-bottom:6px;}
 .lock-card input{
-  width:100%;padding:12px 14px;border:1px solid var(--line2);border-radius:6px;
-  font-size:14px;font-family:'Inter',sans-serif;color:#1c2b3a;background:#fafaf8;
+  width:100%;padding:12px 14px;border:1.5px solid var(--line-muted);border-radius:14px;
+  font-size:14px;font-family:'Inter',sans-serif;color:var(--ink);background:var(--bg);
   text-align:left;margin-bottom:0;
   transition:border-color .15s ease, background .15s ease;
 }
-.lock-card input:focus{outline:none;border-color:#a9762f;background:#ffffff;}
+.lock-card input:focus{outline:none;border-color:var(--primary-light);background:var(--surface);}
 .lock-card button{
-  width:100%;font-family:'Inter',sans-serif;font-weight:600;font-size:14px;letter-spacing:.03em;text-transform:uppercase;
-  background:var(--navy);color:#fff;border:none;padding:12px;border-radius:6px;cursor:pointer;
-  transition:background .15s ease, transform .15s ease;
+  width:100%;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:14px;letter-spacing:.02em;
+  background:var(--ink);color:#fff;border:none;padding:13px;border-radius:999px;cursor:pointer;
+  margin-top:8px;
+  transition:background .18s ease, transform .18s ease;
 }
-.lock-card button:hover{background:var(--navy-dark);transform:translateY(-1px);}
+.lock-card button:hover{background:var(--primary);}
+.lock-card button:active{transform:translateY(1px);}
 .lock-card button[disabled]{opacity:.6;cursor:not-allowed;}
 .lock-error{
-  display:none;background:#fee2e2;border:1px solid #fecaca;color:var(--error2);
-  padding:12px 14px;border-radius:6px;font-size:13px;margin-top:16px;font-family:'Inter',sans-serif;
+  display:none;background:#FBE4DA;border:1px solid #F3C9AE;color:#B5502E;
+  padding:11px 14px;border-radius:14px;font-size:13px;margin-bottom:18px;font-family:'Inter',sans-serif;
 }
 .lock-error:not(:empty){display:block;}
-.lock-hint{font-family:'Inter',sans-serif;font-size:12px;color:var(--muted2);margin-top:20px;text-align:center;line-height:1.5;}
+.lock-hint{font-family:'Inter',sans-serif;font-size:12px;color:var(--ink-soft);margin-top:22px;text-align:center;line-height:1.5;}
 </style>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
