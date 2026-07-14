@@ -166,6 +166,34 @@ h1{
 .main-grid{display:grid;grid-template-columns:1fr 90px;gap:24px;}
 @media (max-width:640px){.main-grid{grid-template-columns:1fr;}}
 
+/* ===== RESPONSIVE (konten halaman, breakpoint sama seperti navbar) ===== */
+@media (max-width: 760px){
+  .wrap{ padding:24px 5vw 60px; }
+
+  header.top{ flex-direction:column; align-items:flex-start; }
+  .top-note{ max-width:none; text-align:left; }
+  h1{ font-size:24px; }
+
+  .panel{ padding:18px 16px; }
+
+  .controls{ flex-direction:column; align-items:stretch; gap:14px; }
+  .time-field{ min-width:0; width:100%; }
+  .spacer{ display:none; }
+  .dl-group{ width:100%; }
+  .dl-group .dl-btn{ flex:1 1 auto; }
+
+  .main-grid{ gap:16px; }
+  .chart-box{ height:260px; }
+  .gauge-track{ height:180px; }
+
+  .tiles-grid{ grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); }
+
+  .stat{ flex:1 1 auto; min-width:0; }
+
+  .table-scroll{ overflow-x:auto; -webkit-overflow-scrolling:touch; }
+  table{ min-width:420px; }
+}
+
 .chart-box{height:340px;}
 
 .gauge-wrap{display:flex;flex-direction:column;align-items:center;}
