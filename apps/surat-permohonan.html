@@ -34,6 +34,7 @@
     width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:7px;font-size:14px;font-family:inherit;background:#fff;color:var(--ink);
   }
   input:focus, textarea:focus, select:focus{outline:2px solid var(--navy);outline-offset:1px;}
+  select:disabled{background:#f1efe9;color:var(--muted);cursor:not-allowed;}
   textarea{resize:vertical;min-height:56px;}
   .row2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
   .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;}
@@ -438,7 +439,7 @@
         <option value="M Kohirudin S.T||Direktur Teknik">Direktur Teknik &mdash; M Kohirudin S.T</option>
         <option value="manual">Isi Manual...</option>
       </select>
-      <div class="hint">Pilih salah satu untuk mengisi otomatis Nama &amp; Jabatan di bawah. Bisa juga langsung mengetik manual tanpa memilih template.</div>
+      <div class="hint" id="ttdTemplateHint">Pilih salah satu untuk mengisi otomatis Nama &amp; Jabatan di bawah. Bisa juga langsung mengetik manual tanpa memilih template.</div>
       <div class="field-group">
         <label for="ttdNama">Nama Penandatangan</label>
         <input type="text" id="ttdNama" list="personList" placeholder="Contoh: Ir. Ali Rachman AS, S.T.,M.T.">
@@ -699,6 +700,22 @@ function updateAccessBanner(){
   viewerBanner.style.display = access ? 'flex' : 'none';
   const statusText = document.getElementById('lockStatusText');
   if(statusText) statusText.textContent = pollTimer ? ' Menunggu persetujuan admin lewat email...' : '';
+  updateTtdTemplateAccess();
+}
+
+// Dropdown "Pilih Cepat" berisi nama & jabatan pejabat asli -- cuma boleh dipakai
+// oleh yang sudah punya akses. Publik tetap bisa isi Nama/Jabatan manual di bawahnya.
+function updateTtdTemplateAccess(){
+  const sel = document.getElementById('ttdTemplate');
+  const hint = document.getElementById('ttdTemplateHint');
+  if(!sel) return;
+  const access = hasVizAccess();
+  sel.disabled = !access;
+  if(hint){
+    hint.textContent = access
+      ? 'Pilih salah satu untuk mengisi otomatis Nama & Jabatan di bawah. Bisa juga langsung mengetik manual tanpa memilih template.'
+      : 'Template cepat ini cuma tersedia untuk yang sudah punya akses. Isi Nama & Jabatan secara manual di bawah.';
+  }
 }
 
 function openAccessModal(){
