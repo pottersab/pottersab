@@ -3,6 +3,7 @@ const { DATASETS, isValidDataType } = require('../../lib/visualization/columns')
 const { checkVizAccess } = require('../../lib/visualization/viz-auth');
 const { fetchRealRows, fetchWideSingleRows, fetchSumurDebitRows, fetchSumurLevelRows } = require('../../lib/visualization/repo');
 const { buildTablePdf } = require('../../lib/visualization/pdf-table');
+const { logViewerAction } = require('../../lib/visualization/access-log');
 
 const MONTHS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
 
@@ -46,7 +47,7 @@ module.exports = async (req, res) => {
   }
   const source = DATASETS[dataType];
 
-  const access = await checkVizAccess(req, source.accessGroup);
+  const access = await checkVizAccess(req);
   if (!access.granted) {
     return res.status(403).json({ error: 'Akses ditolak. Minta akses dulu lewat tombol "Minta Akses" di halaman.' });
   }
@@ -201,6 +202,8 @@ module.exports = async (req, res) => {
   } else {
     return res.status(500).json({ error: 'Kind dataset tidak dikenal' });
   }
+
+  await logViewerAction(access, dataType, 'download_pdf');
 
   res.setHeader('Content-Type', 'application/pdf');
   res.setHeader('Content-Disposition', `attachment; filename=${filename}`);

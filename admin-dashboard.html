@@ -589,6 +589,20 @@
       <div class="loading">Memuat data...</div>
     </div>
   </div>
+
+  <div style="margin-top:40px; display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;">
+    <div>
+      <div class="section-title" style="font-size:22px; margin-bottom:4px;">Log Akses Data Viewer</div>
+      <div class="section-desc" style="margin-bottom:0;">Permintaan akses viewer (Data Pengambilan Air Baku &amp; Data Waduk dan Sumur) dan riwayat lihat/unduh data asli mereka.</div>
+    </div>
+    <button class="action-btn btn-secondary" id="refreshRequestsBtn">Refresh</button>
+  </div>
+
+  <div class="table-wrapper" style="margin-top:16px;">
+    <div id="accessRequestsContent" class="table-empty">
+      <div class="loading">Memuat data...</div>
+    </div>
+  </div>
 </div>
 
 <footer>
@@ -610,12 +624,14 @@
 
   // Load history saat page load
   window.addEventListener('load', loadHistory);
+  window.addEventListener('load', loadAccessRequests);
 
   // Event listeners
   document.getElementById('logoutBtn').addEventListener('click', logout);
   document.getElementById('refreshBtn').addEventListener('click', loadHistory);
   document.getElementById('filterBtn').addEventListener('click', filterHistory);
   document.getElementById('exportBtn').addEventListener('click', exportCSV);
+  document.getElementById('refreshRequestsBtn').addEventListener('click', loadAccessRequests);
 
   async function loadHistory() {
     try {
@@ -759,6 +775,124 @@
     } catch (err) {
       showMessage('Gagal export CSV', 'error');
     }
+  }
+
+  // ===== Log Akses Data Viewer (access_requests + access_logs) =====
+  const ACTION_LABELS = { view: 'Lihat data asli', download_pdf: 'Unduh PDF' };
+  const loadedLogsByRequest = {}; // requestId -> logs array (cache biar tidak fetch ulang tiap toggle)
+
+  async function loadAccessRequests() {
+    try {
+      const response = await fetch(`${API_URL}/api/visualization/admin-requests`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!response.ok) throw new Error('Failed to load access requests');
+      const data = await response.json();
+      renderAccessRequests(data.requests || []);
+    } catch (err) {
+      document.getElementById('accessRequestsContent').innerHTML = '<div class="table-empty">Gagal memuat data permintaan akses</div>';
+      console.error(err);
+    }
+  }
+
+  function renderAccessRequests(requests) {
+    const container = document.getElementById('accessRequestsContent');
+    if (requests.length === 0) {
+      container.innerHTML = '<div class="table-empty">Belum ada permintaan akses</div>';
+      return;
+    }
+
+    let html = `
+      <table>
+        <thead>
+          <tr>
+            <th>Nama</th>
+            <th>Diminta dari / Alasan</th>
+            <th>Status</th>
+            <th>Waktu</th>
+            <th>Riwayat</th>
+          </tr>
+        </thead>
+        <tbody>
+    `;
+
+    requests.forEach(r => {
+      const date = new Date(r.created_at);
+      const statusBadge = r.status === 'approved'
+        ? '<span class="user-role" style="background:#dcfce7;color:#166534;">APPROVED</span>'
+        : '<span class="user-role">PENDING</span>';
+
+      html += `
+        <tr>
+          <td>${escapeHtml(r.requested_by)}</td>
+          <td>${escapeHtml(r.data_type || '-')}${r.reason ? '<div style="font-size:11px;color:var(--muted);">' + escapeHtml(r.reason) + '</div>' : ''}</td>
+          <td>${statusBadge}</td>
+          <td>
+            <span class="time-ago">${getTimeAgo(date)}</span>
+            <div style="font-size: 11px; color: var(--muted);">${date.toLocaleString('id-ID')}</div>
+          </td>
+          <td><button class="action-btn btn-secondary" data-toggle-logs="${r.id}">Lihat Riwayat</button></td>
+        </tr>
+        <tr id="logsRow-${r.id}" style="display:none;">
+          <td colspan="5" id="logsCell-${r.id}" style="background:var(--paper);"></td>
+        </tr>
+      `;
+    });
+
+    html += '</tbody></table>';
+    container.innerHTML = html;
+
+    container.querySelectorAll('[data-toggle-logs]').forEach(btn => {
+      btn.addEventListener('click', () => toggleRequestLogs(btn.getAttribute('data-toggle-logs'), btn));
+    });
+  }
+
+  async function toggleRequestLogs(requestId, btn) {
+    const row = document.getElementById(`logsRow-${requestId}`);
+    if (row.style.display !== 'none') {
+      row.style.display = 'none';
+      btn.textContent = 'Lihat Riwayat';
+      return;
+    }
+
+    const cell = document.getElementById(`logsCell-${requestId}`);
+    row.style.display = '';
+    btn.textContent = 'Sembunyikan';
+
+    if (loadedLogsByRequest[requestId]) {
+      cell.innerHTML = renderLogsTable(loadedLogsByRequest[requestId]);
+      return;
+    }
+
+    cell.innerHTML = '<div class="loading">Memuat riwayat...</div>';
+    try {
+      const response = await fetch(`${API_URL}/api/visualization/admin-requests?requestId=${requestId}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!response.ok) throw new Error('Failed to load logs');
+      const data = await response.json();
+      loadedLogsByRequest[requestId] = data.logs || [];
+      cell.innerHTML = renderLogsTable(loadedLogsByRequest[requestId]);
+    } catch (err) {
+      cell.innerHTML = '<div style="padding:12px;color:var(--error);">Gagal memuat riwayat.</div>';
+    }
+  }
+
+  function renderLogsTable(logs) {
+    if (logs.length === 0) return '<div style="padding:12px;color:var(--muted);">Belum ada aktivitas tercatat.</div>';
+    const rows = logs.map(l => `
+      <tr>
+        <td><span class="doc-type">${escapeHtml(l.data_type)}</span></td>
+        <td>${escapeHtml(ACTION_LABELS[l.action] || l.action)}</td>
+        <td>${new Date(l.created_at).toLocaleString('id-ID')}</td>
+      </tr>
+    `).join('');
+    return `
+      <table style="margin:0;">
+        <thead><tr><th>Data</th><th>Aksi</th><th>Waktu</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    `;
   }
 
   function logout() {

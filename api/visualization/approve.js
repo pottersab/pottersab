@@ -63,7 +63,7 @@ module.exports = async (req, res) => {
   const groupLabel = ACCESS_GROUP_LABELS[request.data_type] || request.data_type;
   return res.status(200).send(page(
     'Akses disetujui',
-    `Permintaan dari <b>${request.requested_by}</b> untuk data <b>${groupLabel}</b> sudah disetujui. Halaman viewer akan otomatis terbuka dalam beberapa detik, dan akses ini berlaku selama 1 jam.`,
+    `Permintaan dari <b>${request.requested_by}</b> (diminta dari halaman <b>${groupLabel}</b>) sudah disetujui. Akses ini berlaku selama 1 jam untuk SEMUA data viewer di kedua halaman (Data Pengambilan Air Baku & Data Waduk dan Sumur), tidak cuma yang diminta. Halaman viewer akan otomatis terbuka dalam beberapa detik.`,
     true
   ));
 };

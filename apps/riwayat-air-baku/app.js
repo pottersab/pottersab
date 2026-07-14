@@ -14,6 +14,13 @@
    supaya seluruh pipeline render di bawah ini (chart, gauge, rekap, stat)
    tetap jalan tanpa perlu tahu apakah datanya asli atau contoh.
 
+   Akses SITE-WIDE: begitu satu permintaan disetujui admin (dari halaman
+   mana pun -- di sini atau apps/library), token yang dihasilkan berlaku
+   untuk SEMUA data viewer di kedua halaman sekaligus. Disimpan di
+   localStorage dengan key yang sama dengan apps/library/app.js supaya
+   viewer yang sudah di-approve di satu halaman otomatis ikut kebuka juga
+   di halaman satunya.
+
    Data juga di-LAZY LOAD per grup (AP / ATD) -- saat halaman dibuka cuma
    grup yang sedang aktif yang di-fetch, grup lain baru di-fetch saat
    tab-nya diklik.
@@ -709,7 +716,9 @@ function updateAdminButton() {
 // ---------------------------------------------------------------------------
 // AKSES DATA VITAL — banner "terkunci" + form "Minta Akses" + polling status
 // + auto-unlock setelah admin approve lewat email + auto re-lock setelah
-// token 1 jam habis.
+// token 1 jam habis. Site-wide: token disimpan di localStorage (key
+// vizAccessToken/vizAccessExpiresAt/vizRequestId) supaya sama dan otomatis
+// dikenali oleh apps/library/app.js juga.
 // ---------------------------------------------------------------------------
 function updateLockBanner(locked) {
   const banner = document.getElementById('lockBanner');
@@ -776,7 +785,7 @@ async function submitAccessRequest() {
     if (!res.ok || !data.success) throw new Error(data.error || 'Gagal mengirim permintaan.');
 
     vizRequestId = data.requestId;
-    try { sessionStorage.setItem('vizRequestId', String(vizRequestId)); } catch (e) {}
+    try { localStorage.setItem('vizRequestId', String(vizRequestId)); } catch (e) {}
 
     setAccessModalStatus('Permintaan terkirim. Menunggu admin menyetujui lewat email — halaman ini akan otomatis update.', 'pending');
     startPolling();
@@ -805,9 +814,9 @@ async function checkAccessStatus() {
       vizToken = data.token;
       vizTokenExpiresAt = data.expiresAt;
       try {
-        sessionStorage.setItem('vizAccessToken', vizToken);
-        sessionStorage.setItem('vizAccessExpiresAt', vizTokenExpiresAt);
-        sessionStorage.removeItem('vizRequestId');
+        localStorage.setItem('vizAccessToken', vizToken);
+        localStorage.setItem('vizAccessExpiresAt', vizTokenExpiresAt);
+        localStorage.removeItem('vizRequestId');
       } catch (e) {}
       scheduleTokenExpiry();
       setAccessModalStatus('Akses disetujui! Memuat data asli...', 'ok');
@@ -817,7 +826,7 @@ async function checkAccessStatus() {
       clearInterval(pollTimer);
       pollTimer = null;
       vizRequestId = null;
-      try { sessionStorage.removeItem('vizRequestId'); } catch (e) {}
+      try { localStorage.removeItem('vizRequestId'); } catch (e) {}
       updateLockBanner(true);
     }
   } catch (err) {
@@ -832,8 +841,8 @@ function scheduleTokenExpiry() {
     vizToken = null;
     vizTokenExpiresAt = null;
     try {
-      sessionStorage.removeItem('vizAccessToken');
-      sessionStorage.removeItem('vizAccessExpiresAt');
+      localStorage.removeItem('vizAccessToken');
+      localStorage.removeItem('vizAccessExpiresAt');
     } catch (e) {}
     reloadAllGroupsData();
   }, Math.max(ms, 0));
@@ -844,15 +853,15 @@ function scheduleTokenExpiry() {
 // tanpa perlu request baru.
 function restoreVizSession() {
   try {
-    const token = sessionStorage.getItem('vizAccessToken');
-    const expiresAt = sessionStorage.getItem('vizAccessExpiresAt');
+    const token = localStorage.getItem('vizAccessToken');
+    const expiresAt = localStorage.getItem('vizAccessExpiresAt');
     if (token && expiresAt && new Date(expiresAt).getTime() > Date.now()) {
       vizToken = token;
       vizTokenExpiresAt = expiresAt;
       scheduleTokenExpiry();
       return;
     }
-    const pendingId = sessionStorage.getItem('vizRequestId');
+    const pendingId = localStorage.getItem('vizRequestId');
     if (pendingId) {
       vizRequestId = pendingId;
       startPolling();

@@ -9,9 +9,12 @@
    bawah (chart, gauge, tiles sumur, tabel) tetap jalan tanpa perlu tahu
    apakah datanya asli atau contoh.
 
-   Akses digerbangi PER GRUP (bukan per key satu-satu): manggar, teritip,
-   sumur_debit, sumur_level -- 1 approval buka semua metrik dalam grup itu
-   (mis. approve grup "manggar" langsung buka Level+Hujan+NTU+PH Manggar).
+   Akses SITE-WIDE: begitu satu permintaan disetujui admin (dari halaman
+   mana pun -- air baku atau di sini), token yang dihasilkan berlaku untuk
+   SEMUA data viewer di apps/riwayat-air-baku maupun apps/library sekaligus.
+   Disimpan di localStorage dengan key yang sama dengan
+   apps/riwayat-air-baku/app.js supaya kalau viewer sudah di-approve di satu
+   halaman, halaman satunya otomatis ikut kebuka juga.
 
    Struktur menu tetap 2-3 tingkat seperti sebelumnya:
      Menu utama  -> Waduk Manggar / Waduk Teritip / Sumur Dalam
@@ -91,9 +94,6 @@ const KEY_TO_ACCESSGROUP = {};
 Object.keys(DAILY_KEYS).forEach(k => { KEY_TO_ACCESSGROUP[k] = k.startsWith('manggar') ? 'manggar' : 'teritip'; });
 Object.keys(SUMUR_KEYS).forEach(k => { KEY_TO_ACCESSGROUP[k] = k.startsWith('sumur_debit') ? 'sumur_debit' : 'sumur_level'; });
 
-const GROUP_TO_KEYS = {};
-Object.entries(KEY_TO_ACCESSGROUP).forEach(([k, g]) => { (GROUP_TO_KEYS[g] = GROUP_TO_KEYS[g] || []).push(k); });
-
 const ACCESS_GROUP_LABELS = {
   manggar: 'Waduk Manggar',
   teritip: 'Waduk Teritip',
@@ -131,22 +131,14 @@ function monthLabelLong(d) {
 }
 
 // ---------------------------------------------------------------------------
-// AKSES — token yang dipakai untuk minta data asli ke API: JWT admin situs
-// (localStorage 'token', dari login.html) selalu lolos untuk SEMUA grup;
-// kalau bukan admin, dipakai token viz-access per grup hasil approve email.
+// AKSES — site-wide: token yang dipakai untuk minta data asli ke API adalah
+// JWT admin situs (localStorage 'token', dari login.html -- selalu lolos)
+// ATAU satu token viz-access GLOBAL hasil approve email (bukan per grup lagi).
+// Disimpan di localStorage dengan KEY YANG SAMA dengan
+// apps/riwayat-air-baku/app.js (lihat bagian AKSES DATA VITAL di bawah).
 // ---------------------------------------------------------------------------
-let vizAccess = {}; // group -> { token, expiresAt, requestId, pollTimer, expiryTimer }
-
-function getVizEntry(group) {
-  if (!vizAccess[group]) vizAccess[group] = { token: null, expiresAt: null, requestId: null, pollTimer: null, expiryTimer: null };
-  return vizAccess[group];
-}
-
-function tokenForGroup(group) {
-  const admin = localStorage.getItem('token');
-  if (admin) return admin;
-  const entry = vizAccess[group];
-  return entry && entry.token ? entry.token : null;
+function currentAccessToken() {
+  return localStorage.getItem('token') || vizToken || null;
 }
 
 function activeAccessGroup() {
@@ -154,9 +146,8 @@ function activeAccessGroup() {
 }
 
 async function fetchApiData(key) {
-  const group = KEY_TO_ACCESSGROUP[key];
   const headers = {};
-  const token = tokenForGroup(group);
+  const token = currentAccessToken();
   if (token) headers['Authorization'] = 'Bearer ' + token;
   const res = await fetch(`/api/visualization/data?dataType=${key}`, { headers });
   if (!res.ok) throw new Error(`Gagal memuat data (HTTP ${res.status})`);
@@ -213,8 +204,9 @@ function buildDatasetFromApi(key, header, rows, locked) {
 // ---------------------------------------------------------------------------
 // LAZY LOAD — fetch data hanya untuk key yang sedang dibuka, bukan semuanya
 // di awal. Di-cache per key (Promise) supaya tidak fetch ulang kalau user
-// bolak-balik antar tab. Cache di-clear per GRUP tiap kali status akses
-// grup itu berubah (baru approved / token kedaluwarsa) lewat reloadGroupData().
+// bolak-balik antar tab. Cache di-clear SELURUHNYA tiap kali status akses
+// berubah (baru approved / token kedaluwarsa) lewat reloadAllData() --
+// site-wide, jadi semua key ikut ter-refresh, bukan cuma satu grup.
 // ---------------------------------------------------------------------------
 const sourceLoadPromises = new Map(); // key -> Promise
 const sourceLockStatus = {}; // accessGroup -> boolean (true = sedang locked/dummy)
@@ -238,9 +230,9 @@ async function ensureDatasetLoaded(key) {
   return datasets[key];
 }
 
-async function reloadGroupData(group) {
-  (GROUP_TO_KEYS[group] || []).forEach(k => { sourceLoadPromises.delete(k); delete datasets[k]; });
-  if (KEY_TO_ACCESSGROUP[currentKey] !== group) return;
+async function reloadAllData() {
+  sourceLoadPromises.clear();
+  Object.keys(datasets).forEach(k => { delete datasets[k]; });
   try {
     await ensureDatasetLoaded(currentKey);
   } catch (err) {
@@ -725,8 +717,7 @@ function downloadExcel() {
 // satu tahun penuh).
 // ---------------------------------------------------------------------------
 function downloadPdf() {
-  const group = activeAccessGroup();
-  const token = tokenForGroup(group);
+  const token = currentAccessToken();
   if (!token) {
     alert('Unduh PDF perlu akses data asli dulu. Klik "Minta Akses" di atas untuk meminta persetujuan admin.');
     return;
@@ -764,10 +755,17 @@ function updateAdminButton() {
 // ---------------------------------------------------------------------------
 // AKSES DATA VITAL — banner "terkunci" + form "Minta Akses" + polling status
 // + auto-unlock setelah admin approve lewat email + auto re-lock setelah
-// token 1 jam habis. Semua dikelola PER GRUP (manggar/teritip/sumur_debit/
-// sumur_level), disimpan di `vizAccess`.
+// token 1 jam habis. Site-wide: SATU token global (bukan per grup lagi),
+// disimpan di localStorage dengan key yang sama dengan
+// apps/riwayat-air-baku/app.js -- approval dari halaman itu otomatis
+// dikenali di sini juga, dan sebaliknya.
 // ---------------------------------------------------------------------------
-let modalGroup = null;
+let vizToken = null;
+let vizTokenExpiresAt = null;
+let vizRequestId = null;
+let pollTimer = null;
+let expiryTimer = null;
+let modalGroup = null; // cuma label konteks buat modal & field dataType yang dikirim ke admin
 
 function updateLockBanner() {
   const banner = document.getElementById('lockBanner');
@@ -777,14 +775,13 @@ function updateLockBanner() {
   const locked = !!sourceLockStatus[group] && !isAdmin;
   if (!locked) { banner.style.display = 'none'; return; }
   banner.style.display = 'flex';
-  const entry = getVizEntry(group);
-  statusText.textContent = entry.pollTimer ? 'Menunggu persetujuan admin lewat email...' : '';
+  statusText.textContent = pollTimer ? 'Menunggu persetujuan admin lewat email...' : '';
 }
 
 function updatePdfButton() {
   const btn = document.getElementById('downloadPdfBtn');
   if (!btn) return;
-  if (tokenForGroup(activeAccessGroup())) {
+  if (currentAccessToken()) {
     btn.textContent = 'Unduh PDF';
     btn.disabled = false;
   } else {
@@ -818,7 +815,6 @@ function setAccessModalStatus(msg, cls) {
 async function submitAccessRequest() {
   const nama = document.getElementById('accessNamaInput').value.trim();
   const alasan = document.getElementById('accessAlasanInput').value.trim();
-  const group = modalGroup;
 
   if (!nama) {
     setAccessModalStatus('Isi nama dulu ya.', 'error');
@@ -833,57 +829,54 @@ async function submitAccessRequest() {
     const res = await fetch('/api/visualization/request', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ requestedBy: nama, dataType: group, reason: alasan || undefined })
+      body: JSON.stringify({ requestedBy: nama, dataType: modalGroup, reason: alasan || undefined })
     });
     const data = await res.json();
     if (!res.ok || !data.success) throw new Error(data.error || 'Gagal mengirim permintaan.');
 
-    const entry = getVizEntry(group);
-    entry.requestId = data.requestId;
-    try { sessionStorage.setItem('vizRequestId_' + group, String(entry.requestId)); } catch (e) {}
+    vizRequestId = data.requestId;
+    try { localStorage.setItem('vizRequestId', String(vizRequestId)); } catch (e) {}
 
     setAccessModalStatus('Permintaan terkirim. Menunggu admin menyetujui lewat email — halaman ini akan otomatis update.', 'pending');
-    startPolling(group);
+    startPolling();
   } catch (err) {
     setAccessModalStatus(err.message, 'error');
   }
   btn.disabled = false;
 }
 
-function startPolling(group) {
-  const entry = getVizEntry(group);
-  if (entry.pollTimer) clearInterval(entry.pollTimer);
+function startPolling() {
+  if (pollTimer) clearInterval(pollTimer);
   updateLockBanner();
-  entry.pollTimer = setInterval(() => checkAccessStatus(group), 4000);
-  checkAccessStatus(group);
+  pollTimer = setInterval(checkAccessStatus, 4000);
+  checkAccessStatus();
 }
 
-async function checkAccessStatus(group) {
-  const entry = getVizEntry(group);
-  if (!entry.requestId) return;
+async function checkAccessStatus() {
+  if (!vizRequestId) return;
   try {
-    const res = await fetch(`/api/visualization/status?id=${entry.requestId}`);
+    const res = await fetch(`/api/visualization/status?id=${vizRequestId}`);
     const data = await res.json();
 
     if (data.status === 'approved') {
-      clearInterval(entry.pollTimer);
-      entry.pollTimer = null;
-      entry.token = data.token;
-      entry.expiresAt = data.expiresAt;
+      clearInterval(pollTimer);
+      pollTimer = null;
+      vizToken = data.token;
+      vizTokenExpiresAt = data.expiresAt;
       try {
-        sessionStorage.setItem('vizAccessToken_' + group, entry.token);
-        sessionStorage.setItem('vizAccessExpiresAt_' + group, entry.expiresAt);
-        sessionStorage.removeItem('vizRequestId_' + group);
+        localStorage.setItem('vizAccessToken', vizToken);
+        localStorage.setItem('vizAccessExpiresAt', vizTokenExpiresAt);
+        localStorage.removeItem('vizRequestId');
       } catch (e) {}
-      scheduleTokenExpiry(group);
-      if (modalGroup === group) setAccessModalStatus('Akses disetujui! Memuat data asli...', 'ok');
-      await reloadGroupData(group);
-      if (modalGroup === group) closeAccessModal();
+      scheduleTokenExpiry();
+      setAccessModalStatus('Akses disetujui! Memuat data asli...', 'ok');
+      await reloadAllData();
+      closeAccessModal();
     } else if (data.status === 'expired' || data.status === 'not_found') {
-      clearInterval(entry.pollTimer);
-      entry.pollTimer = null;
-      entry.requestId = null;
-      try { sessionStorage.removeItem('vizRequestId_' + group); } catch (e) {}
+      clearInterval(pollTimer);
+      pollTimer = null;
+      vizRequestId = null;
+      try { localStorage.removeItem('vizRequestId'); } catch (e) {}
       updateLockBanner();
     }
   } catch (err) {
@@ -891,44 +884,40 @@ async function checkAccessStatus(group) {
   }
 }
 
-function scheduleTokenExpiry(group) {
-  const entry = getVizEntry(group);
-  if (entry.expiryTimer) clearTimeout(entry.expiryTimer);
-  const ms = new Date(entry.expiresAt).getTime() - Date.now();
-  entry.expiryTimer = setTimeout(() => {
-    entry.token = null;
-    entry.expiresAt = null;
+function scheduleTokenExpiry() {
+  if (expiryTimer) clearTimeout(expiryTimer);
+  const ms = new Date(vizTokenExpiresAt).getTime() - Date.now();
+  expiryTimer = setTimeout(() => {
+    vizToken = null;
+    vizTokenExpiresAt = null;
     try {
-      sessionStorage.removeItem('vizAccessToken_' + group);
-      sessionStorage.removeItem('vizAccessExpiresAt_' + group);
+      localStorage.removeItem('vizAccessToken');
+      localStorage.removeItem('vizAccessExpiresAt');
     } catch (e) {}
-    reloadGroupData(group);
+    reloadAllData();
   }, Math.max(ms, 0));
 }
 
-// Kalau ada token viz-access yang masih berlaku (dari sesi sebelumnya di tab
-// yang sama) atau ada permintaan yang masih pending untuk grup tertentu,
-// lanjutkan otomatis tanpa perlu request baru.
+// Kalau ada token viz-access yang masih berlaku (dari approval di halaman
+// ini ATAU apps/riwayat-air-baku -- sama-sama pakai localStorage key ini),
+// atau ada permintaan yang masih pending, lanjutkan otomatis tanpa perlu
+// request baru.
 function restoreVizSession() {
-  Object.keys(ACCESS_GROUP_LABELS).forEach(group => {
-    try {
-      const token = sessionStorage.getItem('vizAccessToken_' + group);
-      const expiresAt = sessionStorage.getItem('vizAccessExpiresAt_' + group);
-      if (token && expiresAt && new Date(expiresAt).getTime() > Date.now()) {
-        const entry = getVizEntry(group);
-        entry.token = token;
-        entry.expiresAt = expiresAt;
-        scheduleTokenExpiry(group);
-        return;
-      }
-      const pendingId = sessionStorage.getItem('vizRequestId_' + group);
-      if (pendingId) {
-        const entry = getVizEntry(group);
-        entry.requestId = pendingId;
-        startPolling(group);
-      }
-    } catch (e) {}
-  });
+  try {
+    const token = localStorage.getItem('vizAccessToken');
+    const expiresAt = localStorage.getItem('vizAccessExpiresAt');
+    if (token && expiresAt && new Date(expiresAt).getTime() > Date.now()) {
+      vizToken = token;
+      vizTokenExpiresAt = expiresAt;
+      scheduleTokenExpiry();
+      return;
+    }
+    const pendingId = localStorage.getItem('vizRequestId');
+    if (pendingId) {
+      vizRequestId = pendingId;
+      startPolling();
+    }
+  } catch (e) {}
 }
 
 // ---------------------------------------------------------------------------

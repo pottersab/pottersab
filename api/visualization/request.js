@@ -55,10 +55,11 @@ module.exports = async (req, res) => {
         <p>Ada permintaan akses data vital di Portal PTMB:</p>
         <ul>
           <li><b>Nama:</b> ${escapeHtml(requestedBy)}</li>
-          <li><b>Data:</b> ${escapeHtml(dataTypeLabel)}</li>
+          <li><b>Diminta dari halaman:</b> ${escapeHtml(dataTypeLabel)}</li>
           <li><b>Alasan:</b> ${reason ? escapeHtml(reason) : '(tidak diisi)'}</li>
         </ul>
-        <p>Klik tombol di bawah untuk menyetujui akses ini (berlaku 1 jam sejak disetujui):</p>
+        <p style="color:#B5502E;"><b>Catatan:</b> menyetujui permintaan ini akan membuka SEMUA data viewer di kedua halaman (Data Pengambilan Air Baku &amp; Data Waduk dan Sumur) untuk peminta ini, bukan cuma data di atas.</p>
+        <p>Klik tombol di bawah untuk menyetujui (berlaku 1 jam sejak disetujui):</p>
         <p><a href="${approveUrl}" style="display:inline-block;background:#0B5566;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">Setujui Akses</a></p>
         <p style="color:#888;font-size:12px;">Kalau tombol tidak berfungsi, salin tautan ini: ${approveUrl}</p>
       `

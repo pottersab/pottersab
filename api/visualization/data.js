@@ -3,6 +3,7 @@ const { DATASETS, isValidDataType } = require('../../lib/visualization/columns')
 const { checkVizAccess } = require('../../lib/visualization/viz-auth');
 const { buildDummyRows, buildDummyWideSingleRows, buildDummySumurDebitRows, buildDummySumurLevelRows } = require('../../lib/visualization/dummy');
 const { fetchRealRows, fetchWideSingleRows, fetchSumurWells, fetchSumurDebitRows, fetchSumurLevelRows } = require('../../lib/visualization/repo');
+const { logViewerAction } = require('../../lib/visualization/access-log');
 
 module.exports = async (req, res) => {
   if (req.method !== 'GET') {
@@ -16,7 +17,7 @@ module.exports = async (req, res) => {
     return res.status(400).json({ error: 'dataType tidak dikenal' });
   }
   const source = DATASETS[dataType];
-  const access = await checkVizAccess(req, source.accessGroup);
+  const access = await checkVizAccess(req);
 
   if (source.kind === 'wide') {
     const header = ['Bulan', ...source.columns.map(c => c.csv)];
@@ -24,6 +25,7 @@ module.exports = async (req, res) => {
       return res.status(200).json({ locked: true, header, rows: buildDummyRows(source) });
     }
     const rows = await fetchRealRows(source);
+    await logViewerAction(access, dataType, 'view');
     return res.status(200).json({ locked: false, header, rows });
   }
 
@@ -33,12 +35,14 @@ module.exports = async (req, res) => {
       return res.status(200).json({ locked: true, header: [dateKey, source.csvCol], rows });
     }
     const { dateKey, rows } = await fetchWideSingleRows(source);
+    await logViewerAction(access, dataType, 'view');
     return res.status(200).json({ locked: false, header: [dateKey, source.csvCol], rows });
   }
 
   if (source.kind === 'sumur-debit') {
     if (access.granted) {
       const { wells, rows } = await fetchSumurDebitRows(source);
+      await logViewerAction(access, dataType, 'view');
       return res.status(200).json({ locked: false, header: ['Bulan', ...wells], rows });
     }
     const wells = await fetchSumurWells(source.installation, 'debit');
@@ -49,6 +53,7 @@ module.exports = async (req, res) => {
     if (access.granted) {
       const { wells, rows } = await fetchSumurLevelRows(source);
       const header = ['Bulan', ...wells.flatMap(w => [w + '_Statis', w + '_Dinamis'])];
+      await logViewerAction(access, dataType, 'view');
       return res.status(200).json({ locked: false, header, rows });
     }
     const wells = await fetchSumurWells(source.installation, 'level');
