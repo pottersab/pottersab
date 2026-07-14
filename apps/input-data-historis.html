@@ -310,7 +310,13 @@ h1{font-family:'Space Grotesk',sans-serif;font-size:28px;margin:2px 0 0;font-wei
 </script>
 
 <script>
-  (function(){
+  // Terpisah dari logic gerbang admin (isAdminLoggedIn/showLock/showApp) di
+  // bawah -- cuma mengurus tampilan tombol Login/Logout di navbar. Halaman
+  // ini punya form login SENDIRI di dalam halaman (tanpa reload/redirect),
+  // jadi updateAuthNavBtn() perlu dipanggil ULANG setelah login sukses dan
+  // setelah "Keluar" diklik supaya navbar ikut sinkron, tidak cuma sekali
+  // saat halaman pertama dimuat.
+  function updateAuthNavBtn(){
     const authBtn = document.getElementById('authNavBtn');
     if(!authBtn) return;
     const token = localStorage.getItem('token');
@@ -322,16 +328,30 @@ h1{font-family:'Space Grotesk',sans-serif;font-size:28px;margin:2px 0 0;font-wei
       authBtn.href = '#';
       authBtn.title = 'Login sebagai ' + (username || 'Admin');
       authBtn.style.background = '#B5502E';
-      authBtn.addEventListener('click', function(e){
-        e.preventDefault();
-        if(confirm('Keluar dari akun admin?')){
-          localStorage.removeItem('token');
-          localStorage.removeItem('role');
-          localStorage.removeItem('username');
-          window.location.href = '../login.html';
-        }
-      });
+    } else {
+      authBtn.textContent = 'Login';
+      authBtn.href = '../login.html';
+      authBtn.title = '';
+      authBtn.style.background = '';
     }
+  }
+
+  (function(){
+    const authBtn = document.getElementById('authNavBtn');
+    if(!authBtn) return;
+    updateAuthNavBtn();
+    authBtn.addEventListener('click', function(e){
+      const token = localStorage.getItem('token');
+      const role = localStorage.getItem('role');
+      if(!(token && role === 'admin')) return; // belum login -> biarkan link Login navigasi normal
+      e.preventDefault();
+      if(confirm('Keluar dari akun admin?')){
+        localStorage.removeItem('token');
+        localStorage.removeItem('role');
+        localStorage.removeItem('username');
+        window.location.href = '../login.html';
+      }
+    });
   })();
 </script>
 
@@ -803,6 +823,7 @@ document.getElementById('btnLogout').onclick = () => {
   localStorage.removeItem('token');
   localStorage.removeItem('role');
   localStorage.removeItem('username');
+  updateAuthNavBtn();
   showLock();
 };
 
@@ -855,6 +876,7 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
       localStorage.setItem('token', data.token);
       localStorage.setItem('role', data.role);
       localStorage.setItem('username', data.username);
+      updateAuthNavBtn();
       showApp();
     } else {
       errorEl.textContent = data.error || 'Username atau password salah.';
