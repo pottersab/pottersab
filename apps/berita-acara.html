@@ -582,25 +582,25 @@ function nl2br(s){
   return escapeAttr(s).replace(/\n/g,'<br>');
 }
 
-/* =============== Default isi (mengikuti contoh Berita Acara) =============== */
+/* =============== Default isi (form baru dimulai kosong; lihat EXAMPLE_TEXT untuk ghost) === */
 const DEFAULTS = {
-  judul:'BERITA ACARA PEMERIKSAAN LAPANGAN',
+  judul:'',
   subjudul:'',
   nomorUrut:'',
   kodeTetap1:'1421002',
   kodeTetap2:'7a.I',
   tanggalSurat: todayStr(),
-  nama1:'DARTO',
-  jabatan1:'Supervisor Sumber Air Baku & Lingkungan Perumda Tirta Manuntung Balikpapan',
-  nama2:'M RAHMAD HIDAYAT',
-  jabatan2:'Staff Sumber Air Baku & Lingkungan Perumda Tirta Manuntung Balikpapan',
-  periksaPada:'Jaringan Layanan Jalur Pipa Transmisi Air Baku :\nPipa 600mm Steel arah IPA Batu Ampar\nPipa 600mm Steel arah IPA Kampung Damai',
-  alasan:'Jalur Pipa transmisi air baku terkena proyek pengecoran jalan di Jl Mukmin Faisal Kilometer 8.',
-  tindakLanjut:'Dianggap Perlu untuk segera dilakukan persiapan material, peralatan dan tenaga kerja untuk menunjang pekerjaan ...',
-  diperiksaNama:'DEDY HERMAWAN, S.M',
-  diperiksaJabatan:'Manajer Produksi',
-  mengetahuiNama:'Ir. ALI RACHMAN AS, S.T., M.T.',
-  mengetahuiJabatan:'Direktur Operasional',
+  nama1:'',
+  jabatan1:'',
+  nama2:'',
+  jabatan2:'',
+  periksaPada:'',
+  alasan:'',
+  tindakLanjut:'',
+  diperiksaNama:'',
+  diperiksaJabatan:'',
+  mengetahuiNama:'',
+  mengetahuiJabatan:'',
 };
 const DEFAULT_PERSONS = [
   {nama:'DARTO', jabatan:'Supervisor Sumber Air Baku & Lingkungan Perumda Tirta Manuntung Balikpapan'},
@@ -610,20 +610,21 @@ const DEFAULT_PERSONS = [
 ];
 
 /* Teks contoh ini HANYA dipakai sebagai bayangan (ghost/placeholder) di pratinjau
-   saat kolom terkait masih kosong -- tidak pernah otomatis dimasukkan sebagai isi. */
+   (dan sebagai jaring pengaman kalau tetap diunduh dalam keadaan kosong) --
+   tidak pernah otomatis dimasukkan sebagai isi form. */
 const EXAMPLE_TEXT = {
-  judul: DEFAULTS.judul,
-  nama1: DEFAULTS.nama1,
-  jabatan1: DEFAULTS.jabatan1,
-  nama2: DEFAULTS.nama2,
-  jabatan2: DEFAULTS.jabatan2,
-  periksaPada: DEFAULTS.periksaPada,
-  alasan: DEFAULTS.alasan,
-  tindakLanjut: DEFAULTS.tindakLanjut,
-  diperiksaNama: DEFAULTS.diperiksaNama,
-  diperiksaJabatan: DEFAULTS.diperiksaJabatan,
-  mengetahuiNama: DEFAULTS.mengetahuiNama,
-  mengetahuiJabatan: DEFAULTS.mengetahuiJabatan,
+  judul: 'BERITA ACARA PEMERIKSAAN LAPANGAN',
+  nama1: 'DARTO',
+  jabatan1: 'Supervisor Sumber Air Baku & Lingkungan Perumda Tirta Manuntung Balikpapan',
+  nama2: 'M RAHMAD HIDAYAT',
+  jabatan2: 'Staff Sumber Air Baku & Lingkungan Perumda Tirta Manuntung Balikpapan',
+  periksaPada: 'Jaringan Layanan Jalur Pipa Transmisi Air Baku :\nPipa 600mm Steel arah IPA Batu Ampar\nPipa 600mm Steel arah IPA Kampung Damai',
+  alasan: 'Jalur Pipa transmisi air baku terkena proyek pengecoran jalan di Jl Mukmin Faisal Kilometer 8.',
+  tindakLanjut: 'Dianggap Perlu untuk segera dilakukan persiapan material, peralatan dan tenaga kerja untuk menunjang pekerjaan ...',
+  diperiksaNama: 'DEDY HERMAWAN, S.M',
+  diperiksaJabatan: 'Manajer Produksi',
+  mengetahuiNama: 'Ir. ALI RACHMAN AS, S.T., M.T.',
+  mengetahuiJabatan: 'Direktur Operasional',
 };
 
 /* =============== Storage =============== */
@@ -989,7 +990,7 @@ function buildDocumentXml(d, photoList, mediaRefs){
 
   let body = '';
   body += emptyPara(0);
-  body += para(run(d.judul || DEFAULTS.judul,{bold:true,underline:true}),{align:'center',after:0});
+  body += para(run(d.judul || EXAMPLE_TEXT.judul,{bold:true,underline:true}),{align:'center',after:0});
   if(d.subjudul){
     body += para(run('('+d.subjudul+')',{bold:true,underline:true}),{align:'center',after:0});
   }
