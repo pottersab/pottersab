@@ -311,6 +311,38 @@
   .p-badge.umum{ color:#1E7A45; background:#DCF3E4; }
   .p-badge.menyusul{ margin-left:6px; color:var(--accent); background:var(--accent-pale); }
 
+  .p-year{
+    display:inline-block; margin-left:8px; font-family:'Inter',sans-serif; font-size:10.5px; font-weight:700;
+    letter-spacing:.04em; color:var(--ink-soft); background:var(--primary-pale);
+    padding:2px 9px; border-radius:999px; vertical-align:middle;
+  }
+
+  .poster-thumbs{
+    display:flex; gap:12px; justify-content:center; margin:16px 0 6px;
+  }
+  .poster-thumb{
+    width:90px; height:120px; object-fit:cover; border-radius:10px;
+    border:1px solid var(--line); cursor:pointer; transition:all .18s ease;
+    box-shadow:0 6px 14px -8px rgba(11,85,102,0.35);
+  }
+  .poster-thumb:hover{ transform:translateY(-4px) scale(1.03); border-color:var(--purple-light); }
+
+  .lightbox{
+    display:none; position:fixed; inset:0; z-index:999;
+    background:rgba(14,42,50,0.88); backdrop-filter:blur(4px);
+    align-items:center; justify-content:center; padding:40px;
+    cursor:zoom-out;
+  }
+  .lightbox.open{ display:flex; }
+  .lightbox img{
+    max-width:min(90vw, 720px); max-height:88vh; border-radius:12px;
+    box-shadow:0 24px 60px -20px rgba(0,0,0,0.6);
+  }
+  .lightbox-close{
+    position:absolute; top:22px; right:32px; font-size:34px; color:#fff;
+    font-family:'Space Grotesk',sans-serif; cursor:pointer; line-height:1;
+  }
+
   /* Kontak grid */
   .contact-grid{ display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:16px; }
   .contact-card{
@@ -488,14 +520,14 @@
     <div class="portfolio-card">
       <span class="lock-badge">🔒 Admin Only</span>
       <div class="p-icon">📘</div>
-      <h3>Jurnal Skripsi</h3>
+      <h3>Jurnal Skripsi <span class="p-year">2020</span></h3>
       <div class="p-field">
         <b>Judul</b>
-        <span>[Judul jurnal — menyusul]</span>
+        <span>Optimalisasi Air Waduk Manggar Sesuai Ketersediaan Untuk Memenuhi Kebutuhan Air Bersih Kota Balikpapan</span>
       </div>
       <div class="p-field">
         <b>Kesimpulan</b>
-        <span>[Ringkasan kesimpulan — menyusul]</span>
+        <span>Berdasarkan kapasitas, air waduk Manggar dapat dimaksimalkan hingga 600 Liter/detik lagi dengan <b>asumsi</b> musim kemarau di Kota Balikpapan paling lama terjadi hanya selama 90 hari.</span>
       </div>
       <div class="locked-note">Isi dokumen lengkap hanya dapat diakses oleh admin. <a href="login.html">Login</a> untuk membuka.</div>
     </div>
@@ -504,14 +536,14 @@
     <div class="portfolio-card">
       <span class="lock-badge">🔒 Admin Only</span>
       <div class="p-icon">📝</div>
-      <h3>Penulisan Analisa</h3>
+      <h3>Penulisan Analisa <span class="p-year">2024</span></h3>
       <div class="p-field">
         <b>Judul</b>
-        <span>[Judul tulisan analisa — menyusul]</span>
+        <span>Analisa Pipa Transmisi Arah IPA Batu Ampar Tahun 2024</span>
       </div>
       <div class="p-field">
         <b>Kesimpulan</b>
-        <span>[Ringkasan kesimpulan — menyusul]</span>
+        <span>Untuk mengalirkan 550 L/s pada kecepatan ideal ± 1,25 m/s direkomendasikan pipa transmisi baru dengan diameter dalam minimal 750 mm (kebutuhan head total ± 109 m, margin ± 23 m terhadap head pompa eksisting untuk kehilangan minor dan sisa tekan).</span>
       </div>
       <div class="locked-note">Isi dokumen lengkap hanya dapat diakses oleh admin. <a href="login.html">Login</a> untuk membuka.</div>
     </div>
@@ -520,13 +552,25 @@
     <div class="portfolio-card public">
       <div class="p-icon">🖼️</div>
       <h3>Poster PTMB</h3>
-      <p>Karya untuk Kompetisi Poster HUT PTMB ke-48.</p>
-      <span class="p-badge umum">Untuk Umum</span>
-      <span class="p-badge menyusul">Menyusul</span>
+      <div class="p-field" style="text-align:left;">
+        <b>Judul</b>
+        <span>Melayani dengan Hati, Berinovasi untuk Negeri</span>
+      </div>
+      <p>Proyek iseng bareng sahabat: Dwi Seto &amp; Reno Arief (yang milih warna meski buta warna), untuk Lomba Poster PTMB dalam rangka HUT PTMB ke-48.</p>
+      <div class="poster-thumbs">
+        <img src="poster-1.jpg" alt="Poster PTMB - Melayani dengan Hati, Berinovasi untuk Negeri" class="poster-thumb" onclick="openLightbox('poster-1.jpg')">
+        <img src="poster-2.jpg" alt="Poster PTMB - Halaman Abstract" class="poster-thumb" onclick="openLightbox('poster-2.jpg')">
+      </div>
     </div>
 
   </div>
 </section>
+
+<!-- Lightbox untuk poster -->
+<div class="lightbox" id="lightbox" onclick="closeLightbox()">
+  <span class="lightbox-close">&times;</span>
+  <img id="lightboxImg" src="" alt="Poster PTMB - tampilan penuh">
+</div>
 
 <section class="section">
   <div class="section-head">
@@ -568,6 +612,17 @@
     document.querySelectorAll('[data-nav]').forEach(i => i.classList.remove('open'));
     links.classList.remove('open');
   });
+
+  // Lightbox poster
+  function openLightbox(src){
+    const lb = document.getElementById('lightbox');
+    document.getElementById('lightboxImg').src = src;
+    lb.classList.add('open');
+  }
+  function closeLightbox(){
+    document.getElementById('lightbox').classList.remove('open');
+  }
+  document.getElementById('lightboxImg').addEventListener('click', (e) => e.stopPropagation());
 
   // Dropdown riwayat pendidikan lengkap
   const eduToggle = document.getElementById('eduToggle');
