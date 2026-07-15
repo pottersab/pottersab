@@ -1127,6 +1127,46 @@ function renderPreview(){
   </div>`;
 
   document.getElementById('docPreviewContainer').innerHTML = page;
+  fitPreviewScale();
+}
+
+// Kertas pratinjau lebarnya tetap (215.9mm) supaya identik dengan hasil Word.
+// Di layar desktop yang lebih sempit dari lebar itu (banyak terjadi di laptop),
+// kolom kanan jadi butuh geser horizontal -- diperkecil (scale) otomatis di sini
+// supaya langsung terlihat penuh tanpa geser. Di tampilan mobile (grid 1 kolom,
+// <=960px) sengaja TIDAK disentuh, tetap pakai geser + hint seperti sekarang.
+const DESKTOP_LAYOUT_QUERY = window.matchMedia('(min-width: 961px)');
+function fitPreviewScale(){
+  const outer = document.getElementById('docPreviewContainer');
+  const page = outer && outer.querySelector('.doc-page');
+  if(!page) return;
+  page.style.transform = '';
+  page.style.transformOrigin = '';
+  outer.style.height = '';
+  if(!DESKTOP_LAYOUT_QUERY.matches) return;
+  const availableWidth = outer.clientWidth;
+  const naturalWidth = page.offsetWidth;
+  if(availableWidth > 0 && naturalWidth > availableWidth){
+    const scale = availableWidth / naturalWidth;
+    const naturalHeight = page.offsetHeight;
+    page.style.transform = `scale(${scale})`;
+    page.style.transformOrigin = 'top left';
+    outer.style.height = (naturalHeight * scale) + 'px';
+  }
+}
+let _fitResizeTimer = null;
+function scheduleFitPreviewScale(){
+  clearTimeout(_fitResizeTimer);
+  _fitResizeTimer = setTimeout(fitPreviewScale, 100);
+}
+window.addEventListener('resize', scheduleFitPreviewScale);
+// ResizeObserver dipasang di .doc-outer (bukan #docPreviewContainer yang kita
+// ubah tingginya sendiri) supaya lebar kolom kanan yang berubah karena alasan
+// apapun -- termasuk resize yang tidak selalu memicu event 'resize' window --
+// tetap memicu perhitungan ulang skala.
+const _docOuterEl = document.getElementById('docPreviewContainer').parentElement;
+if(window.ResizeObserver && _docOuterEl){
+  new ResizeObserver(scheduleFitPreviewScale).observe(_docOuterEl);
 }
 /* =============== Baris & paragraf khusus P2K3 =============== */
 /* Skema indentasi berjenjang (twips): A.=0 < 1.=360/720 < a.=720/1080 < dash=1440 */
