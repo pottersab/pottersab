@@ -58,7 +58,8 @@
   .rm-btn{flex:0 0 30px;height:34px;border:1px solid var(--line);background:#fff;color:var(--danger);border-radius:7px;cursor:pointer;font-weight:700;}
   .add-btn{margin-top:10px;background:#fff;color:var(--navy);border:1.5px dashed var(--navy);border-radius:7px;padding:8px 12px;font-size:12.5px;font-weight:700;cursor:pointer;width:100%;}
   /* preview document */
-  .doc-outer{position:sticky;top:20px;}
+  .doc-outer{position:sticky;top:20px;min-width:0;overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  .doc-scroll-hint{display:none;font-size:11.5px;color:var(--muted);margin:-8px 0 12px;text-align:center;}
   .doc-page{background:#fff;border:1px solid var(--line);font-family:"Times New Roman",Times,serif;color:#000;font-size:12.5px;box-shadow:0 1px 3px rgba(0,0,0,.06);margin-bottom:18px;overflow:hidden;width:215.9mm;min-height:355.6mm;position:relative;box-sizing:border-box;}
   .doc-inner{padding:6mm 19.05mm 42mm;line-height:1.5;}
   .doc-kop{display:flex;align-items:center;border-bottom:4px double #000;padding:8mm 19.05mm 3mm;gap:14px;}
@@ -129,6 +130,16 @@
 
   @media (max-width: 760px){
     .row3,.row4{grid-template-columns:1fr 1fr;}
+    .wrap{padding:14px;gap:14px;}
+    .card{padding:15px 16px;}
+    .btn-row{grid-template-columns:1fr;}
+    .lock-banner{justify-content:center;text-align:center;}
+    .lock-banner .req-btn{width:100%;}
+    .doc-scroll-hint{display:block;}
+  }
+  @media (max-width: 420px){
+    .row4{grid-template-columns:1fr 1fr;}
+    .row2,.row3{grid-template-columns:1fr;}
   }
 </style>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -433,6 +444,7 @@
     <div class="card" style="padding:14px 18px;">
       <h2 style="margin-bottom:0;border-bottom:none;">Pratinjau</h2>
       <div class="hint" style="margin-top:6px;">Pratinjau bukan mewakili hasil, pratinjau hanya untuk memastikan format isian.</div>
+      <div class="hint doc-scroll-hint">↔ Geser ke samping untuk melihat pratinjau halaman penuh.</div>
     </div>
     <div id="docPreviewContainer"></div>
   </div>
@@ -531,6 +543,7 @@ function updateAccessBanner(){
   viewerBanner.style.display = access ? 'flex' : 'none';
   const statusText = document.getElementById('lockStatusText');
   if(statusText) statusText.textContent = pollTimer ? ' Menunggu persetujuan admin lewat email...' : '';
+  updateFormPlaceholders();
 }
 
 function openAccessModal(){
@@ -839,6 +852,25 @@ const SIMPLE_FIELDS = ['namaInstalasi','alamat','jmlLaki','jmlWanita','jmlTka','
   'statFatality','statKerusakanAlat','statKasusP3K','statKasusMTC','statHilangHari','statKecelakaanLalin',
   'patrolBulanan','pelaporanKecelakaan','hambatan','saran','tanggalLaporan',
   'mengetahuiJabatan','mengetahuiNama','dibuatJabatan','dibuatNama'];
+
+// Placeholder "Contoh: ..." di kolom form (beda dari ph-ghost di preview) tetap
+// bawaan HTML, dan sebelumnya tampil untuk siapapun. Supaya konsisten dengan
+// preview, sekarang disembunyikan juga untuk publik pada field yang sama
+// dengan yang di-ghost di preview -- dikembalikan otomatis begitu ada akses.
+const PLACEHOLDER_FIELDS = SIMPLE_FIELDS.filter(id=>id!=='tanggalLaporan');
+const ORIGINAL_PLACEHOLDERS = {};
+PLACEHOLDER_FIELDS.forEach(id=>{
+  const el = document.getElementById(id);
+  if(el) ORIGINAL_PLACEHOLDERS[id] = el.getAttribute('placeholder') || '';
+});
+function updateFormPlaceholders(){
+  const access = hasVizAccess();
+  PLACEHOLDER_FIELDS.forEach(id=>{
+    const el = document.getElementById(id);
+    if(!el) return;
+    el.setAttribute('placeholder', access ? ORIGINAL_PLACEHOLDERS[id] : '');
+  });
+}
 
 function updateJmlTotalPreview(){
   const t = jmlTotal();
