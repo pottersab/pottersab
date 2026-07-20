@@ -1,0 +1,1035 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Generator Ceklist Inspeksi APD</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+<style>
+  :root{
+    --ink:#0E2A32;
+    --navy:#0B5566;
+    --navy-dark:#083f4d;
+    --paper:#EFF5F6;
+    --card:#FFFFFF;
+    --line:#C7DADD;
+    --muted:#4C6870;
+    --accent:#D98F3E;
+    --accent-soft:#FBEBD8;
+    --danger:#C6553D;
+    --ok:#1E7A46;
+    --radius:10px;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--paper);color:var(--ink);-webkit-font-smoothing:antialiased;font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;}
+  h1,h2,h3{font-family:'Space Grotesk',sans-serif;}
+  .topbar{background:var(--navy);color:#fff;padding:18px 24px;display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;}
+  .topbar h1{font-size:18px;margin:0;font-weight:700;letter-spacing:.2px;}
+  .topbar span{font-size:12.5px;color:#cdd8e6;}
+  .wrap{max-width:1520px;margin:0 auto;padding:20px;display:grid;grid-template-columns:minmax(360px,460px) 1fr;gap:20px;align-items:start;}
+  @media (max-width:1080px){.wrap{grid-template-columns:1fr;}}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:18px 20px;margin-bottom:16px;}
+  .card h2{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--navy);margin:0 0 14px;padding-bottom:8px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:8px;}
+  .card h2 .badge{background:var(--accent-soft);color:#B5502E;font-size:10.5px;font-weight:700;padding:2px 7px;border-radius:5px;letter-spacing:0;text-transform:none;}
+  label{display:block;font-size:12.5px;color:var(--muted);margin-bottom:4px;margin-top:10px;}
+  label:first-child{margin-top:0;}
+  input[type=text], input[type=date], textarea{
+    width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:7px;font-size:14px;font-family:inherit;background:#fff;color:var(--ink);
+  }
+  input:focus, textarea:focus{outline:2px solid var(--navy);outline-offset:1px;}
+  input[readonly]{background:#F4F8F9;color:var(--muted);cursor:not-allowed;}
+  textarea{resize:vertical;min-height:44px;}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .hint{font-size:11.5px;color:var(--muted);margin-top:6px;line-height:1.5;}
+  .auto-box{margin-top:12px;background:var(--accent-soft);border:1px dashed var(--accent);border-radius:7px;padding:9px 12px;font-size:13.5px;color:var(--navy-dark);}
+  .person-row,.apd-row{display:flex;gap:8px;align-items:center;margin-top:8px;}
+  .person-row input,.apd-row input{margin:0;}
+  .person-row .nm{flex:1.4;}
+  .person-row .jb{flex:1;}
+  .rm-btn{flex:0 0 30px;height:34px;border:1px solid var(--line);background:#fff;color:var(--danger);border-radius:7px;cursor:pointer;font-weight:700;}
+  .add-btn{margin-top:10px;background:#fff;color:var(--navy);border:1.5px dashed var(--navy);border-radius:7px;padding:8px 12px;font-size:12.5px;font-weight:700;cursor:pointer;width:100%;}
+  .quick-row{display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;}
+  .quick-btn{background:#fff;border:1px solid var(--line);border-radius:7px;padding:6px 10px;font-size:12px;font-weight:600;color:var(--navy);cursor:pointer;}
+  .quick-btn:hover{background:var(--accent-soft);}
+
+  /* matrix editor */
+  .matrix-scroll{overflow-x:auto;border:1px solid var(--line);border-radius:8px;}
+  table.matrix{border-collapse:collapse;font-size:12px;min-width:100%;}
+  table.matrix th,table.matrix td{border:1px solid var(--line);padding:4px 6px;text-align:center;white-space:nowrap;}
+  table.matrix th{background:#F4F8F9;color:var(--navy);font-weight:700;font-size:11px;}
+  table.matrix th.apd-h{writing-mode:vertical-rl;transform:rotate(180deg);height:118px;padding:6px 2px;font-weight:600;max-width:26px;}
+  table.matrix td.namecell{text-align:left;font-weight:600;background:#fff;position:sticky;left:0;box-shadow:1px 0 0 var(--line);}
+  td.stat{cursor:pointer;user-select:none;font-weight:700;min-width:30px;}
+  td.stat[data-v="√"]{background:#E4F3E9;color:var(--ok);}
+  td.stat[data-v="X"]{background:#FBE3DD;color:var(--danger);}
+  td.stat[data-v="K"]{background:#FBEBD8;color:#B5502E;}
+  td.stat[data-v="TP"]{background:#EDF1F2;color:var(--muted);}
+  .legend-inline{display:flex;gap:12px;flex-wrap:wrap;margin-top:10px;font-size:11.5px;color:var(--muted);}
+  .legend-inline b{font-weight:700;}
+
+  .download-btn{width:100%;padding:14px;background:var(--navy);color:#fff;border:none;border-radius:9px;font-size:15px;font-weight:700;cursor:pointer;letter-spacing:.2px;}
+  .download-btn:hover{background:var(--navy-dark);}
+  .download-btn:active{transform:translateY(1px);}
+  .btn-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .btn-pdf{background:var(--accent);}
+  .btn-pdf:hover{background:#c17f31;}
+  .status{font-size:12.5px;text-align:center;margin-top:10px;color:var(--muted);min-height:16px;}
+
+  /* ===== preview landscape, gaya dokumen contoh, Times New Roman ===== */
+  .doc-outer{position:sticky;top:20px;min-width:0;overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  .doc-page{background:#fff;border:1px solid var(--line);font-family:"Times New Roman",Times,serif;color:#000;font-size:13px;box-shadow:0 1px 3px rgba(0,0,0,.06);width:330mm;min-height:215.9mm;padding:10mm 12mm;box-sizing:border-box;}
+  .p-kop{display:flex;align-items:stretch;gap:10px;margin-bottom:10px;}
+  .p-kop img{width:100px;height:62px;object-fit:contain;flex:0 0 100px;align-self:center;}
+  .p-kop .p-titlebox{flex:1;border:1px solid #000;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:26px;letter-spacing:1px;min-height:62px;}
+  .p-info{display:flex;gap:10px;margin-bottom:10px;font-weight:700;}
+  .p-info .ib{border:2px solid #000;padding:8px 14px;font-size:14px;}
+  .p-info .ib.grow{flex:1;text-align:center;}
+  table.p-tbl{border-collapse:collapse;width:100%;font-size:13px;}
+  table.p-tbl th,table.p-tbl td{border:1px solid #000;padding:3px 5px;text-align:center;vertical-align:middle;}
+  table.p-tbl th{font-weight:700;font-size:13.5px;}
+  table.p-tbl tr.hdr th{border-top:3px double #000;}
+  table.p-tbl th:first-child,table.p-tbl td:first-child{border-left:2px solid #000;}
+  table.p-tbl th:last-child,table.p-tbl td:last-child{border-right:2px solid #000;}
+  table.p-tbl tr:last-child td{border-bottom:2px solid #000;}
+  table.p-tbl th.rot{writing-mode:vertical-rl;transform:rotate(180deg);height:105px;padding:6px 3px;font-weight:400;font-size:11px;}
+  table.p-tbl tr.rotrow th:first-child{border-left:1px solid #000;}
+  table.p-tbl tr.rotrow th:last-child{border-right:1px solid #000;}
+  table.p-tbl td.lft{text-align:left;}
+  td.st-b{font-weight:700;}
+  .p-docnum{display:inline-block;border:1px solid #000;padding:2px 10px;font-size:12px;font-weight:700;margin-top:8px;float:right;}
+  .p-bottom{display:flex;justify-content:space-between;margin-top:38px;gap:20px;clear:both;}
+  .p-legend{font-size:13px;line-height:1.55;font-weight:700;}
+  .p-legend table td{padding:0 8px 0 0;font-weight:700;}
+  .p-catatan{font-weight:700;margin-top:8px;}
+  .p-catatan span{font-weight:400;}
+  .p-sign{display:flex;gap:70px;text-align:center;font-size:13px;}
+  .p-sign .slot{min-width:220px;}
+  .p-sign .space{height:58px;}
+  .p-sign .nm{font-weight:700;text-transform:uppercase;display:inline-block;border-bottom:1px solid #000;padding:0 6px 1px;}
+
+  @media print{
+    body *{visibility:hidden;}
+    .doc-outer,.doc-outer *{visibility:visible;}
+    .doc-outer{position:absolute;left:0;top:0;overflow:visible;}
+    .doc-page{border:none;box-shadow:none;}
+    @page{size:landscape;margin:8mm;}
+  }
+
+  .ph-ghost{color:#9aa3ad;font-style:italic;}
+
+  /* ===== Akses viewer: lock/viewer banner + modal "Minta Akses" ===== */
+  .lock-banner{display:none;align-items:center;justify-content:space-between;gap:14px;background:var(--accent-soft);border:1px solid var(--accent);border-radius:9px;padding:12px 16px;margin-bottom:16px;font-size:13px;flex-wrap:wrap;grid-column:1/-1;}
+  .lock-banner b{color:var(--navy-dark);}
+  .lock-banner .req-btn{background:var(--navy);color:#fff;border:none;border-radius:7px;padding:9px 14px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;}
+  .lock-banner .req-btn:hover{background:var(--navy-dark);}
+  .lock-status{display:block;font-size:11.5px;color:var(--muted);margin-top:2px;}
+  .viewer-banner{display:none;align-items:center;gap:10px;background:#e7f4ee;border:1px solid #8fbfa4;border-radius:9px;padding:10px 16px;margin-bottom:16px;font-size:13px;color:#245c40;grid-column:1/-1;}
+  .modal-overlay{display:none;position:fixed;inset:0;background:rgba(14,42,50,.55);align-items:center;justify-content:center;z-index:1000;padding:20px;}
+  .modal{background:#fff;border-radius:10px;padding:22px 24px;max-width:380px;width:100%;}
+  .modal h3{margin:0 0 6px;font-size:16px;color:var(--navy-dark);}
+  .modal p{font-size:12.5px;color:var(--muted);margin:0 0 14px;line-height:1.5;}
+  .modal label{display:block;font-size:12px;color:var(--muted);margin:10px 0 4px;}
+  .modal input,.modal textarea{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:7px;font-size:13.5px;font-family:inherit;}
+  .modal textarea{min-height:56px;resize:vertical;}
+  .modal-actions{display:flex;gap:10px;margin-top:16px;}
+  .modal-actions button{flex:1;padding:10px;border-radius:7px;font-size:13px;font-weight:700;cursor:pointer;border:none;}
+  .modal-cancel{background:#fff;color:var(--muted);border:1px solid var(--line) !important;}
+  .modal-submit{background:var(--navy);color:#fff;}
+  .btn-whatsapp{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;margin-top:10px;font-family:inherit;font-weight:700;font-size:13px;padding:10px 16px;border-radius:7px;border:none;background:#25D366;color:#fff;cursor:pointer;}
+  .btn-whatsapp:hover{background:#1DA851;}
+  .modal-status{font-size:12px;text-align:center;margin-top:10px;min-height:16px;color:var(--muted);}
+  .modal-status.error{color:var(--danger);}
+  .modal-status.ok{color:#245c40;}
+  .modal-status.pending{color:var(--muted);}
+  @media (max-width: 760px){
+    .lock-banner{justify-content:center;text-align:center;}
+    .lock-banner .req-btn{width:100%;}
+  }
+</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  .ptmb-navbar{position:sticky;top:0;z-index:999;display:flex;align-items:center;justify-content:space-between;padding:14px 5vw;background:rgba(239,245,246,0.9);backdrop-filter:blur(10px);border-bottom:1px solid var(--line);font-family:'Inter',sans-serif;}
+  .ptmb-brand{display:flex;align-items:center;gap:10px;}
+  .ptmb-brand-mark{width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,var(--navy) 0%,#1C8CA0 100%);display:flex;align-items:center;justify-content:center;color:#fff;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:12.5px;}
+  .ptmb-brand-text{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:15px;color:var(--ink);line-height:1.1;}
+  .ptmb-brand-text span{display:block;font-family:'Inter',sans-serif;font-weight:500;font-size:10px;letter-spacing:0.06em;color:var(--muted);text-transform:uppercase;margin-top:2px;}
+  .ptmb-nav-links{display:flex;align-items:center;gap:6px;}
+  .ptmb-nav-item{position:relative;}
+  .ptmb-nav-item > button.ptmb-nav-link{font-family:'Space Grotesk',sans-serif;font-size:13.5px;font-weight:600;color:var(--muted);padding:8px 13px;border-radius:999px;transition:all .18s ease;background:none;border:none;cursor:pointer;display:inline-flex;align-items:center;gap:5px;}
+  .ptmb-nav-item > button.ptmb-nav-link:hover,.ptmb-nav-item.ptmb-open > button.ptmb-nav-link{color:var(--navy);background:var(--accent-soft);}
+  .ptmb-nav-caret{width:7px;height:7px;border-right:1.5px solid currentColor;border-bottom:1.5px solid currentColor;transform:rotate(45deg);margin-top:-3px;transition:transform .18s ease;}
+  .ptmb-nav-item.ptmb-open .ptmb-nav-caret{transform:rotate(-135deg);margin-top:2px;}
+  .ptmb-nav-dropdown{position:absolute;top:calc(100% + 8px);left:50%;transform:translateX(-50%);min-width:240px;background:#fff;border:1px solid var(--line);border-radius:14px;padding:9px;box-shadow:0 20px 40px -18px rgba(14,42,50,0.28);opacity:0;visibility:hidden;pointer-events:none;transition:opacity .16s ease;}
+  .ptmb-nav-item.ptmb-open .ptmb-nav-dropdown{opacity:1;visibility:visible;pointer-events:auto;}
+  .ptmb-nav-dropdown-tag{display:inline-block;font-size:10px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#B5502E;background:#FBE4DA;padding:3px 8px;border-radius:6px;margin:2px 8px 8px;}
+  .ptmb-nav-dropdown a{display:block;padding:9px 11px;border-radius:9px;font-family:'Inter',sans-serif;font-size:13px;font-weight:600;color:var(--ink);text-decoration:none;transition:background .14s ease;}
+  .ptmb-nav-dropdown a:hover{background:var(--paper);color:var(--navy);}
+  .ptmb-nav-links > a{font-family:'Space Grotesk',sans-serif;font-size:13.5px;font-weight:600;color:var(--muted);padding:8px 15px;border-radius:999px;text-decoration:none;transition:all .18s ease;}
+  .ptmb-nav-links > a:hover{color:var(--navy);background:var(--accent-soft);}
+  .ptmb-btn-login{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:13.5px;padding:9px 18px;border-radius:999px;background:var(--ink);color:#fff !important;margin-left:6px;text-decoration:none;transition:all .18s ease;}
+  .ptmb-btn-login:hover{background:var(--navy);}
+  .ptmb-nav-toggle{display:none;flex-direction:column;gap:5px;background:none;border:none;cursor:pointer;padding:8px;}
+  .ptmb-nav-toggle span{width:20px;height:2px;background:var(--ink);border-radius:2px;}
+  .ptmb-active{color:#fff !important;background:var(--navy) !important;border-radius:999px;}
+  @media (max-width: 760px){
+    .ptmb-nav-links{position:fixed;top:64px;left:0;right:0;background:#fff;flex-direction:column;align-items:stretch;padding:12px 6vw;gap:2px;border-bottom:1px solid var(--line);box-shadow:0 12px 24px -12px rgba(14,42,50,0.15);display:none;max-height:calc(100vh - 64px);overflow-y:auto;}
+    .ptmb-nav-links.ptmb-open-mobile{display:flex;}
+    .ptmb-nav-links > a{padding:11px 13px;}
+    .ptmb-nav-item{width:100%;}
+    .ptmb-nav-item > button.ptmb-nav-link{width:100%;justify-content:space-between;padding:11px 13px;}
+    .ptmb-nav-dropdown{position:static;transform:none;min-width:0;width:100%;box-shadow:none;border:none;padding:0 0 0 10px;opacity:1;visibility:visible;pointer-events:auto;max-height:0;overflow:hidden;}
+    .ptmb-nav-item.ptmb-open .ptmb-nav-dropdown{max-height:400px;padding:4px 0 6px 10px;}
+    .ptmb-btn-login{margin:8px 0 0;text-align:center;}
+    .ptmb-nav-toggle{display:flex;}
+  }
+  footer.note{max-width:1520px;margin:0 auto 30px;padding:0 20px;font-size:12px;color:var(--muted);text-align:center;}
+</style>
+<style id="printPageSize"></style>
+</head>
+<body>
+<header class="ptmb-navbar">
+  <div class="ptmb-brand">
+    <div class="ptmb-brand-mark">PT</div>
+    <div class="ptmb-brand-text">PTMB<span>Portal Internal</span></div>
+  </div>
+
+  <nav class="ptmb-nav-links" id="ptmbNavLinks">
+    <a href="../index.html">Home</a>
+
+    <div class="ptmb-nav-item" data-ptmb-nav>
+      <button class="ptmb-nav-link ptmb-active" type="button">Tools <span class="ptmb-nav-caret"></span></button>
+      <div class="ptmb-nav-dropdown">
+        <a href="spd.html">Surat Penyediaan Dana (SPD)</a>
+        <a href="berita-acara.html">Berita Acara (BA)</a>
+        <a href="surat-permohonan.html">Surat Permohonan (Eksternal)</a>
+        <a href="laporan-p2k3.html">Laporan P2K3</a>
+        <a href="ceklist-apd.html">Ceklist Inspeksi APD</a>
+      </div>
+    </div>
+
+    <div class="ptmb-nav-item" data-ptmb-nav>
+      <button class="ptmb-nav-link" type="button">Data Visualization <span class="ptmb-nav-caret"></span></button>
+      <div class="ptmb-nav-dropdown">
+        <a href="library/index.html">Data Waduk dan Sumur</a>
+        <a href="riwayat-air-baku/index.html">Data Pengambilan Air Baku</a>
+      </div>
+    </div>
+
+    <div class="ptmb-nav-item" data-ptmb-nav>
+      <button class="ptmb-nav-link" type="button">Development <span class="ptmb-nav-caret"></span></button>
+      <div class="ptmb-nav-dropdown">
+        <span class="ptmb-nav-dropdown-tag">Admin Only</span>
+        <a href="input-data-historis.html">Input Data Waduk Dan Sumur</a>
+        <a href="input-air-baku.html">Input Pengambilan Air Baku</a>
+        <a href="formulir-sab.html">Input Pekerjaan SAB</a>
+      </div>
+    </div>
+
+    <div class="ptmb-nav-item" data-ptmb-nav>
+      <button class="ptmb-nav-link" type="button">About SAB <span class="ptmb-nav-caret"></span></button>
+      <div class="ptmb-nav-dropdown">
+        <a href="../profil-potter.html">Profil Potter</a>
+        <a href="../profil-darto.html">Profil Darto</a>
+        <a href="../profil-jarot.html">Profil Jarot</a>
+        <a href="../about.html">Gallery</a>
+      </div>
+    </div>
+
+    <a href="../login.html" class="ptmb-btn-login" id="authNavBtn">Login</a>
+  </nav>
+
+  <button class="ptmb-nav-toggle" id="ptmbNavToggle" aria-label="Buka menu">
+    <span></span><span></span><span></span>
+  </button>
+</header>
+
+<script>
+  (function(){
+    const toggle = document.getElementById('ptmbNavToggle');
+    const links = document.getElementById('ptmbNavLinks');
+    toggle.addEventListener('click', () => links.classList.toggle('ptmb-open-mobile'));
+    document.querySelectorAll('[data-ptmb-nav]').forEach((item) => {
+      const btn = item.querySelector('.ptmb-nav-link');
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const wasOpen = item.classList.contains('ptmb-open');
+        document.querySelectorAll('[data-ptmb-nav]').forEach(i => i.classList.remove('ptmb-open'));
+        if(!wasOpen) item.classList.add('ptmb-open');
+      });
+    });
+    document.addEventListener('click', () => {
+      document.querySelectorAll('[data-ptmb-nav]').forEach(i => i.classList.remove('ptmb-open'));
+    });
+  })();
+</script>
+
+<script>
+  (function(){
+    const authBtn = document.getElementById('authNavBtn');
+    if(!authBtn) return;
+    const token = localStorage.getItem('token');
+    const role = localStorage.getItem('role');
+    const username = localStorage.getItem('username');
+    if(token && role === 'admin'){
+      authBtn.textContent = 'Logout';
+      authBtn.href = '#';
+      authBtn.title = 'Login sebagai ' + (username || 'Admin');
+      authBtn.style.background = '#B5502E';
+      authBtn.addEventListener('click', function(e){
+        e.preventDefault();
+        if(confirm('Keluar dari akun admin?')){
+          localStorage.removeItem('token');
+          localStorage.removeItem('role');
+          localStorage.removeItem('username');
+          window.location.href = '../login.html';
+        }
+      });
+    }
+  })();
+</script>
+
+<div class="topbar">
+  <h1>Generator Ceklist Inspeksi APD</h1>
+  <span>Perumda Tirta Manuntung Balikpapan &mdash; isi sekali, unduh sebagai Excel (.xlsx) landscape</span>
+</div>
+
+<div class="wrap">
+  <div class="lock-banner" id="lockBanner">
+    <div>🔒 Contoh isi ceklist <b>disembunyikan</b> di pratinjau &mdash; form tetap bisa kamu isi &amp; unduh sendiri, tapi contoh referensi cuma tampil untuk yang sudah punya akses.<span class="lock-status" id="lockStatusText"></span></div>
+    <button type="button" class="req-btn" id="requestAccessBtn">Minta Akses</button>
+  </div>
+  <div class="viewer-banner" id="viewerBanner">
+    ✅ Kamu punya akses data &mdash; contoh isi ceklist ditampilkan sebagai referensi (teks abu-abu miring pada preview).
+  </div>
+
+  <!-- ============ FORM ============ -->
+  <div>
+    <div class="card">
+      <h2>Info Inspeksi</h2>
+      <div class="row2">
+        <div>
+          <label>Lokasi</label>
+          <input type="text" id="fLokasi">
+        </div>
+        <div>
+          <label>Tanggal Inspeksi</label>
+          <input type="date" id="fTanggal">
+        </div>
+      </div>
+      <label>Nomor Dokumen (tetap)</label>
+      <input type="text" id="fDocnum" value="PTMBBPP-SR-K3/01-02" readonly>
+      <div class="auto-box">Jumlah personel: <b id="autoJumlah">4 Orang</b> (otomatis dari daftar di bawah)</div>
+    </div>
+
+    <div class="card">
+      <h2>Daftar Personel <span class="badge">nama &amp; jabatan</span></h2>
+      <div id="personList"></div>
+      <button class="add-btn" type="button" onclick="addPerson()">+ Tambah Personel</button>
+    </div>
+
+    <div class="card">
+      <h2>Jenis APD <span class="badge">kolom tabel</span></h2>
+      <div class="hint">Urutan di sini = urutan kolom di tabel. Hapus yang tidak dipakai, atau tambah jenis baru.</div>
+      <div id="apdList"></div>
+      <button class="add-btn" type="button" onclick="addApd()">+ Tambah Jenis APD</button>
+    </div>
+
+    <div class="card">
+      <h2>Matriks Ceklist <span class="badge">klik sel untuk ganti status</span></h2>
+      <div class="quick-row">
+        <button class="quick-btn" type="button" onclick="fillAll('√')">Isi semua √</button>
+        <button class="quick-btn" type="button" onclick="fillAll('TP')">Isi semua TP</button>
+      </div>
+      <div class="matrix-scroll"><table class="matrix" id="matrixTbl"></table></div>
+      <div class="legend-inline">
+        <span><b>√</b> OK</span><span><b>X</b> Rusak</span><span><b>K</b> Kosong</span><span><b>TP</b> Tidak Perlu</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Komentar per Personel</h2>
+      <div id="komentarList"></div>
+    </div>
+
+    <div class="card">
+      <h2>Tanda Tangan</h2>
+      <label>Diperiksa Oleh — Jabatan</label>
+      <input type="text" id="fPeriksaJab">
+      <label>Diperiksa Oleh — Nama</label>
+      <input type="text" id="fPeriksaNama">
+      <label>Diketahui Oleh — Jabatan</label>
+      <input type="text" id="fTahuJab">
+      <label>Diketahui Oleh — Nama</label>
+      <input type="text" id="fTahuNama">
+      <label>Catatan (opsional)</label>
+      <textarea id="fCatatan" placeholder="Catatan tambahan..."></textarea>
+    </div>
+
+    <div class="card">
+      <div class="btn-row">
+        <button class="download-btn" type="button" onclick="downloadExcel()">Unduh Excel (.xlsx)</button>
+        <button class="download-btn btn-pdf" type="button" onclick="printDoc()">Cetak / PDF</button>
+      </div>
+      <div class="status" id="status"></div>
+    </div>
+  </div>
+
+  <!-- ============ PREVIEW ============ -->
+  <div class="doc-outer">
+    <div class="doc-page" id="docPage"></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="accessModalOverlay">
+  <div class="modal">
+    <h3>Minta Akses Data Asli</h3>
+    <p>Isi nama kamu &mdash; admin akan menerima notifikasi lewat email dan kamu bisa chat admin lewat WhatsApp jika kebutuhan mendesak, jangan tutup jendela ini sampai akses diberikan.</p>
+    <label for="accessNamaInput">Nama</label>
+    <input type="text" id="accessNamaInput" placeholder="Nama kamu">
+    <label for="accessAlasanInput">Keperluan (opsional)</label>
+    <textarea id="accessAlasanInput" placeholder="Contoh: untuk cek format sebelum tanda tangan"></textarea>
+    <div class="modal-actions">
+      <button type="button" class="modal-cancel" id="accessModalCancel">Batal</button>
+      <button type="button" class="modal-submit" id="accessModalSubmit">Kirim Permintaan</button>
+    </div>
+    <button type="button" class="btn-whatsapp" id="accessModalWhatsapp">💬 Chat Admin via WhatsApp</button>
+    <div class="modal-status" id="accessModalStatus"></div>
+  </div>
+</div>
+
+<footer class="note">Semua data (draft, riwayat isian) disimpan hanya di browser perangkat ini, tidak dikirim ke internet.</footer>
+<script>
+const DOCNUM = 'PTMBBPP-SR-K3/01-02';
+const LOGO_B64 = "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";
+
+/* Data contoh ini HANYA dipakai sebagai bayangan (ghost/placeholder) di pratinjau &
+   placeholder form saat kolom terkait masih kosong -- tidak pernah otomatis
+   dimasukkan sebagai isi asli, kecuali untuk admin pada kunjungan pertama (belum
+   ada draft tersimpan), lihat blok bootstrap admin di bawah. */
+const EXAMPLE_DATA = {
+  lokasi: 'Sumber Air Baku',
+  tanggal: '2026-04-01',
+  persons: [
+    {nama:'Darto', jabatan:'Supervisor', komentar:''},
+    {nama:'Jarot Hadi W', jabatan:'Staff', komentar:''},
+    {nama:'M Rahmad H', jabatan:'Staff', komentar:''},
+    {nama:'M Qadri', jabatan:'Staff', komentar:''},
+  ],
+  apds: ['Seragam Harian','Wearpack','Helm Safety','Ear Plug','Ear Murf','Kacamata Hitam Safety','Safety Google','Face Shield','Masker Debu','Sarung Tangan Safety','Sepatu Safety','Boot Safety','Rompi Kerja','Baju Pelampung','Full Body Harness','Jas Hujan Safety'],
+  cells: [],
+  periksaJab: 'Staff Sumber Air Baku & Lingkungan',
+  periksaNama: 'M Rahmad Hidayat',
+  tahuJab: 'Supervisor Sumber Air Baku & Lingkungan',
+  tahuNama: 'Darto',
+  catatan: '',
+};
+EXAMPLE_DATA.cells = EXAMPLE_DATA.persons.map(()=> EXAMPLE_DATA.apds.map(()=> '√'));
+[[0,4],[0,6],[0,7],[0,12],[1,4],[1,6],[1,7],[1,12],[2,4],[2,6],[2,7],[2,12],[3,4],[3,6],[3,7],[3,12]].forEach(([p,a])=> EXAMPLE_DATA.cells[p][a]='TP');
+EXAMPLE_DATA.cells[3][10]='K'; EXAMPLE_DATA.cells[3][15]='K';
+
+// ---------------------------------------------------------------------------
+// AKSES VIEWER -- pakai token site-wide yang sama dengan Data Visualization
+// (apps/library, apps/riwayat-air-baku) dan tool lain seperti Laporan P2K3.
+// Admin situs (token + role admin) selalu punya akses tanpa approval terpisah.
+// ---------------------------------------------------------------------------
+const ACCESS_DATATYPE = 'ceklist_apd';
+const ACCESS_DATATYPE_LABEL = 'Generator Ceklist Inspeksi APD';
+let vizRequestId = null;
+let pollTimer = null;
+let expiryTimer = null;
+
+function isAdmin(){
+  return localStorage.getItem('token') && localStorage.getItem('role') === 'admin';
+}
+function hasVizAccess(){
+  const token = localStorage.getItem('token');
+  const role = localStorage.getItem('role');
+  if(token && role === 'admin') return true;
+  const vizToken = localStorage.getItem('vizAccessToken');
+  const vizExpiresAt = localStorage.getItem('vizAccessExpiresAt');
+  return !!(vizToken && vizExpiresAt && new Date(vizExpiresAt).getTime() > Date.now());
+}
+// Field kosong: kalau ada akses -> ph-ghost (contoh ditampilkan); kalau publik -> polos, tanpa ghost sama sekali.
+function ghostClass(val){ return val ? '' : (hasVizAccess() ? 'ph-ghost' : ''); }
+function ghostText(val, example){ return (val!==undefined && val!==null && val!=='') ? val : (hasVizAccess() ? (example||'') : ''); }
+function ghostSpan(val, example){
+  const shown = ghostText(val, example);
+  const cls = ghostClass(val);
+  return `<span class="${cls}">${shown}</span>`;
+}
+
+function updateAccessBanner(){
+  const lockBanner = document.getElementById('lockBanner');
+  const viewerBanner = document.getElementById('viewerBanner');
+  if(!lockBanner || !viewerBanner) return;
+  const access = hasVizAccess();
+  lockBanner.style.display = access ? 'none' : 'flex';
+  viewerBanner.style.display = access ? 'flex' : 'none';
+  const statusText = document.getElementById('lockStatusText');
+  if(statusText) statusText.textContent = pollTimer ? ' Menunggu persetujuan admin lewat email...' : '';
+  updateFormPlaceholders();
+  refresh();
+}
+
+function openAccessModal(){
+  const overlay = document.getElementById('accessModalOverlay');
+  if(!overlay) return;
+  overlay.style.display = 'flex';
+  setAccessModalStatus('', '');
+}
+function closeAccessModal(){
+  const overlay = document.getElementById('accessModalOverlay');
+  if(overlay) overlay.style.display = 'none';
+}
+function setAccessModalStatus(msg, cls){
+  const el = document.getElementById('accessModalStatus');
+  if(!el) return;
+  el.textContent = msg;
+  el.className = 'modal-status ' + (cls || '');
+}
+
+const ADMIN_WHATSAPP_NUMBER = '6281381146320';
+function openWhatsappChat(){
+  const win = window.open('', '_blank');
+  const nama = document.getElementById('accessNamaInput').value.trim();
+  const namaPart = nama ? ` ${nama}` : '';
+  const message = `Halo, saya${namaPart} baru saja mengirim permintaan akses data ${ACCESS_DATATYPE_LABEL} di website, mohon persetujuannya.`;
+  const url = `https://wa.me/${ADMIN_WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
+  if(win) win.location.href = url;
+  else window.open(url, '_blank');
+}
+
+async function submitAccessRequest(){
+  const nama = document.getElementById('accessNamaInput').value.trim();
+  const alasan = document.getElementById('accessAlasanInput').value.trim();
+  if(!nama){ setAccessModalStatus('Isi nama dulu ya.', 'error'); return; }
+
+  const btn = document.getElementById('accessModalSubmit');
+  btn.disabled = true;
+  setAccessModalStatus('Mengirim permintaan...', 'pending');
+  try{
+    const res = await fetch('/api/visualization/request', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ requestedBy: nama, dataType: ACCESS_DATATYPE, reason: alasan || undefined })
+    });
+    const data = await res.json();
+    if(!res.ok || !data.success) throw new Error(data.error || 'Gagal mengirim permintaan.');
+    vizRequestId = data.requestId;
+    try{ localStorage.setItem('vizRequestId', String(vizRequestId)); }catch(e){}
+    setAccessModalStatus('Permintaan terkirim. Menunggu admin menyetujui lewat email -- halaman ini akan otomatis update.', 'pending');
+    startPolling();
+  }catch(err){
+    setAccessModalStatus(err.message, 'error');
+  }
+  btn.disabled = false;
+}
+
+function startPolling(){
+  if(pollTimer) clearInterval(pollTimer);
+  updateAccessBanner();
+  pollTimer = setInterval(checkAccessStatus, 4000);
+  checkAccessStatus();
+}
+
+async function checkAccessStatus(){
+  if(!vizRequestId) return;
+  try{
+    const res = await fetch(`/api/visualization/status?id=${vizRequestId}`);
+    const data = await res.json();
+    if(data.status === 'approved'){
+      clearInterval(pollTimer);
+      pollTimer = null;
+      try{
+        localStorage.setItem('vizAccessToken', data.token);
+        localStorage.setItem('vizAccessExpiresAt', data.expiresAt);
+        localStorage.removeItem('vizRequestId');
+      }catch(e){}
+      scheduleTokenExpiry(data.expiresAt);
+      setAccessModalStatus('Akses disetujui! Memuat contoh isi ceklist...', 'ok');
+      updateAccessBanner();
+      closeAccessModal();
+    } else if(data.status === 'expired' || data.status === 'not_found'){
+      clearInterval(pollTimer);
+      pollTimer = null;
+      vizRequestId = null;
+      try{ localStorage.removeItem('vizRequestId'); }catch(e){}
+      updateAccessBanner();
+    }
+  }catch(err){
+    console.warn('Gagal cek status akses:', err);
+  }
+}
+
+function scheduleTokenExpiry(expiresAt){
+  if(expiryTimer) clearTimeout(expiryTimer);
+  const target = expiresAt || localStorage.getItem('vizAccessExpiresAt');
+  if(!target) return;
+  const ms = new Date(target).getTime() - Date.now();
+  expiryTimer = setTimeout(()=>{
+    try{
+      localStorage.removeItem('vizAccessToken');
+      localStorage.removeItem('vizAccessExpiresAt');
+    }catch(e){}
+    updateAccessBanner();
+  }, Math.max(ms, 0));
+}
+
+function restoreVizSession(){
+  try{
+    const token = localStorage.getItem('vizAccessToken');
+    const expiresAt = localStorage.getItem('vizAccessExpiresAt');
+    if(token && expiresAt && new Date(expiresAt).getTime() > Date.now()){
+      scheduleTokenExpiry(expiresAt);
+      return;
+    }
+    const pendingId = localStorage.getItem('vizRequestId');
+    if(pendingId){
+      vizRequestId = pendingId;
+      startPolling();
+    }
+  }catch(e){}
+}
+
+function wireAccessControls(){
+  const requestBtn = document.getElementById('requestAccessBtn');
+  const cancelBtn = document.getElementById('accessModalCancel');
+  const submitBtn = document.getElementById('accessModalSubmit');
+  const whatsappBtn = document.getElementById('accessModalWhatsapp');
+  if(requestBtn) requestBtn.addEventListener('click', openAccessModal);
+  if(cancelBtn) cancelBtn.addEventListener('click', closeAccessModal);
+  if(submitBtn) submitBtn.addEventListener('click', submitAccessRequest);
+  if(whatsappBtn) whatsappBtn.addEventListener('click', openWhatsappChat);
+}
+
+// ---------------------------------------------------------------------------
+// DRAFT lokal + isi awal per role.
+// Daftar 16 jenis APD adalah struktur standar dokumen -- selalu tampil sebagai
+// kolom untuk semua role. Yang dibedakan per role hanya DATA isiannya (personel,
+// status matriks, lokasi, tanggal, komentar, ttd, catatan).
+// ---------------------------------------------------------------------------
+const DRAFT_KEY = 'ceklistApdDraft';
+function loadDraft(){
+  try{ const raw = localStorage.getItem(DRAFT_KEY); if(raw) return JSON.parse(raw); }catch(e){}
+  return null;
+}
+function saveDraft(){
+  try{
+    localStorage.setItem(DRAFT_KEY, JSON.stringify({
+      persons: state.persons, apds: state.apds, cells: state.cells,
+      lokasi: document.getElementById('fLokasi').value,
+      tanggal: document.getElementById('fTanggal').value,
+      periksaJab: document.getElementById('fPeriksaJab').value,
+      periksaNama: document.getElementById('fPeriksaNama').value,
+      tahuJab: document.getElementById('fTahuJab').value,
+      tahuNama: document.getElementById('fTahuNama').value,
+      catatan: document.getElementById('fCatatan').value,
+    }));
+  }catch(e){}
+}
+
+const _draft = loadDraft();
+
+const state = _draft
+  ? { persons: _draft.persons || [], apds: _draft.apds || EXAMPLE_DATA.apds.slice(), cells: _draft.cells || [] }
+  : (isAdmin()
+      ? { persons: EXAMPLE_DATA.persons.map(p=>Object.assign({}, p)), apds: EXAMPLE_DATA.apds.slice(), cells: EXAMPLE_DATA.cells.map(row=>row.slice()) }
+      : { persons: EXAMPLE_DATA.persons.map(()=>({nama:'', jabatan:'', komentar:''})), apds: EXAMPLE_DATA.apds.slice(), cells: EXAMPLE_DATA.persons.map(()=>EXAMPLE_DATA.apds.map(()=>'')) }
+    );
+
+function applyInitialSimpleFields(){
+  const set=(id,v)=>{ const el=document.getElementById(id); if(el) el.value = v || ''; };
+  if(_draft){
+    set('fLokasi', _draft.lokasi); set('fTanggal', _draft.tanggal);
+    set('fPeriksaJab', _draft.periksaJab); set('fPeriksaNama', _draft.periksaNama);
+    set('fTahuJab', _draft.tahuJab); set('fTahuNama', _draft.tahuNama);
+    set('fCatatan', _draft.catatan);
+  } else if(isAdmin()){
+    set('fLokasi', EXAMPLE_DATA.lokasi); set('fTanggal', EXAMPLE_DATA.tanggal);
+    set('fPeriksaJab', EXAMPLE_DATA.periksaJab); set('fPeriksaNama', EXAMPLE_DATA.periksaNama);
+    set('fTahuJab', EXAMPLE_DATA.tahuJab); set('fTahuNama', EXAMPLE_DATA.tahuNama);
+  }
+}
+applyInitialSimpleFields();
+// Admin: kalau belum pernah ada draft tersimpan, isi form dengan nilai contoh
+// sebagai default ASLI (bukan ghost) -- persis seperti file generator semula.
+if(isAdmin() && !_draft){ saveDraft(); }
+
+// Placeholder "Contoh: ..." pada field form (beda dari ph-ghost di preview) hanya
+// tampil untuk yang punya akses; publik tidak melihat contoh sama sekali.
+const PLACEHOLDER_MAP = {
+  fLokasi: EXAMPLE_DATA.lokasi,
+  fPeriksaJab: EXAMPLE_DATA.periksaJab,
+  fPeriksaNama: EXAMPLE_DATA.periksaNama,
+  fTahuJab: EXAMPLE_DATA.tahuJab,
+  fTahuNama: EXAMPLE_DATA.tahuNama,
+};
+function updateFormPlaceholders(){
+  const access = hasVizAccess();
+  Object.keys(PLACEHOLDER_MAP).forEach(id=>{
+    const el = document.getElementById(id);
+    if(!el) return;
+    el.setAttribute('placeholder', access ? ('Contoh: ' + PLACEHOLDER_MAP[id]) : '');
+  });
+}
+
+function fmtTanggal(iso){
+  if(!iso) return '';
+  const bln=['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+  const [y,m,d]=iso.split('-');
+  return `${parseInt(d)} ${bln[parseInt(m)-1]} ${y}`;
+}
+
+/* ---------- form dinamis ---------- */
+function renderPersons(){
+  const el=document.getElementById('personList'); el.innerHTML='';
+  const access=hasVizAccess();
+  state.persons.forEach((p,i)=>{
+    const ex=EXAMPLE_DATA.persons[i];
+    const nmPh = access ? (ex ? `Contoh: ${ex.nama}` : 'Nama') : '';
+    const jbPh = access ? (ex ? `Contoh: ${ex.jabatan}` : 'Jabatan') : '';
+    const row=document.createElement('div'); row.className='person-row';
+    row.innerHTML=`<input class="nm" type="text" value="${p.nama.replace(/"/g,'&quot;')}" placeholder="${nmPh.replace(/"/g,'&quot;')}" oninput="state.persons[${i}].nama=this.value;saveDraft();refresh(false)">
+      <input class="jb" type="text" value="${p.jabatan.replace(/"/g,'&quot;')}" placeholder="${jbPh.replace(/"/g,'&quot;')}" oninput="state.persons[${i}].jabatan=this.value;saveDraft();refresh(false)">
+      <button class="rm-btn" type="button" onclick="rmPerson(${i})">×</button>`;
+    el.appendChild(row);
+  });
+  document.getElementById('autoJumlah').textContent = state.persons.length+' Orang';
+}
+function addPerson(){ state.persons.push({nama:'',jabatan:'',komentar:''}); state.cells.push(state.apds.map(()=>'')); saveDraft(); refresh(); }
+function rmPerson(i){ state.persons.splice(i,1); state.cells.splice(i,1); saveDraft(); refresh(); }
+
+function renderApds(){
+  const el=document.getElementById('apdList'); el.innerHTML='';
+  state.apds.forEach((a,i)=>{
+    const row=document.createElement('div'); row.className='apd-row';
+    row.innerHTML=`<input type="text" value="${a.replace(/"/g,'&quot;')}" oninput="state.apds[${i}]=this.value;saveDraft();refresh(false)">
+      <button class="rm-btn" type="button" onclick="rmApd(${i})">×</button>`;
+    el.appendChild(row);
+  });
+}
+function addApd(){ state.apds.push('APD Baru'); state.cells.forEach(r=>r.push('')); saveDraft(); refresh(); }
+function rmApd(i){ state.apds.splice(i,1); state.cells.forEach(r=>r.splice(i,1)); saveDraft(); refresh(); }
+
+function renderMatrix(){
+  const t=document.getElementById('matrixTbl');
+  const access=hasVizAccess();
+  let h='<tr><th style="text-align:left">Personel</th>'+state.apds.map(a=>`<th class="apd-h">${a}</th>`).join('')+'</tr>';
+  state.persons.forEach((p,pi)=>{
+    const ex=EXAMPLE_DATA.persons[pi];
+    const nmGhost = !p.nama && access && ex;
+    const nmShown = p.nama || (nmGhost ? ex.nama : '&mdash;');
+    h+=`<tr><td class="namecell ${nmGhost?'ph-ghost':''}">${nmShown}</td>`+
+      state.apds.map((a,ai)=>{
+        const raw=state.cells[pi][ai];
+        const exRow=EXAMPLE_DATA.cells[pi];
+        const exVal=exRow ? (exRow[ai]||'') : '';
+        const cellGhost = !raw && access && exVal;
+        const shown = raw || (cellGhost ? exVal : '');
+        return `<td class="stat ${cellGhost?'ph-ghost':''}" data-v="${raw}" onclick="cycle(${pi},${ai})">${shown}</td>`;
+      }).join('')+'</tr>';
+  });
+  t.innerHTML=h;
+}
+function cycle(pi,ai){
+  const cyc=['','√','X','K','TP'];
+  const cur=cyc.indexOf(state.cells[pi][ai]);
+  state.cells[pi][ai]=cyc[(cur+1)%cyc.length];
+  saveDraft(); refresh(false); renderMatrix();
+}
+function fillAll(v){ state.cells=state.persons.map(()=>state.apds.map(()=>v)); renderMatrix(); refresh(false); saveDraft(); }
+
+function renderKomentar(){
+  const el=document.getElementById('komentarList'); el.innerHTML='';
+  const access=hasVizAccess();
+  state.persons.forEach((p,i)=>{
+    const ex=EXAMPLE_DATA.persons[i];
+    const ph = access ? (ex && ex.komentar ? `Contoh: ${ex.komentar}` : '-') : '';
+    const d=document.createElement('div');
+    d.innerHTML=`<label>${p.nama||'Personel '+(i+1)}</label>
+      <input type="text" value="${(p.komentar||'').replace(/"/g,'&quot;')}" placeholder="${ph.replace(/"/g,'&quot;')}" oninput="state.persons[${i}].komentar=this.value;saveDraft();renderPreview()">`;
+    el.appendChild(d);
+  });
+}
+
+/* ---------- preview ---------- */
+function renderPreview(){
+  const lokRaw=document.getElementById('fLokasi').value;
+  const tglRaw=document.getElementById('fTanggal').value;
+  const tgl = tglRaw ? fmtTanggal(tglRaw) : (hasVizAccess() ? `<span class="ph-ghost">${fmtTanggal(EXAMPLE_DATA.tanggal)}</span>` : '');
+  const catatan=document.getElementById('fCatatan').value;
+
+  let rows='';
+  state.persons.forEach((p,pi)=>{
+    const ex=EXAMPLE_DATA.persons[pi];
+    rows+=`<tr><td>${pi+1}</td><td class="lft">${ghostSpan(p.nama, ex&&ex.nama)}</td><td class="lft">${ghostSpan(p.jabatan, ex&&ex.jabatan)}</td>`+
+      state.apds.map((a,ai)=>{
+        const raw=state.cells[pi][ai];
+        const exRow=EXAMPLE_DATA.cells[pi];
+        const exVal=exRow ? (exRow[ai]||'') : '';
+        const cls = raw ? 'st-b' : (hasVizAccess() && exVal ? 'st-b ph-ghost' : 'st-b');
+        const shown = raw || (hasVizAccess() ? exVal : '');
+        return `<td class="${cls}">${shown}</td>`;
+      }).join('')+
+      `<td class="lft">${ghostSpan(p.komentar, ex&&ex.komentar)}</td></tr>`;
+  });
+
+  document.getElementById('docPage').innerHTML=`
+    <div class="p-kop">
+      <img src="data:image/jpeg;base64,${LOGO_B64}" alt="Logo">
+      <div class="p-titlebox">CEKLIST INSPEKSI APD</div>
+    </div>
+    <div class="p-info">
+      <div class="ib">Lokasi : ${ghostSpan(lokRaw, EXAMPLE_DATA.lokasi)}</div>
+      <div class="ib grow">Jumlah Personel : ${state.persons.length} Orang</div>
+      <div class="ib">Tanggal : ${tgl}</div>
+    </div>
+    <table class="p-tbl">
+      <tr class="hdr">
+        <th rowspan="2" style="width:32px">NO</th>
+        <th rowspan="2" style="min-width:120px">NAMA</th>
+        <th rowspan="2" style="min-width:95px">JABATAN</th>
+        <th colspan="${state.apds.length}">Seragam &amp; APD</th>
+        <th rowspan="2" style="min-width:150px">Komentar</th>
+      </tr>
+      <tr class="rotrow">${state.apds.map(a=>`<th class="rot">${a}</th>`).join('')}</tr>
+      ${rows}
+    </table>
+    <div class="p-docnum">${DOCNUM}</div>
+    <div class="p-bottom">
+      <div class="p-legend">
+        Legend :
+        <table>
+          <tr><td>√</td><td>: OK</td></tr>
+          <tr><td>X</td><td>: Rusak</td></tr>
+          <tr><td>K</td><td>: Kosong (Tidak Tersedia)</td></tr>
+          <tr><td>TP</td><td>: Tidak Perlu</td></tr>
+        </table>
+        <div class="p-catatan">Catatan : <span>${catatan||''}</span></div>
+      </div>
+      <div class="p-sign">
+        <div class="slot">
+          Diperiksa Oleh,<br>${ghostSpan(document.getElementById('fPeriksaJab').value, EXAMPLE_DATA.periksaJab)}
+          <div class="space"></div>
+          <div class="nm">${ghostText(document.getElementById('fPeriksaNama').value, EXAMPLE_DATA.periksaNama)}</div>
+        </div>
+        <div class="slot">
+          Diketahui Oleh,<br>${ghostSpan(document.getElementById('fTahuJab').value, EXAMPLE_DATA.tahuJab)}
+          <div class="space"></div>
+          <div class="nm">${ghostText(document.getElementById('fTahuNama').value, EXAMPLE_DATA.tahuNama)}</div>
+        </div>
+      </div>
+    </div>`;
+}
+
+function refresh(rebuildForm=true){
+  if(rebuildForm){ renderPersons(); renderApds(); renderMatrix(); renderKomentar(); }
+  else { document.getElementById('autoJumlah').textContent = state.persons.length+' Orang'; }
+  renderPreview();
+}
+['fLokasi','fTanggal','fPeriksaJab','fPeriksaNama','fTahuJab','fTahuNama','fCatatan'].forEach(id=>{
+  document.getElementById(id).addEventListener('input',()=>{ saveDraft(); renderPreview(); });
+});
+wireAccessControls();
+restoreVizSession();
+updateFormPlaceholders();
+updateAccessBanner();
+refresh();
+
+/* ---------- cetak / PDF: paksa jadi 1 halaman sesuai ukuran dokumen ---------- */
+function printDoc(){
+  const page = document.getElementById('docPage');
+  const pxToMm = 25.4/96;
+  const marginMm = 6;
+  const wMm = Math.ceil(page.offsetWidth * pxToMm) + marginMm*2;
+  const hMm = Math.ceil(page.offsetHeight * pxToMm) + marginMm*2;
+  const styleEl = document.getElementById('printPageSize');
+  if(styleEl) styleEl.textContent = `@page{size:${wMm}mm ${hMm}mm;margin:${marginMm}mm;}`;
+  window.print();
+}
+
+/* ---------- excel ---------- */
+async function downloadExcel(){
+  const st=document.getElementById('status');
+  try{
+    st.textContent='Membuat file Excel...';
+    const wb=new ExcelJS.Workbook();
+    const ws=wb.addWorksheet('Ceklist APD',{
+      pageSetup:{orientation:'landscape',paperSize:9,fitToPage:true,fitToWidth:1,fitToHeight:0,
+        margins:{left:0.35,right:0.35,top:0.4,bottom:0.4,header:0.2,footer:0.2}}
+    });
+
+    const TNR = (opt={}) => Object.assign({name:'Times New Roman',size:12}, opt);
+    const nApd=state.apds.length;
+    const lastCol=3+nApd+1;
+    const thin={style:'thin'}, med={style:'medium'}, dbl={style:'double'};
+    const allThin={top:thin,left:thin,bottom:thin,right:thin};
+    const allMed={top:med,left:med,bottom:med,right:med};
+
+    // lebar kolom (mengikuti contoh)
+    ws.getColumn(1).width=4.9; ws.getColumn(2).width=18; ws.getColumn(3).width=16;
+    for(let i=0;i<nApd;i++) ws.getColumn(4+i).width=6;
+    ws.getColumn(lastCol).width=24;
+
+    /* ===== KOP: logo + judul berbingkai (baris 1-4) ===== */
+    const imgId=wb.addImage({base64:LOGO_B64, extension:'jpeg'});
+    ws.addImage(imgId,{tl:{col:0.15,row:0.4}, ext:{width:100,height:61}});
+    ws.mergeCells(1,3,4,lastCol);
+    const tc=ws.getCell(1,3);
+    tc.value='CEKLIST INSPEKSI APD';
+    tc.font=TNR({bold:true,size:24});
+    tc.alignment={horizontal:'center',vertical:'middle'};
+    // border tipis mengelilingi kotak judul
+    for(let r=1;r<=4;r++) for(let c=3;c<=lastCol;c++){
+      const cell=ws.getCell(r,c);
+      cell.border={
+        top:r===1?thin:undefined, bottom:r===4?thin:undefined,
+        left:c===3?thin:undefined, right:c===lastCol?thin:undefined
+      };
+    }
+    ws.getRow(1).height=15; ws.getRow(2).height=15; ws.getRow(3).height=15; ws.getRow(4).height=15;
+
+    /* ===== Kotak info (baris 6-7, border medium) ===== */
+    const tgl=fmtTanggal(document.getElementById('fTanggal').value);
+    const infoR1=6, infoR2=7;
+    function infoBox(c1,c2,text,size){
+      ws.mergeCells(infoR1,c1,infoR2,c2);
+      const cell=ws.getCell(infoR1,c1);
+      cell.value=text;
+      cell.font=TNR({bold:true,size:size});
+      cell.alignment={horizontal:c1===1?'left':'center',vertical:'middle',indent:c1===1?1:0};
+      for(let r=infoR1;r<=infoR2;r++) for(let c=c1;c<=c2;c++){
+        ws.getCell(r,c).border={
+          top:r===infoR1?med:undefined, bottom:r===infoR2?med:undefined,
+          left:c===c1?med:undefined, right:c===c2?med:undefined
+        };
+      }
+    }
+    const midStart=4, midEnd=3+Math.max(4,nApd-4);
+    infoBox(1,3,`Lokasi : ${document.getElementById('fLokasi').value}`,12);
+    infoBox(midStart,midEnd,`Jumlah Personel : ${state.persons.length} Orang`,14);
+    infoBox(midEnd+1,lastCol,`Tanggal : ${tgl}`,14);
+
+    /* ===== Header tabel (baris 9-10) ===== */
+    const h1=9,h2=10;
+    ws.mergeCells(h1,1,h2,1); ws.getCell(h1,1).value='NO';
+    ws.mergeCells(h1,2,h2,2); ws.getCell(h1,2).value='NAMA';
+    ws.mergeCells(h1,3,h2,3); ws.getCell(h1,3).value='JABATAN';
+    ws.mergeCells(h1,4,h1,3+nApd); ws.getCell(h1,4).value='Seragam & APD';
+    ws.mergeCells(h1,lastCol,h2,lastCol); ws.getCell(h1,lastCol).value='Komentar';
+    // gaya header utama: TNR 14 bold, border atas double (sesuai contoh)
+    // NB: sel merged berbagi 1 objek style, jadi border di-set SEKALI di master cell
+    // (kalau di-set ulang lewat sel baris kedua, border double di atas akan tertimpa).
+    ws.getCell(h1,1).border={top:dbl,bottom:thin,left:dbl,right:thin};
+    ws.getCell(h1,2).border={top:dbl,bottom:thin,left:thin,right:thin};
+    ws.getCell(h1,3).border={top:dbl,bottom:thin,left:thin,right:thin};
+    ws.getCell(h1,4).border={top:dbl,bottom:thin,left:thin,right:thin};      // Seragam & APD (merged)
+    ws.getCell(h1,lastCol).border={top:dbl,bottom:thin,left:thin,right:dbl}; // Komentar (merged)
+    [1,2,3,4,lastCol].forEach(c=>{
+      const cell=ws.getCell(h1,c);
+      cell.alignment={horizontal:'center',vertical:'middle'};
+      cell.font=TNR({bold:true,size:14});
+    });
+    // baris nama APD diputar 90°, TNR 10 — border seragam thin untuk SEMUA kolom APD
+    state.apds.forEach((a,i)=>{
+      const c=ws.getCell(h2,4+i);
+      c.value=a;
+      c.alignment={textRotation:90,horizontal:'center',vertical:'bottom',wrapText:true};
+      c.font=TNR({size:10});
+      c.border=allThin;
+    });
+    ws.getRow(h2).height=88;
+
+    /* ===== Data ===== */
+    let r=h2+1;
+    state.persons.forEach((p,pi)=>{
+      ws.getCell(r,1).value=pi+1;
+      ws.getCell(r,2).value=p.nama;
+      ws.getCell(r,3).value=p.jabatan;
+      state.apds.forEach((a,ai)=>{
+        const c=ws.getCell(r,4+ai);
+        c.value=state.cells[pi][ai];
+        c.alignment={horizontal:'center'};
+        c.font=TNR({bold:true,size:14}); // status bold sesuai contoh
+      });
+      ws.getCell(r,lastCol).value=p.komentar||'';
+      const isLast = pi===state.persons.length-1;
+      for(let col=1;col<=lastCol;col++){
+        const c=ws.getCell(r,col);
+        c.border={top:thin,bottom:isLast?dbl:thin,left:col===1?dbl:thin,right:col===lastCol?dbl:thin};
+        if(!c.font || !c.font.name) c.font=TNR({size:14});
+        if(col===1) c.alignment={horizontal:'center'};
+      }
+      ws.getCell(r,2).font=TNR({size:14});
+      ws.getCell(r,3).font=TNR({size:14});
+      ws.getCell(r,lastCol).font=TNR({size:12});
+      r++;
+    });
+
+    /* ===== Nomor dokumen (kotak berbingkai, kanan) ===== */
+    r++;
+    ws.mergeCells(r,lastCol-3,r,lastCol);
+    const dn=ws.getCell(r,lastCol-3);
+    dn.value=DOCNUM;
+    dn.font=TNR({bold:true,size:11});
+    dn.alignment={horizontal:'center'};
+    for(let c=lastCol-3;c<=lastCol;c++){
+      ws.getCell(r,c).border={top:thin,bottom:thin,left:c===lastCol-3?thin:undefined,right:c===lastCol?thin:undefined};
+    }
+
+    /* ===== Legend + Catatan + Tanda tangan (1 baris kosong ekstra setelah no. dokumen) ===== */
+    r+=3;
+    const L=r;
+    ws.getCell(L,1).value='Legend :'; ws.getCell(L,1).font=TNR({bold:true,size:12});
+    const legend=[['√',': OK'],['X',': Rusak'],['K',': Kosong (Tidak Tersedia)'],['TP',': Tidak Perlu']];
+    legend.forEach((row,i)=>{
+      ws.getCell(L+1+i,2).value=row[0];
+      ws.getCell(L+1+i,3).value=row[1];
+      ws.getCell(L+1+i,2).font=TNR({bold:true,size:12});
+      ws.getCell(L+1+i,3).font=TNR({bold:true,size:12});
+    });
+    const catatan=document.getElementById('fCatatan').value;
+    ws.getCell(L+6,1).value='Catatan : '+(catatan||'');
+    ws.getCell(L+6,1).font=TNR({bold:true,size:12});
+
+    const sCol1=Math.max(5,lastCol-9), sCol2=lastCol-3;
+    function signBlock(col,label,jab,nama){
+      ws.mergeCells(L,col,L,col+2);
+      ws.getCell(L,col).value=label;
+      ws.getCell(L,col).alignment={horizontal:'center'};
+      ws.getCell(L,col).font=TNR({size:12});
+      ws.mergeCells(L+1,col,L+1,col+2);
+      ws.getCell(L+1,col).value=jab;
+      ws.getCell(L+1,col).alignment={horizontal:'center'};
+      ws.getCell(L+1,col).font=TNR({size:12});
+      ws.mergeCells(L+6,col,L+6,col+2);
+      const n=ws.getCell(L+6,col);
+      n.value=(nama||'').toUpperCase();
+      n.alignment={horizontal:'center'};
+      n.font=TNR({bold:true,size:12});
+      n.border={bottom:thin}; // garis bawah nama sesuai contoh
+      ws.getCell(L+6,col+1).border={bottom:thin};
+      ws.getCell(L+6,col+2).border={bottom:thin};
+    }
+    signBlock(sCol1,'Diperiksa Oleh,',document.getElementById('fPeriksaJab').value,document.getElementById('fPeriksaNama').value);
+    signBlock(sCol2,'Diketahui Oleh,',document.getElementById('fTahuJab').value,document.getElementById('fTahuNama').value);
+
+    const buf=await wb.xlsx.writeBuffer();
+    const blob=new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    const lok=(document.getElementById('fLokasi').value||'draft').replace(/[^a-z0-9]+/gi,'_');
+    a.href=url; a.download=`Ceklist_APD_${lok}_${document.getElementById('fTanggal').value}.xlsx`;
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+    st.textContent='File Excel berhasil diunduh ✓';
+  }catch(e){
+    console.error(e);
+    st.textContent='Gagal membuat Excel: '+e.message;
+  }
+}
+</script>
+</body>
+</html>
