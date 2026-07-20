@@ -506,6 +506,7 @@ function authHeaders() {
   return token ? { 'Authorization': 'Bearer ' + token } : {};
 }
 function cssKey(w) { return w.replace(/[^a-zA-Z0-9_]/g, '_'); }
+function shortWellLabel(w) { return w.replace(/^Sumur[_-]?/i, '') || w; }
 function fmtBulanID(ym) {
   const MONTHS = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
   const [y,m] = ym.split('-');
@@ -919,6 +920,29 @@ async function renderSumurPanel() {
       <button class="clear-form-btn" id="btnClearSumur">Bersihkan form</button>
       <span class="form-status" id="sumurStatus"></span>
     </div>
+
+    ${wells.length > 0 ? `
+    <div class="history-section">
+      <div class="history-head">
+        <div class="history-title">📅 Riwayat Bulan Terinput — ${loc.label} (${catLabel})</div>
+      </div>
+      <p class="history-sub">Daftar bulan yang sudah pernah diisi untuk ${catLabel} ${loc.label} — tanda "—" berwarna merah berarti sumur itu belum diisi pada bulan tersebut. Default cuma menampilkan bulan berjalan, pilih bulan lain lewat menu di bawah kalau perlu. Klik ✏️ untuk memuat data bulan itu ke form di atas, atau 🗑️ untuk mengosongkannya.</p>
+      <div class="history-search">
+        <select id="histMonthFilterSumur"></select>
+        <input type="text" id="histSearchSumur" placeholder="Cari bulan, mis. 2026">
+        <select id="histSortSumur">
+          <option value="desc">Terbaru dulu</option>
+          <option value="asc">Terlama dulu</option>
+        </select>
+      </div>
+      <div class="history-table-wrap" id="histTableWrapSumur"></div>
+      <div class="history-foot">
+        <span id="histCountSumur"></span>
+        <span></span>
+      </div>
+      <div class="history-note">Riwayat ini diambil langsung dari database. Menghapus satu baris cuma mengosongkan data ${catLabel} instalasi ini pada bulan itu (kategori "${isPair ? 'Debit' : 'Statis & Dinamis'}" tersimpan di tabel terpisah dan tidak ikut terhapus).</div>
+    </div>
+    ` : ''}
   `;
 
   async function addWell(name) {
@@ -1039,6 +1063,7 @@ async function renderSumurPanel() {
         const data = await res.json();
         if (!res.ok || !data.success) throw new Error(data.error || 'Gagal menyimpan.');
         setStatus('sumurStatus', 'Tersimpan. Langsung tampil di halaman "Data Waduk dan Sumur".', false);
+        fetchSumurHistory();
       } catch (err) {
         setStatus('sumurStatus', 'Gagal: ' + err.message, true);
       }
@@ -1046,8 +1071,137 @@ async function renderSumurPanel() {
     };
 
     loadSumur();
+    fetchSumurHistory();
+    document.getElementById('histMonthFilterSumur').addEventListener('change', renderSumurHistoryTable);
+    document.getElementById('histSearchSumur').addEventListener('input', renderSumurHistoryTable);
+    document.getElementById('histSortSumur').addEventListener('change', renderSumurHistoryTable);
   } else {
     document.getElementById('btnClearSumur').onclick = () => {};
+  }
+
+  // =============================================================================
+  // RIWAYAT — Sumur Dalam (bulanan). Diambil sekali per kunjungan panel
+  // (di-cache di sumurHistoryRows), filter bulan & search & sort dilakukan
+  // di sisi client tanpa fetch ulang ke server. Kolom tabel = daftar sumur
+  // saat ini (`wells`), jadi kalau sumur ditambah/dihapus, riwayat ikut
+  // re-render lewat renderAll() yang sudah dipanggil di addWell/hapus sumur.
+  // =============================================================================
+  let sumurHistoryRows = [];
+
+  async function fetchSumurHistory() {
+    const wrap = document.getElementById('histTableWrapSumur');
+    if (!wrap) return;
+    wrap.innerHTML = `<div class="history-empty">Memuat riwayat...</div>`;
+    try {
+      const params = new URLSearchParams({ installation: currentSub, category: currentCategory });
+      const res = await fetch(`/api/visualization/admin-library?action=sumur-history&${params.toString()}`, { headers: authHeaders() });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+      sumurHistoryRows = data.rows || [];
+      populateSumurMonthFilter();
+      renderSumurHistoryTable();
+    } catch (err) {
+      sumurHistoryRows = [];
+      wrap.innerHTML = `<div class="history-empty">Gagal memuat riwayat: ${err.message}</div>`;
+    }
+  }
+
+  function populateSumurMonthFilter() {
+    const select = document.getElementById('histMonthFilterSumur');
+    if (!select) return;
+    const prevValue = select.value || currentMonthStr();
+    const monthsWithData = sumurHistoryRows.map(r => r.bulan);
+    const months = Array.from(new Set([currentMonthStr(), ...monthsWithData])).sort((a, b) => b.localeCompare(a));
+    select.innerHTML = `<option value="">Semua bulan</option>` + months.map(m => `<option value="${m}">${fmtBulanTahunID(m)}</option>`).join('');
+    select.value = months.includes(prevValue) ? prevValue : currentMonthStr();
+  }
+
+  function renderSumurHistoryTable() {
+    const wrap = document.getElementById('histTableWrapSumur');
+    const countEl = document.getElementById('histCountSumur');
+    if (!wrap) return;
+
+    const monthFilter = document.getElementById('histMonthFilterSumur').value;
+    const search = (document.getElementById('histSearchSumur').value || '').trim().toLowerCase();
+    const sort = document.getElementById('histSortSumur').value;
+
+    let rows = sumurHistoryRows.slice();
+    if (monthFilter) rows = rows.filter(r => r.bulan === monthFilter);
+    if (search) rows = rows.filter(r => r.bulan.toLowerCase().includes(search));
+    rows.sort((a, b) => sort === 'asc' ? a.bulan.localeCompare(b.bulan) : b.bulan.localeCompare(a.bulan));
+
+    if (rows.length === 0) {
+      wrap.innerHTML = `<div class="history-empty">${search || monthFilter ? 'Tidak ada bulan yang cocok dengan filter saat ini.' : 'Belum ada riwayat untuk ' + loc.label + '.'}</div>`;
+      countEl.textContent = '';
+      return;
+    }
+
+    const thisMonth = currentMonthStr();
+    wrap.innerHTML = `
+      <table class="history-table">
+        <thead>
+          <tr>
+            <th>Bulan</th>
+            ${isPair
+              ? wells.map(w => `<th class="num" title="${w} — Statis">${shortWellLabel(w)} S</th><th class="num" title="${w} — Dinamis">${shortWellLabel(w)} D</th>`).join('')
+              : wells.map(w => `<th class="num" title="${w}">${shortWellLabel(w)}</th>`).join('')
+            }
+            <th class="actions-col"></th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows.map(r => `
+            <tr class="${r.bulan === thisMonth ? 'is-today' : ''}">
+              <td class="date-cell">${fmtBulanTahunID(r.bulan)}</td>
+              ${isPair
+                ? wells.map(w => {
+                    const pair = r.values[w] || { statis: null, dinamis: null };
+                    const sFilled = pair.statis !== undefined && pair.statis !== null;
+                    const dFilled = pair.dinamis !== undefined && pair.dinamis !== null;
+                    return `<td class="num${sFilled ? '' : ' is-missing'}">${sFilled ? pair.statis : '—'}</td><td class="num${dFilled ? '' : ' is-missing'}">${dFilled ? pair.dinamis : '—'}</td>`;
+                  }).join('')
+                : wells.map(w => {
+                    const v = r.values[w];
+                    const filled = v !== undefined && v !== null;
+                    return `<td class="num${filled ? '' : ' is-missing'}">${filled ? v : '—'}</td>`;
+                  }).join('')
+              }
+              <td>
+                <div class="history-actions">
+                  <button class="hist-btn hist-load-sumur" data-bulan="${r.bulan}" title="Muat ke form">✏️</button>
+                  <button class="hist-btn hist-del-sumur" data-bulan="${r.bulan}" title="Hapus (kosongkan field)">🗑️</button>
+                </div>
+              </td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    `;
+    countEl.textContent = `${rows.length} bulan ditemukan`;
+
+    wrap.querySelectorAll('.hist-load-sumur').forEach(btn => {
+      btn.onclick = () => {
+        document.getElementById('f_bulan').value = btn.dataset.bulan;
+        loadSumur();
+        window.scrollTo({ top: panel.offsetTop - 20, behavior: 'smooth' });
+      };
+    });
+    wrap.querySelectorAll('.hist-del-sumur').forEach(btn => {
+      btn.onclick = async () => {
+        const bln = btn.dataset.bulan;
+        if (!confirm(`Hapus data ${catLabel} ${loc.label} untuk bulan ${fmtBulanTahunID(bln)}?\n\nSemua sumur pada kategori "${catLabel}" di bulan tersebut akan dikosongkan.`)) return;
+        try {
+          const params = new URLSearchParams({ installation: currentSub, category: currentCategory, bulan: bln });
+          const res = await fetch(`/api/visualization/admin-library?action=sumur-history&${params.toString()}`, { method: 'DELETE', headers: authHeaders() });
+          const data = await res.json();
+          if (!res.ok || !data.success) throw new Error(data.error || 'Gagal menghapus.');
+          fetchSumurHistory();
+          if (document.getElementById('f_bulan').value === bln) loadSumur();
+        } catch (err) {
+          alert('Gagal menghapus: ' + err.message);
+        }
+      };
+    });
   }
 }
 

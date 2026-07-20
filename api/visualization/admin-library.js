@@ -214,6 +214,72 @@ async function handleSumur(req, res) {
   return res.status(405).json({ error: 'Method not allowed' });
 }
 
+// --- action=sumur-history: riwayat bulan yang sudah terinput untuk satu
+// instalasi+kategori Sumur Dalam, digabung per bulan (1 baris/bulan, 1 kolom
+// per sumur terdaftar). Sama seperti action=daily-history: data kecil, tidak
+// perlu pagination, filter/sort dilakukan di frontend. ----------------------
+async function handleSumurHistory(req, res) {
+  const { installation, category } = req.query;
+  if (!installation || !['debit', 'level'].includes(category)) {
+    return res.status(400).json({ error: 'installation dan category (debit/level) wajib diisi' });
+  }
+
+  if (req.method === 'GET') {
+    const wells = await fetchSumurWells(installation, category);
+    const byBulan = new Map(); // bulan -> { well_name: value | {statis,dinamis} }
+
+    if (category === 'debit') {
+      const { rows } = await pool.query(
+        `SELECT well_name, to_char(bulan, 'YYYY-MM') as bulan, value FROM sumur_debit_readings WHERE installation = $1`,
+        [installation]
+      );
+      rows.forEach(r => {
+        if (!byBulan.has(r.bulan)) byBulan.set(r.bulan, {});
+        byBulan.get(r.bulan)[r.well_name] = r.value !== null && r.value !== undefined ? Number(r.value) : null;
+      });
+    } else {
+      const { rows } = await pool.query(
+        `SELECT well_name, to_char(bulan, 'YYYY-MM') as bulan, statis, dinamis FROM sumur_level_readings WHERE installation = $1`,
+        [installation]
+      );
+      rows.forEach(r => {
+        if (!byBulan.has(r.bulan)) byBulan.set(r.bulan, {});
+        byBulan.get(r.bulan)[r.well_name] = {
+          statis: r.statis !== null && r.statis !== undefined ? Number(r.statis) : null,
+          dinamis: r.dinamis !== null && r.dinamis !== undefined ? Number(r.dinamis) : null
+        };
+      });
+    }
+
+    const emptyValue = category === 'debit' ? null : { statis: null, dinamis: null };
+    const outRows = Array.from(byBulan.entries())
+      .map(([bulan, values]) => {
+        const full = {};
+        wells.forEach(w => { full[w] = Object.prototype.hasOwnProperty.call(values, w) ? values[w] : emptyValue; });
+        return { bulan, values: full };
+      })
+      .sort((a, b) => (a.bulan < b.bulan ? 1 : a.bulan > b.bulan ? -1 : 0));
+
+    return res.status(200).json({ wells, rows: outRows });
+  }
+
+  if (req.method === 'DELETE') {
+    const { bulan } = req.query;
+    if (!bulan) return res.status(400).json({ error: 'bulan wajib diisi' });
+    const bulanDate = `${bulan}-01`;
+
+    if (category === 'debit') {
+      await pool.query('UPDATE sumur_debit_readings SET value = NULL WHERE installation = $1 AND bulan = $2', [installation, bulanDate]);
+    } else {
+      await pool.query('UPDATE sumur_level_readings SET statis = NULL, dinamis = NULL WHERE installation = $1 AND bulan = $2', [installation, bulanDate]);
+    }
+
+    return res.status(200).json({ success: true });
+  }
+
+  return res.status(405).json({ error: 'Method not allowed' });
+}
+
 // --- action=wells: CRUD daftar sumur aktif per instalasi ------------------
 async function handleWells(req, res) {
   if (req.method === 'GET') {
@@ -270,7 +336,8 @@ module.exports = async (req, res) => {
   if (action === 'daily') return handleDaily(req, res);
   if (action === 'daily-history') return handleDailyHistory(req, res);
   if (action === 'sumur') return handleSumur(req, res);
+  if (action === 'sumur-history') return handleSumurHistory(req, res);
   if (action === 'wells') return handleWells(req, res);
 
-  return res.status(400).json({ error: 'action wajib diisi (daily/daily-history/sumur/wells)' });
+  return res.status(400).json({ error: 'action wajib diisi (daily/daily-history/sumur/sumur-history/wells)' });
 };
