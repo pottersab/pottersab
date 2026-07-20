@@ -50,11 +50,11 @@
   label.opt.checked{border-color:var(--navy);background:var(--accent-soft);font-weight:600;}
   label.opt input{accent-color:var(--navy);width:17px;height:17px;flex-shrink:0;}
 
-  input[type=text], input[type=time], textarea{
+  input[type=text], input[type=time], textarea, select{
     width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:7px;
     font-size:14.5px;font-family:inherit;background:#fff;color:var(--ink);
   }
-  input:focus, textarea:focus{outline:2px solid var(--navy);outline-offset:1px;}
+  input:focus, textarea:focus, select:focus{outline:2px solid var(--navy);outline-offset:1px;}
   textarea{resize:vertical;min-height:90px;}
   label.field{display:block;font-size:12.5px;color:var(--muted);margin:14px 0 5px;}
   label.field:first-child{margin-top:0;}
@@ -433,6 +433,8 @@ const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw8B3ts6p93DuAW-cYbh
 // ==========================================
 
 const state = {
+  judulPerbaikan:'',
+  arahInstalasi:'',
   itemPerbaikan:'',
   diameterTransmisi:'', diameterTransmisiLain:'',
   diameterSumur:'', diameterSumurLain:'',
@@ -447,6 +449,8 @@ const state = {
 
 // Definisi seluruh step. "show" menentukan apakah step ini relevan (logika percabangan).
 const steps = [
+  { id:'judulPerbaikan', title:'Judul Perbaikan', show:()=>true },
+  { id:'arahInstalasi', title:'Arah Instalasi Pengolahan', show:()=>true },
   { id:'item', title:'Item Perbaikan', show:()=>true },
   { id:'diaTransmisi', title:'Diameter Pipa Transmisi', show:()=>state.itemPerbaikan==='Pipa Transmisi' },
   { id:'diaSumur', title:'Diameter Pipa Sumur', show:()=>state.itemPerbaikan==='Pipa Sumur' },
@@ -490,8 +494,34 @@ function optHtml(name, value, current, extra){
   return `<label class="${cls}"><input type="radio" name="${name}" value="${value}" ${checked}> ${value}</label>${extra||''}`;
 }
 
+const ARAH_INSTALASI_OPTIONS = [
+  'Pump House',
+  'IPA 1 Kilometer 12',
+  'IPA 2 Batu Ampar',
+  'IPA 3 Gunung Sari',
+  'IPA 3 Prapatan',
+  'IPA 4 Kampung Damai',
+  'IPA 5 Teritip',
+  'IPA 5 Gunung Tembak',
+  'IPA 6 Kampung Baru',
+  'IPA 6 Zamp'
+];
+
 function renderStep(id){
   switch(id){
+    case 'judulPerbaikan':
+      return `<div class="card"><h2>Judul Perbaikan</h2><p class="hint">Berikan judul singkat untuk perbaikan ini.</p>
+        <input type="text" id="judulPerbaikan" placeholder="Contoh: Perbaikan pipa bocor di KM 12" value="${state.judulPerbaikan}">
+      </div>`;
+
+    case 'arahInstalasi':
+      return `<div class="card"><h2>Arah Instalasi Pengolahan</h2><p class="hint">Pilih lokasi/unit pengolahan air.</p>
+        <select id="arahInstalasi">
+          <option value="" ${state.arahInstalasi==='' ? 'selected' : ''}>-- Pilih Lokasi --</option>
+          ${ARAH_INSTALASI_OPTIONS.map(v=>`<option value="${v}" ${state.arahInstalasi===v ? 'selected' : ''}>${v}</option>`).join('')}
+        </select>
+      </div>`;
+
     case 'item':
       return `<div class="card"><h2>Item Perbaikan</h2><p class="hint">Pilih jenis pekerjaan yang dilakukan.</p>
         ${optHtml('item','Pipa Transmisi', state.itemPerbaikan)}
@@ -571,6 +601,8 @@ function renderStep(id){
 
     case 'review':
       return `<div class="card"><h2>Periksa Kembali</h2><p class="hint">Pastikan data sudah benar sebelum dikirim.</p>
+        ${reviewRow('Judul Perbaikan', state.judulPerbaikan)}
+        ${reviewRow('Arah Instalasi Pengolahan', state.arahInstalasi)}
         ${reviewRow('Item Perbaikan', state.itemPerbaikan)}
         ${state.itemPerbaikan==='Pipa Transmisi' ? reviewRow('Diameter', state.diameterTransmisi==='Yang lain'?state.diameterTransmisiLain:state.diameterTransmisi) : ''}
         ${state.itemPerbaikan==='Pipa Sumur' ? reviewRow('Diameter', state.diameterSumur==='Yang lain'?state.diameterSumurLain:state.diameterSumur) : ''}
@@ -618,6 +650,16 @@ function attachStepEvents(id){
     document.getElementById('fotoInput').addEventListener('change', handlePhoto);
     document.getElementById('gpsRetry').addEventListener('click', requestGps);
   }
+
+  if(id==='judulPerbaikan'){
+    const el = document.getElementById('judulPerbaikan');
+    if(el) el.addEventListener('input', e => state.judulPerbaikan = e.target.value);
+  }
+
+  if(id==='arahInstalasi'){
+    const el = document.getElementById('arahInstalasi');
+    if(el) el.addEventListener('change', e => state.arahInstalasi = e.target.value);
+  }
 }
 
 function handlePhoto(e){
@@ -661,6 +703,8 @@ function requestGps(){
 function validateCurrent(){
   const def = currentDef();
   switch(def.id){
+    case 'judulPerbaikan': return state.judulPerbaikan.trim() ? '' : 'Isi judul perbaikan dulu ya.';
+    case 'arahInstalasi': return state.arahInstalasi ? '' : 'Pilih arah instalasi pengolahan.';
     case 'item': return state.itemPerbaikan ? '' : 'Pilih item perbaikan dulu ya.';
     case 'diaTransmisi': return state.diameterTransmisi ? '' : 'Pilih diameter pipa transmisi.';
     case 'diaSumur': return state.diameterSumur ? '' : 'Pilih diameter pipa sumur.';
@@ -709,6 +753,8 @@ async function submitForm(){
   msg.textContent=''; msg.className='status-msg';
 
   const payload = {
+    judulPerbaikan: state.judulPerbaikan,
+    arahInstalasi: state.arahInstalasi,
     itemPerbaikan: state.itemPerbaikan,
     diameterPipaTransmisi: state.diameterTransmisi==='Yang lain' ? state.diameterTransmisiLain : state.diameterTransmisi,
     diameterPipaSumur: state.diameterSumur==='Yang lain' ? state.diameterSumurLain : state.diameterSumur,
