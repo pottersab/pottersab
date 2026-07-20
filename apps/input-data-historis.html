@@ -101,33 +101,22 @@ h1{font-family:'Space Grotesk',sans-serif;font-size:28px;margin:2px 0 0;font-wei
 .history-search input[type=text]{flex:1;min-width:140px;padding:8px 10px;border:1px solid var(--line-muted);border-radius:8px;font-size:12.5px;font-family:'Inter',sans-serif;}
 .history-search select{padding:8px 10px;border:1px solid var(--line-muted);border-radius:8px;font-size:12.5px;font-family:'Inter',sans-serif;background:#fff;}
 .history-table-wrap{border:1px solid var(--line-muted);border-radius:10px;overflow-x:auto;}
-table.history-table{width:100%;border-collapse:collapse;font-size:12.5px;}
-table.history-table thead th{text-align:left;font-family:'Space Grotesk',sans-serif;font-size:10.5px;text-transform:uppercase;letter-spacing:.03em;color:var(--ink-soft);background:var(--primary-pale);padding:9px 12px;white-space:nowrap;}
+table.history-table{width:100%;border-collapse:collapse;font-size:12px;}
+table.history-table thead th{text-align:left;font-family:'Space Grotesk',sans-serif;font-size:10px;text-transform:uppercase;letter-spacing:.03em;color:var(--ink-soft);background:var(--primary-pale);padding:7px 9px;white-space:nowrap;}
 table.history-table thead th.num{text-align:right;}
-table.history-table tbody td{padding:9px 12px;border-top:1px solid var(--line-muted);color:var(--ink);white-space:nowrap;}
+table.history-table thead th.actions-col{width:1%;}
+table.history-table tbody td{padding:6px 9px;border-top:1px solid var(--line-muted);color:var(--ink);white-space:nowrap;}
 table.history-table tbody td.num{text-align:right;font-family:'IBM Plex Mono',monospace;}
+table.history-table tbody td.num.is-missing{color:var(--low);opacity:.7;}
 table.history-table tbody td.date-cell{font-family:'IBM Plex Mono',monospace;font-weight:600;color:var(--primary);}
 table.history-table tbody tr:hover{background:#FAFDFD;}
-table.history-table tbody tr.is-today td.date-cell::after{content:'hari ini';margin-left:6px;font-family:'Inter',sans-serif;font-size:9.5px;font-weight:600;color:var(--good);background:#E3F5EA;padding:1px 6px;border-radius:999px;}
-.history-actions{display:flex;gap:6px;justify-content:flex-end;}
-.hist-btn{font-family:'Space Grotesk',sans-serif;font-size:11px;font-weight:600;border-radius:7px;padding:5px 10px;cursor:pointer;border:1px solid var(--line-muted);background:#fff;color:var(--ink-soft);}
+table.history-table tbody tr.is-today td.date-cell::after{content:'hari ini';margin-left:5px;font-family:'Inter',sans-serif;font-size:9px;font-weight:600;color:var(--good);background:#E3F5EA;padding:1px 5px;border-radius:999px;}
+.history-actions{display:flex;gap:4px;justify-content:flex-end;}
+.hist-btn{font-family:'Space Grotesk',sans-serif;font-size:13px;line-height:1;border-radius:7px;padding:5px 7px;cursor:pointer;border:1px solid var(--line-muted);background:#fff;color:var(--ink-soft);}
 .hist-btn:hover{border-color:var(--primary-light);color:var(--primary);}
 .hist-btn.hist-del:hover{border-color:var(--low);color:var(--low);}
 .history-empty{padding:22px;text-align:center;color:var(--ink-soft);font-size:12.5px;}
 .history-foot{display:flex;justify-content:space-between;align-items:center;margin-top:10px;font-size:11.5px;color:var(--ink-soft);flex-wrap:wrap;gap:6px;}
-
-/* --- Kelengkapan data (chip per field) --- */
-.completeness-cell{white-space:normal !important;min-width:180px;}
-.field-chip-row{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:5px;}
-.field-chip{display:inline-flex;align-items:center;gap:3px;font-family:'IBM Plex Mono',monospace;font-size:10.5px;font-weight:600;padding:2px 7px;border-radius:999px;border:1px solid transparent;}
-.field-chip.is-filled{background:#E3F5EA;color:#1E6E45;border-color:#BEE6CD;}
-.field-chip.is-missing{background:#FBE9E6;color:#A6402F;border-color:#F3C9C2;}
-.field-chip .dot{width:5px;height:5px;border-radius:50%;background:currentColor;}
-.history-legend{display:flex;gap:14px;align-items:center;font-size:11px;color:var(--ink-soft);margin-bottom:10px;flex-wrap:wrap;}
-.history-legend span{display:flex;align-items:center;gap:5px;}
-.history-legend .dot{width:8px;height:8px;border-radius:50%;}
-.history-legend .dot.ok{background:var(--good);}
-.history-legend .dot.warn{background:var(--low);}
 .history-note{font-size:11px;color:var(--ink-soft);background:var(--primary-pale);border-radius:8px;padding:8px 10px;margin-top:10px;line-height:1.5;}
 
 /* Lock screen (khusus admin) — gaya disamakan persis dengan login.html asli situs */
@@ -504,6 +493,11 @@ const DAILY_FIELDS = {
   ]
 };
 
+// Header singkat khusus tabel Riwayat Tanggal Terinput (biar kolomnya
+// ringkas, konteks "Waduk Manggar/Teritip" sudah jelas dari judul panel) --
+// label lengkap di DAILY_FIELDS di atas tetap dipakai untuk form input.
+const SHORT_FIELD_LABEL = { level: 'Level', hujan: 'Hujan', ntu: 'NTU', ph: 'pH' };
+
 // =============================================================================
 // HELPERS
 // =============================================================================
@@ -514,6 +508,11 @@ function authHeaders() {
 function cssKey(w) { return w.replace(/[^a-zA-Z0-9_]/g, '_'); }
 function fmtBulanID(ym) {
   const MONTHS = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
+  const [y,m] = ym.split('-');
+  return `${MONTHS[parseInt(m,10)-1]} ${y}`;
+}
+function fmtBulanTahunID(ym) {
+  const MONTHS = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
   const [y,m] = ym.split('-');
   return `${MONTHS[parseInt(m,10)-1]} ${y}`;
 }
@@ -628,7 +627,7 @@ function renderDailyPanel() {
       <div class="history-head">
         <div class="history-title">📅 Riwayat Tanggal Terinput — ${label}</div>
       </div>
-      <p class="history-sub">Daftar tanggal yang sudah pernah diisi untuk ${label}, lengkap dengan keterangan field mana yang sudah/belum diisi (misal cuma Level yang keisi, NTU &amp; pH masih kosong). Default cuma menampilkan bulan berjalan — pilih bulan lain lewat menu di bawah kalau perlu. Klik "Muat" untuk membuka data tanggal tersebut ke form di atas, atau "Hapus" untuk mengosongkan datanya.</p>
+      <p class="history-sub">Daftar tanggal yang sudah pernah diisi untuk ${label} — tanda "—" berwarna merah berarti field itu belum diisi. Default cuma menampilkan bulan berjalan, pilih bulan lain lewat menu di bawah kalau perlu. Klik ✏️ untuk memuat data tanggal itu ke form di atas, atau 🗑️ untuk mengosongkannya.</p>
       <div class="history-search">
         <select id="histMonthFilterDaily"></select>
         <input type="text" id="histSearchDaily" placeholder="Cari tanggal, mis. 16">
@@ -731,7 +730,7 @@ function renderDailyPanel() {
     const prevValue = select.value || currentMonthStr();
     const monthsWithData = historyRows.map(r => r.tanggal.slice(0, 7));
     const months = Array.from(new Set([currentMonthStr(), ...monthsWithData])).sort((a, b) => b.localeCompare(a));
-    select.innerHTML = `<option value="">Semua bulan</option>` + months.map(m => `<option value="${m}">${fmtBulanID(m)}</option>`).join('');
+    select.innerHTML = `<option value="">Semua bulan</option>` + months.map(m => `<option value="${m}">${fmtBulanTahunID(m)}</option>`).join('');
     select.value = months.includes(prevValue) ? prevValue : currentMonthStr();
   }
 
@@ -757,19 +756,16 @@ function renderDailyPanel() {
 
     const today = todayStr();
     wrap.innerHTML = `
-      <div style="padding:10px 12px 0;">
-        <div class="history-legend">
-          <span><span class="dot ok"></span> Sudah diisi</span>
-          <span><span class="dot warn"></span> Belum diisi</span>
-        </div>
-      </div>
       <table class="history-table">
         <thead>
           <tr>
             <th>Tanggal</th>
-            <th>Kelengkapan Data</th>
-            ${fields.map(f => `<th class="num">${f.label} (${f.unit})</th>`).join('')}
-            <th></th>
+            ${fields.map(f => {
+              const short = SHORT_FIELD_LABEL[f.key] || f.label;
+              const headerText = short.toLowerCase() === f.unit.toLowerCase() ? short : `${short} (${f.unit})`;
+              return `<th class="num" title="${f.label}">${headerText}</th>`;
+            }).join('')}
+            <th class="actions-col"></th>
           </tr>
         </thead>
         <tbody>
@@ -777,19 +773,15 @@ function renderDailyPanel() {
             return `
             <tr class="${r.tanggal === today ? 'is-today' : ''}">
               <td class="date-cell">${fmtTanggalID(r.tanggal)}</td>
-              <td class="completeness-cell">
-                <div class="field-chip-row">
-                  ${fields.map(f => {
-                    const filled = r.values[f.key] !== undefined && r.values[f.key] !== null;
-                    return `<span class="field-chip ${filled ? 'is-filled' : 'is-missing'}"><span class="dot"></span>${f.label}</span>`;
-                  }).join('')}
-                </div>
-              </td>
-              ${fields.map(f => `<td class="num">${r.values[f.key] !== undefined && r.values[f.key] !== null ? r.values[f.key] : '—'}</td>`).join('')}
+              ${fields.map(f => {
+                const v = r.values[f.key];
+                const filled = v !== undefined && v !== null;
+                return `<td class="num${filled ? '' : ' is-missing'}">${filled ? v : '—'}</td>`;
+              }).join('')}
               <td>
                 <div class="history-actions">
-                  <button class="hist-btn hist-load" data-tanggal="${r.tanggal}">Muat</button>
-                  <button class="hist-btn hist-del" data-tanggal="${r.tanggal}">Hapus</button>
+                  <button class="hist-btn hist-load" data-tanggal="${r.tanggal}" title="Muat ke form">✏️</button>
+                  <button class="hist-btn hist-del" data-tanggal="${r.tanggal}" title="Hapus (kosongkan field)">🗑️</button>
                 </div>
               </td>
             </tr>
