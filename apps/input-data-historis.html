@@ -60,8 +60,13 @@ h1{font-family:'Space Grotesk',sans-serif;font-size:28px;margin:2px 0 0;font-wei
 .well-chip{display:inline-flex;align-items:center;gap:6px;background:var(--surface);border:1px solid var(--line-muted);border-radius:999px;padding:4px 6px 4px 10px;font-size:12px;font-family:'IBM Plex Mono',monospace;}
 .well-chip button{border:none;background:var(--low);color:#fff;width:16px;height:16px;border-radius:50%;font-size:11px;line-height:1;cursor:pointer;}
 .well-add-row{display:flex;gap:6px;}
+.well-add-row select{flex:1;padding:8px 9px;border:1px solid var(--line-muted);border-radius:8px;font-size:12.5px;font-family:'Inter',sans-serif;background:#fff;color:var(--ink);}
+.well-add-row select:disabled{background:#F1EFE9;color:var(--ink-soft);cursor:not-allowed;}
 .well-add-row input{flex:1;padding:7px 9px;border:1px solid var(--line-muted);border-radius:8px;font-size:12.5px;font-family:'Inter',sans-serif;}
 .well-add-row button{font-family:'Space Grotesk',sans-serif;font-size:12px;font-weight:700;background:var(--primary);color:#fff;border:none;border-radius:8px;padding:0 14px;cursor:pointer;}
+.well-add-row button:disabled{opacity:.5;cursor:not-allowed;}
+.well-manual-toggle{font-family:'Space Grotesk',sans-serif;font-size:11px;font-weight:600;color:var(--ink-soft);text-decoration:underline;cursor:pointer;background:none;border:none;padding:6px 0 0;}
+.well-manual-toggle:hover{color:var(--primary);}
 .wm-hint{font-size:11.5px;color:var(--ink-soft);margin-top:6px;}
 
 .form-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin-bottom:14px;}
@@ -86,6 +91,44 @@ h1{font-family:'Space Grotesk',sans-serif;font-size:28px;margin:2px 0 0;font-wei
 .load-status{font-size:12.5px;color:var(--ink-soft);}
 
 .empty-note{padding:24px;text-align:center;color:var(--ink-soft);font-size:13px;}
+
+/* ===== Riwayat Input (history section di bawah form) ===== */
+.history-section{margin-top:28px;border-top:1px dashed var(--line-muted);padding-top:18px;}
+.history-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:4px;flex-wrap:wrap;}
+.history-title{font-family:'Space Grotesk',sans-serif;font-size:14px;font-weight:700;color:var(--ink);display:flex;align-items:center;gap:8px;}
+.history-sub{font-size:12px;color:var(--ink-soft);margin:0 0 14px;}
+.history-search{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;}
+.history-search input[type=text]{flex:1;min-width:140px;padding:8px 10px;border:1px solid var(--line-muted);border-radius:8px;font-size:12.5px;font-family:'Inter',sans-serif;}
+.history-search select{padding:8px 10px;border:1px solid var(--line-muted);border-radius:8px;font-size:12.5px;font-family:'Inter',sans-serif;background:#fff;}
+.history-table-wrap{border:1px solid var(--line-muted);border-radius:10px;overflow:hidden;}
+table.history-table{width:100%;border-collapse:collapse;font-size:12.5px;}
+table.history-table thead th{text-align:left;font-family:'Space Grotesk',sans-serif;font-size:10.5px;text-transform:uppercase;letter-spacing:.03em;color:var(--ink-soft);background:var(--primary-pale);padding:9px 12px;white-space:nowrap;}
+table.history-table thead th.num{text-align:right;}
+table.history-table tbody td{padding:9px 12px;border-top:1px solid var(--line-muted);color:var(--ink);white-space:nowrap;}
+table.history-table tbody td.num{text-align:right;font-family:'IBM Plex Mono',monospace;}
+table.history-table tbody td.date-cell{font-family:'IBM Plex Mono',monospace;font-weight:600;color:var(--primary);}
+table.history-table tbody tr:hover{background:#FAFDFD;}
+table.history-table tbody tr.is-today td.date-cell::after{content:'hari ini';margin-left:6px;font-family:'Inter',sans-serif;font-size:9.5px;font-weight:600;color:var(--good);background:#E3F5EA;padding:1px 6px;border-radius:999px;}
+.history-actions{display:flex;gap:6px;justify-content:flex-end;}
+.hist-btn{font-family:'Space Grotesk',sans-serif;font-size:11px;font-weight:600;border-radius:7px;padding:5px 10px;cursor:pointer;border:1px solid var(--line-muted);background:#fff;color:var(--ink-soft);}
+.hist-btn:hover{border-color:var(--primary-light);color:var(--primary);}
+.hist-btn.hist-del:hover{border-color:var(--low);color:var(--low);}
+.history-empty{padding:22px;text-align:center;color:var(--ink-soft);font-size:12.5px;}
+.history-foot{display:flex;justify-content:space-between;align-items:center;margin-top:10px;font-size:11.5px;color:var(--ink-soft);flex-wrap:wrap;gap:6px;}
+
+/* --- Kelengkapan data (chip per field) --- */
+.completeness-cell{white-space:normal !important;min-width:180px;}
+.field-chip-row{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:5px;}
+.field-chip{display:inline-flex;align-items:center;gap:3px;font-family:'IBM Plex Mono',monospace;font-size:10.5px;font-weight:600;padding:2px 7px;border-radius:999px;border:1px solid transparent;}
+.field-chip.is-filled{background:#E3F5EA;color:#1E6E45;border-color:#BEE6CD;}
+.field-chip.is-missing{background:#FBE9E6;color:#A6402F;border-color:#F3C9C2;}
+.field-chip .dot{width:5px;height:5px;border-radius:50%;background:currentColor;}
+.history-legend{display:flex;gap:14px;align-items:center;font-size:11px;color:var(--ink-soft);margin-bottom:10px;flex-wrap:wrap;}
+.history-legend span{display:flex;align-items:center;gap:5px;}
+.history-legend .dot{width:8px;height:8px;border-radius:50%;}
+.history-legend .dot.ok{background:var(--good);}
+.history-legend .dot.warn{background:var(--low);}
+.history-note{font-size:11px;color:var(--ink-soft);background:var(--primary-pale);border-radius:8px;padding:8px 10px;margin-top:10px;line-height:1.5;}
 
 /* Lock screen (khusus admin) — gaya disamakan persis dengan login.html asli situs */
 .lock-screen{
@@ -489,6 +532,11 @@ function currentMonthStr() {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
 }
+function fmtTanggalID(iso) {
+  const MONTHS = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
+  const [y, m, d] = iso.split('-');
+  return `${parseInt(d,10)} ${MONTHS[parseInt(m,10)-1]} ${y}`;
+}
 
 // =============================================================================
 // STATE
@@ -575,6 +623,26 @@ function renderDailyPanel() {
       <button class="clear-form-btn" id="btnClearDaily">Bersihkan form</button>
       <span class="form-status" id="dailyStatus"></span>
     </div>
+
+    <div class="history-section">
+      <div class="history-head">
+        <div class="history-title">📅 Riwayat Tanggal Terinput — ${label}</div>
+      </div>
+      <p class="history-sub">Daftar tanggal yang sudah pernah diisi untuk ${label}, lengkap dengan keterangan field mana yang sudah/belum diisi (misal cuma Level yang keisi, NTU &amp; pH masih kosong). Klik "Muat" untuk membuka data tanggal tersebut ke form di atas, atau "Hapus" untuk mengosongkan datanya.</p>
+      <div class="history-search">
+        <input type="text" id="histSearchDaily" placeholder="Cari tanggal, mis. 2026-07">
+        <select id="histSortDaily">
+          <option value="desc">Terbaru dulu</option>
+          <option value="asc">Terlama dulu</option>
+        </select>
+      </div>
+      <div class="history-table-wrap" id="histTableWrapDaily"></div>
+      <div class="history-foot">
+        <span id="histCountDaily"></span>
+        <span></span>
+      </div>
+      <div class="history-note">Riwayat ini diambil langsung dari database. Menghapus satu baris cuma mengosongkan field milik ${label} pada tanggal itu (field grup lain yang berbagi tabel di tanggal yang sama tidak ikut terhapus).</div>
+    </div>
   `;
 
   function clearFields() { fields.forEach(f => { document.getElementById('f_' + f.key).value = ''; }); }
@@ -618,6 +686,7 @@ function renderDailyPanel() {
       const data = await res.json();
       if (!res.ok || !data.success) throw new Error(data.error || 'Gagal menyimpan.');
       setStatus('dailyStatus', 'Tersimpan. Langsung tampil di halaman "Data Waduk dan Sumur".', false);
+      fetchDailyHistory();
     } catch (err) {
       setStatus('dailyStatus', 'Gagal: ' + err.message, true);
     }
@@ -625,6 +694,119 @@ function renderDailyPanel() {
   };
 
   loadDaily();
+  fetchDailyHistory();
+  document.getElementById('histSearchDaily').addEventListener('input', renderDailyHistoryTable);
+  document.getElementById('histSortDaily').addEventListener('change', renderDailyHistoryTable);
+
+  // =============================================================================
+  // RIWAYAT — Waduk Manggar / Teritip. Diambil sekali per kunjungan panel
+  // (di-cache di historyRows), search & sort dilakukan di sisi client tanpa
+  // fetch ulang ke server.
+  // =============================================================================
+  let historyRows = [];
+
+  async function fetchDailyHistory() {
+    const wrap = document.getElementById('histTableWrapDaily');
+    if (!wrap) return;
+    wrap.innerHTML = `<div class="history-empty">Memuat riwayat...</div>`;
+    try {
+      const res = await fetch(`/api/visualization/admin-library?action=daily-history&group=${currentGroup}`, { headers: authHeaders() });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+      historyRows = data.rows || [];
+      renderDailyHistoryTable();
+    } catch (err) {
+      historyRows = [];
+      wrap.innerHTML = `<div class="history-empty">Gagal memuat riwayat: ${err.message}</div>`;
+    }
+  }
+
+  function renderDailyHistoryTable() {
+    const wrap = document.getElementById('histTableWrapDaily');
+    const countEl = document.getElementById('histCountDaily');
+    if (!wrap) return;
+
+    const search = (document.getElementById('histSearchDaily').value || '').trim().toLowerCase();
+    const sort = document.getElementById('histSortDaily').value;
+
+    let rows = historyRows.slice();
+    if (search) rows = rows.filter(r => r.tanggal.toLowerCase().includes(search));
+    rows.sort((a, b) => sort === 'asc' ? a.tanggal.localeCompare(b.tanggal) : b.tanggal.localeCompare(a.tanggal));
+
+    if (rows.length === 0) {
+      wrap.innerHTML = `<div class="history-empty">${search ? 'Tidak ada tanggal yang cocok dengan pencarian.' : 'Belum ada riwayat untuk ' + label + '.'}</div>`;
+      countEl.textContent = '';
+      return;
+    }
+
+    const today = todayStr();
+    wrap.innerHTML = `
+      <div style="padding:10px 12px 0;">
+        <div class="history-legend">
+          <span><span class="dot ok"></span> Sudah diisi</span>
+          <span><span class="dot warn"></span> Belum diisi</span>
+        </div>
+      </div>
+      <table class="history-table">
+        <thead>
+          <tr>
+            <th>Tanggal</th>
+            <th>Kelengkapan Data</th>
+            ${fields.map(f => `<th class="num">${f.label} (${f.unit})</th>`).join('')}
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows.map(r => {
+            return `
+            <tr class="${r.tanggal === today ? 'is-today' : ''}">
+              <td class="date-cell">${fmtTanggalID(r.tanggal)}</td>
+              <td class="completeness-cell">
+                <div class="field-chip-row">
+                  ${fields.map(f => {
+                    const filled = r.values[f.key] !== undefined && r.values[f.key] !== null;
+                    return `<span class="field-chip ${filled ? 'is-filled' : 'is-missing'}"><span class="dot"></span>${f.label}</span>`;
+                  }).join('')}
+                </div>
+              </td>
+              ${fields.map(f => `<td class="num">${r.values[f.key] !== undefined && r.values[f.key] !== null ? r.values[f.key] : '—'}</td>`).join('')}
+              <td>
+                <div class="history-actions">
+                  <button class="hist-btn hist-load" data-tanggal="${r.tanggal}">Muat</button>
+                  <button class="hist-btn hist-del" data-tanggal="${r.tanggal}">Hapus</button>
+                </div>
+              </td>
+            </tr>
+          `; }).join('')}
+        </tbody>
+      </table>
+    `;
+    countEl.textContent = `${rows.length} tanggal ditemukan`;
+
+    wrap.querySelectorAll('.hist-load').forEach(btn => {
+      btn.onclick = () => {
+        document.getElementById('f_tanggal').value = btn.dataset.tanggal;
+        loadDaily();
+        window.scrollTo({ top: panel.offsetTop - 20, behavior: 'smooth' });
+      };
+    });
+    wrap.querySelectorAll('.hist-del').forEach(btn => {
+      btn.onclick = async () => {
+        const tgl = btn.dataset.tanggal;
+        if (!confirm(`Hapus data tanggal ${fmtTanggalID(tgl)} untuk ${label}?\n\nField ${label} pada tanggal ini akan dikosongkan. Data grup lain yang berbagi tabel pada tanggal yang sama tidak akan terpengaruh.`)) return;
+        try {
+          const params = new URLSearchParams({ group: currentGroup, tanggal: tgl });
+          const res = await fetch(`/api/visualization/admin-library?action=daily&${params.toString()}`, { method: 'DELETE', headers: authHeaders() });
+          const data = await res.json();
+          if (!res.ok || !data.success) throw new Error(data.error || 'Gagal menghapus.');
+          fetchDailyHistory();
+          if (document.getElementById('f_tanggal').value === tgl) loadDaily();
+        } catch (err) {
+          alert('Gagal menghapus: ' + err.message);
+        }
+      };
+    });
+  }
 }
 
 // =============================================================================
@@ -638,16 +820,30 @@ async function renderSumurPanel() {
 
   panel.innerHTML = `<div class="empty-note">Memuat daftar sumur...</div>`;
 
-  let wells;
+  let wells, otherCategoryWells;
   try {
-    const res = await fetch(`/api/visualization/admin-library?action=wells&installation=${currentSub}&category=${currentCategory}`, { headers: authHeaders() });
+    const otherCategory = currentCategory === 'debit' ? 'level' : 'debit';
+    const [res, resOther] = await Promise.all([
+      fetch(`/api/visualization/admin-library?action=wells&installation=${currentSub}&category=${currentCategory}`, { headers: authHeaders() }),
+      fetch(`/api/visualization/admin-library?action=wells&installation=${currentSub}&category=${otherCategory}`, { headers: authHeaders() })
+    ]);
     const data = await res.json();
+    const dataOther = await resOther.json();
     if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
     wells = data.wells;
+    otherCategoryWells = resOther.ok ? dataOther.wells : [];
   } catch (err) {
     panel.innerHTML = `<div class="empty-note">Gagal memuat daftar sumur: ${err.message}</div>`;
     return;
   }
+
+  // Sumber dropdown "Tambah Sumur": nama-nama sumur yang SUDAH terdaftar di
+  // kategori satunya (Debit <-> Level) untuk instalasi yang sama — karena
+  // itu sumur fisik yang sama, cuma beda jenis pembacaan. Jadi dropdown ini
+  // otomatis mengikuti data yang sudah benar-benar ada di sistem (sama
+  // seperti yang tampil di Data Visualization), BUKAN daftar template
+  // karangan yang bisa ketinggalan/salah jumlah.
+  const suggestion = otherCategoryWells.filter(w => !wells.includes(w));
 
   panel.innerHTML = `
     <h2>Input ${catLabel} Sumur — ${loc.label}</h2>
@@ -659,10 +855,23 @@ async function renderSumurPanel() {
         ${wells.map(w => `<span class="well-chip">${w}<button data-remove-well="${w}" title="Hapus sumur ini">×</button></span>`).join('')}
       </div>
       <div class="well-add-row">
-        <input type="text" id="newWellName" placeholder="Nama sumur baru, mis. Sumur_09_Cadangan">
-        <button id="btnAddWell">Tambah</button>
+        <select id="newWellSelect" ${suggestion.length === 0 ? 'disabled' : ''}>
+          ${suggestion.length === 0
+            ? `<option>— tidak ada saran otomatis, pakai "ketik manual" di bawah —</option>`
+            : `<option value="">Pilih sumur untuk ditambahkan…</option>` + suggestion.map(t => `<option value="${t}">${t}</option>`).join('')
+          }
+        </select>
+        <button id="btnAddWell" ${suggestion.length === 0 ? 'disabled' : ''}>Tambah</button>
       </div>
-      <div class="wm-hint">Menghapus sumur dari daftar ini tidak menghapus data historis yang sudah tersimpan untuk sumur tersebut.</div>
+      <button type="button" class="well-manual-toggle" id="btnToggleManual">+ sumur baru (ketik manual)</button>
+      <div class="well-add-row" id="manualAddRow" style="display:none;margin-top:6px;">
+        <input type="text" id="newWellName" placeholder="Nama sumur baru, mis. Sumur_09_Cadangan">
+        <button id="btnAddWellManual">Tambah</button>
+      </div>
+      <div class="wm-hint">${suggestion.length > 0
+        ? `Pilihan dropdown diambil dari sumur yang sudah terdaftar di kategori "${catLabel === 'Debit' ? 'Statis & Dinamis' : 'Debit'}" untuk instalasi ini — supaya nama sumurnya konsisten di kedua kategori.`
+        : `Kalau ini sumur yang benar-benar baru (belum pernah didaftarkan di kategori Debit maupun Statis-Dinamis untuk instalasi ini), pakai opsi "ketik manual".`
+      } Menghapus sumur dari daftar ini tidak menghapus data historis yang sudah tersimpan untuk sumur tersebut.</div>
     </div>
 
     <div class="load-row">
@@ -704,9 +913,7 @@ async function renderSumurPanel() {
     </div>
   `;
 
-  document.getElementById('btnAddWell').onclick = async () => {
-    const input = document.getElementById('newWellName');
-    const name = input.value.trim().replace(/\s+/g, '_');
+  async function addWell(name) {
     if (!name) return;
     if (wells.includes(name)) { alert('Nama sumur sudah ada.'); return; }
     try {
@@ -721,6 +928,22 @@ async function renderSumurPanel() {
     } catch (err) {
       alert('Gagal menambah sumur: ' + err.message);
     }
+  }
+
+  document.getElementById('btnAddWell').onclick = () => {
+    const select = document.getElementById('newWellSelect');
+    addWell(select.value);
+  };
+
+  document.getElementById('btnToggleManual').onclick = () => {
+    const row = document.getElementById('manualAddRow');
+    row.style.display = row.style.display === 'none' ? 'flex' : 'none';
+  };
+
+  document.getElementById('btnAddWellManual').onclick = () => {
+    const input = document.getElementById('newWellName');
+    const name = input.value.trim().replace(/\s+/g, '_');
+    addWell(name);
   };
 
   panel.querySelectorAll('[data-remove-well]').forEach(btn => {

@@ -73,7 +73,79 @@ async function handleDaily(req, res) {
     return res.status(200).json({ success: true });
   }
 
+  if (req.method === 'DELETE') {
+    const { group, tanggal } = req.query;
+    if (!DAILY_FIELD_MAP[group] || !tanggal) {
+      return res.status(400).json({ error: 'group (manggar/teritip) dan tanggal wajib diisi' });
+    }
+
+    // Set NULL kolom-kolom milik grup ini saja -- tabel seperti
+    // kualitas_air_manggar_teritip dipakai bersama Manggar & Teritip, jadi
+    // TIDAK boleh menyentuh kolom milik grup lain di baris yang sama.
+    const byTable = groupFieldsByTable(DAILY_FIELD_MAP[group]);
+    for (const [table, info] of Object.entries(byTable)) {
+      const setClause = info.cols.map(c => `${c} = NULL`).join(', ');
+      await pool.query(`UPDATE ${table} SET ${setClause} WHERE ${info.dateCol} = $1`, [tanggal]);
+    }
+
+    return res.status(200).json({ success: true });
+  }
+
   return res.status(405).json({ error: 'Method not allowed' });
+}
+
+// Kelompokkan field (level/hujan/ntu/ph) satu grup berdasarkan tabel tujuan
+// masing-masing -- dipakai handleDaily (DELETE) & handleDailyHistory (GET).
+function groupFieldsByTable(fieldMap) {
+  const byTable = {};
+  for (const [field, key] of Object.entries(fieldMap)) {
+    const source = DATASETS[key];
+    if (!byTable[source.table]) byTable[source.table] = { dateCol: source.dateCol, cols: [] };
+    byTable[source.table].cols.push({ field, col: source.col });
+  }
+  return byTable;
+}
+
+// --- action=daily-history: riwayat tanggal yang sudah terinput untuk satu
+// grup (Manggar/Teritip), digabung per tanggal dari semua tabel yang
+// berkontribusi. Data kecil (puluhan-ratusan baris/tahun) jadi tidak perlu
+// pagination -- filter/sort tanggal dilakukan di frontend. -------------------
+async function handleDailyHistory(req, res) {
+  if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
+
+  const { group } = req.query;
+  if (!DAILY_FIELD_MAP[group]) {
+    return res.status(400).json({ error: 'group (manggar/teritip) wajib diisi' });
+  }
+
+  const byTable = groupFieldsByTable(DAILY_FIELD_MAP[group]);
+  const merged = new Map(); // tanggal -> { field: value|null }
+
+  for (const [table, info] of Object.entries(byTable)) {
+    const selectCols = info.cols.map(c => c.col).join(', ');
+    const { rows } = await pool.query(
+      `SELECT to_char(${info.dateCol}, 'YYYY-MM-DD') as tanggal, ${selectCols} FROM ${table}`
+    );
+    for (const row of rows) {
+      if (!merged.has(row.tanggal)) merged.set(row.tanggal, {});
+      const entry = merged.get(row.tanggal);
+      for (const { field, col } of info.cols) {
+        const v = row[col];
+        entry[field] = v !== null && v !== undefined ? Number(v) : null;
+      }
+    }
+  }
+
+  const allFields = Object.keys(DAILY_FIELD_MAP[group]);
+  const outRows = Array.from(merged.entries())
+    .map(([tanggal, values]) => {
+      const full = {};
+      allFields.forEach(f => { full[f] = Object.prototype.hasOwnProperty.call(values, f) ? values[f] : null; });
+      return { tanggal, values: full };
+    })
+    .sort((a, b) => (a.tanggal < b.tanggal ? 1 : a.tanggal > b.tanggal ? -1 : 0));
+
+  return res.status(200).json({ rows: outRows });
 }
 
 // --- action=sumur: input bulanan Sumur Dalam (Debit / Statis-Dinamis) ----
@@ -196,8 +268,9 @@ module.exports = async (req, res) => {
 
   const { action } = req.query;
   if (action === 'daily') return handleDaily(req, res);
+  if (action === 'daily-history') return handleDailyHistory(req, res);
   if (action === 'sumur') return handleSumur(req, res);
   if (action === 'wells') return handleWells(req, res);
 
-  return res.status(400).json({ error: 'action wajib diisi (daily/sumur/wells)' });
+  return res.status(400).json({ error: 'action wajib diisi (daily/daily-history/sumur/wells)' });
 };
