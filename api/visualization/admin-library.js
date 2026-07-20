@@ -84,7 +84,7 @@ async function handleDaily(req, res) {
     // TIDAK boleh menyentuh kolom milik grup lain di baris yang sama.
     const byTable = groupFieldsByTable(DAILY_FIELD_MAP[group]);
     for (const [table, info] of Object.entries(byTable)) {
-      const setClause = info.cols.map(c => `${c} = NULL`).join(', ');
+      const setClause = info.cols.map(c => `${c.col} = NULL`).join(', ');
       await pool.query(`UPDATE ${table} SET ${setClause} WHERE ${info.dateCol} = $1`, [tanggal]);
     }
 

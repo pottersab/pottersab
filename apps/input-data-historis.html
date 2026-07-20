@@ -100,7 +100,7 @@ h1{font-family:'Space Grotesk',sans-serif;font-size:28px;margin:2px 0 0;font-wei
 .history-search{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;}
 .history-search input[type=text]{flex:1;min-width:140px;padding:8px 10px;border:1px solid var(--line-muted);border-radius:8px;font-size:12.5px;font-family:'Inter',sans-serif;}
 .history-search select{padding:8px 10px;border:1px solid var(--line-muted);border-radius:8px;font-size:12.5px;font-family:'Inter',sans-serif;background:#fff;}
-.history-table-wrap{border:1px solid var(--line-muted);border-radius:10px;overflow:hidden;}
+.history-table-wrap{border:1px solid var(--line-muted);border-radius:10px;overflow-x:auto;}
 table.history-table{width:100%;border-collapse:collapse;font-size:12.5px;}
 table.history-table thead th{text-align:left;font-family:'Space Grotesk',sans-serif;font-size:10.5px;text-transform:uppercase;letter-spacing:.03em;color:var(--ink-soft);background:var(--primary-pale);padding:9px 12px;white-space:nowrap;}
 table.history-table thead th.num{text-align:right;}
@@ -628,9 +628,10 @@ function renderDailyPanel() {
       <div class="history-head">
         <div class="history-title">📅 Riwayat Tanggal Terinput — ${label}</div>
       </div>
-      <p class="history-sub">Daftar tanggal yang sudah pernah diisi untuk ${label}, lengkap dengan keterangan field mana yang sudah/belum diisi (misal cuma Level yang keisi, NTU &amp; pH masih kosong). Klik "Muat" untuk membuka data tanggal tersebut ke form di atas, atau "Hapus" untuk mengosongkan datanya.</p>
+      <p class="history-sub">Daftar tanggal yang sudah pernah diisi untuk ${label}, lengkap dengan keterangan field mana yang sudah/belum diisi (misal cuma Level yang keisi, NTU &amp; pH masih kosong). Default cuma menampilkan bulan berjalan — pilih bulan lain lewat menu di bawah kalau perlu. Klik "Muat" untuk membuka data tanggal tersebut ke form di atas, atau "Hapus" untuk mengosongkan datanya.</p>
       <div class="history-search">
-        <input type="text" id="histSearchDaily" placeholder="Cari tanggal, mis. 2026-07">
+        <select id="histMonthFilterDaily"></select>
+        <input type="text" id="histSearchDaily" placeholder="Cari tanggal, mis. 16">
         <select id="histSortDaily">
           <option value="desc">Terbaru dulu</option>
           <option value="asc">Terlama dulu</option>
@@ -695,13 +696,15 @@ function renderDailyPanel() {
 
   loadDaily();
   fetchDailyHistory();
+  document.getElementById('histMonthFilterDaily').addEventListener('change', renderDailyHistoryTable);
   document.getElementById('histSearchDaily').addEventListener('input', renderDailyHistoryTable);
   document.getElementById('histSortDaily').addEventListener('change', renderDailyHistoryTable);
 
   // =============================================================================
   // RIWAYAT — Waduk Manggar / Teritip. Diambil sekali per kunjungan panel
-  // (di-cache di historyRows), search & sort dilakukan di sisi client tanpa
-  // fetch ulang ke server.
+  // (di-cache di historyRows), filter bulan & search & sort dilakukan di sisi
+  // client tanpa fetch ulang ke server. Default filter bulan = bulan berjalan
+  // supaya tabel tidak langsung menampilkan semua riwayat sekaligus.
   // =============================================================================
   let historyRows = [];
 
@@ -714,6 +717,7 @@ function renderDailyPanel() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
       historyRows = data.rows || [];
+      populateMonthFilter();
       renderDailyHistoryTable();
     } catch (err) {
       historyRows = [];
@@ -721,20 +725,32 @@ function renderDailyPanel() {
     }
   }
 
+  function populateMonthFilter() {
+    const select = document.getElementById('histMonthFilterDaily');
+    if (!select) return;
+    const prevValue = select.value || currentMonthStr();
+    const monthsWithData = historyRows.map(r => r.tanggal.slice(0, 7));
+    const months = Array.from(new Set([currentMonthStr(), ...monthsWithData])).sort((a, b) => b.localeCompare(a));
+    select.innerHTML = `<option value="">Semua bulan</option>` + months.map(m => `<option value="${m}">${fmtBulanID(m)}</option>`).join('');
+    select.value = months.includes(prevValue) ? prevValue : currentMonthStr();
+  }
+
   function renderDailyHistoryTable() {
     const wrap = document.getElementById('histTableWrapDaily');
     const countEl = document.getElementById('histCountDaily');
     if (!wrap) return;
 
+    const monthFilter = document.getElementById('histMonthFilterDaily').value;
     const search = (document.getElementById('histSearchDaily').value || '').trim().toLowerCase();
     const sort = document.getElementById('histSortDaily').value;
 
     let rows = historyRows.slice();
+    if (monthFilter) rows = rows.filter(r => r.tanggal.slice(0, 7) === monthFilter);
     if (search) rows = rows.filter(r => r.tanggal.toLowerCase().includes(search));
     rows.sort((a, b) => sort === 'asc' ? a.tanggal.localeCompare(b.tanggal) : b.tanggal.localeCompare(a.tanggal));
 
     if (rows.length === 0) {
-      wrap.innerHTML = `<div class="history-empty">${search ? 'Tidak ada tanggal yang cocok dengan pencarian.' : 'Belum ada riwayat untuk ' + label + '.'}</div>`;
+      wrap.innerHTML = `<div class="history-empty">${search || monthFilter ? 'Tidak ada tanggal yang cocok dengan filter saat ini.' : 'Belum ada riwayat untuk ' + label + '.'}</div>`;
       countEl.textContent = '';
       return;
     }
