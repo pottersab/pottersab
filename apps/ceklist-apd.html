@@ -109,9 +109,11 @@
   .p-sign .nm{font-weight:700;text-transform:uppercase;display:inline-block;border-bottom:1px solid #000;padding:0 6px 1px;}
 
   @media print{
-    body *{visibility:hidden;}
-    .doc-outer,.doc-outer *{visibility:visible;}
-    .doc-outer{position:absolute;left:0;top:0;overflow:visible;}
+    body{background:#fff;margin:0;padding:0;}
+    .ptmb-navbar, .topbar, footer.note, .modal-overlay{display:none !important;}
+    .wrap{display:block !important;max-width:none;margin:0;padding:0;}
+    .wrap > div:not(.doc-outer){display:none !important;}
+    .doc-outer{position:static;overflow:visible;}
     .doc-page{border:none;box-shadow:none;}
     @page{size:landscape;margin:8mm;}
   }
@@ -875,20 +877,16 @@ async function downloadExcel(){
 
     /* ===== KOP: logo + judul berbingkai (baris 1-4) ===== */
     const imgId=wb.addImage({base64:LOGO_B64, extension:'jpeg'});
-    ws.addImage(imgId,{tl:{col:0.15,row:0.4}, ext:{width:100,height:61}});
+    ws.addImage(imgId,{tl:{col:0.15,row:0.4}, ext:{width:87,height:61}}); // ~2.31 x 1.61 cm
     ws.mergeCells(1,3,4,lastCol);
     const tc=ws.getCell(1,3);
     tc.value='CEKLIST INSPEKSI APD';
     tc.font=TNR({bold:true,size:24});
     tc.alignment={horizontal:'center',vertical:'middle'};
-    // border tipis mengelilingi kotak judul
-    for(let r=1;r<=4;r++) for(let c=3;c<=lastCol;c++){
-      const cell=ws.getCell(r,c);
-      cell.border={
-        top:r===1?thin:undefined, bottom:r===4?thin:undefined,
-        left:c===3?thin:undefined, right:c===lastCol?thin:undefined
-      };
-    }
+    // border tipis mengelilingi kotak judul -- sel merged berbagi 1 objek style,
+    // jadi border cukup di-set SEKALI di master cell (bukan di-loop per sel,
+    // karena tiap iterasi akan menimpa border yang sudah di-set sebelumnya).
+    tc.border={top:thin, bottom:thin, left:thin, right:thin};
     ws.getRow(1).height=15; ws.getRow(2).height=15; ws.getRow(3).height=15; ws.getRow(4).height=15;
 
     /* ===== Kotak info (baris 6-7, border medium) ===== */
@@ -900,12 +898,8 @@ async function downloadExcel(){
       cell.value=text;
       cell.font=TNR({bold:true,size:size});
       cell.alignment={horizontal:c1===1?'left':'center',vertical:'middle',indent:c1===1?1:0};
-      for(let r=infoR1;r<=infoR2;r++) for(let c=c1;c<=c2;c++){
-        ws.getCell(r,c).border={
-          top:r===infoR1?med:undefined, bottom:r===infoR2?med:undefined,
-          left:c===c1?med:undefined, right:c===c2?med:undefined
-        };
-      }
+      // sel merged berbagi 1 objek style -- border cukup di-set sekali di master cell.
+      cell.border={top:med, bottom:med, left:med, right:med};
     }
     const midStart=4, midEnd=3+Math.max(4,nApd-4);
     infoBox(1,3,`Lokasi : ${document.getElementById('fLokasi').value}`,12);
@@ -975,9 +969,8 @@ async function downloadExcel(){
     dn.value=DOCNUM;
     dn.font=TNR({bold:true,size:11});
     dn.alignment={horizontal:'center'};
-    for(let c=lastCol-3;c<=lastCol;c++){
-      ws.getCell(r,c).border={top:thin,bottom:thin,left:c===lastCol-3?thin:undefined,right:c===lastCol?thin:undefined};
-    }
+    // sel merged berbagi 1 objek style -- border cukup di-set sekali di master cell.
+    dn.border={top:thin,bottom:thin,left:thin,right:thin};
 
     /* ===== Legend + Catatan + Tanda tangan (1 baris kosong ekstra setelah no. dokumen) ===== */
     r+=3;
@@ -994,24 +987,26 @@ async function downloadExcel(){
     ws.getCell(L+6,1).value='Catatan : '+(catatan||'');
     ws.getCell(L+6,1).font=TNR({bold:true,size:12});
 
-    const sCol1=Math.max(5,lastCol-9), sCol2=lastCol-3;
+    // blok "Diketahui" rata kanan mengikuti tepi kanan tabel (lastCol), blok "Diperiksa"
+    // diberi jarak 3 kolom sebelum blok kanan -- supaya tidak nyisa gap kosong di kanan
+    // (sebelumnya berhenti di lastCol-3, menyisakan kolom Komentar kosong melompong).
+    const signW=4;
+    const sCol2=lastCol-signW+1, sCol1=Math.max(4, sCol2-signW-3);
     function signBlock(col,label,jab,nama){
-      ws.mergeCells(L,col,L,col+2);
+      ws.mergeCells(L,col,L,col+signW-1);
       ws.getCell(L,col).value=label;
       ws.getCell(L,col).alignment={horizontal:'center'};
       ws.getCell(L,col).font=TNR({size:12});
-      ws.mergeCells(L+1,col,L+1,col+2);
+      ws.mergeCells(L+1,col,L+1,col+signW-1);
       ws.getCell(L+1,col).value=jab;
       ws.getCell(L+1,col).alignment={horizontal:'center'};
       ws.getCell(L+1,col).font=TNR({size:12});
-      ws.mergeCells(L+6,col,L+6,col+2);
+      ws.mergeCells(L+6,col,L+6,col+signW-1);
       const n=ws.getCell(L+6,col);
       n.value=(nama||'').toUpperCase();
       n.alignment={horizontal:'center'};
       n.font=TNR({bold:true,size:12});
-      n.border={bottom:thin}; // garis bawah nama sesuai contoh
-      ws.getCell(L+6,col+1).border={bottom:thin};
-      ws.getCell(L+6,col+2).border={bottom:thin};
+      n.border={bottom:thin}; // garis bawah nama sesuai contoh -- sel merged, cukup di master cell.
     }
     signBlock(sCol1,'Diperiksa Oleh,',document.getElementById('fPeriksaJab').value,document.getElementById('fPeriksaNama').value);
     signBlock(sCol2,'Diketahui Oleh,',document.getElementById('fTahuJab').value,document.getElementById('fTahuNama').value);
