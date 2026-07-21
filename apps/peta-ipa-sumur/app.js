@@ -3,11 +3,30 @@
    --------------------------------------------------------------------------
    data/lokasi.json  -> nama + koordinat per titik, statis (jarang berubah).
    ?action=map-latest -> angka terbaru (AP/ATD/debit/statis/dinamis/level/dll)
-   dari Postgres yang sama dipakai grafik existing (api/visualization/admin-library.js).
-   Digabung di sini berdasarkan `id` yang sama di kedua sumber.
+   + tanggal data terbaru, dari Postgres yang sama dipakai grafik existing
+   (api/visualization/admin-library.js). Digabung di sini berdasarkan `id`
+   yang sama di kedua sumber.
    ========================================================================== */
 
 const MAP_LATEST_URL = '/api/visualization/admin-library?action=map-latest';
+
+const BULAN_PANJANG = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+const BULAN_SINGKAT = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+
+// AP/ATD & Sumur diinput bulanan -> "Juli 2026". Waduk diinput harian -> "20 Jul 2026".
+function fmtBulanTahun(iso) {
+  if (!iso) return null;
+  const [y, m] = iso.split('-');
+  return BULAN_PANJANG[Number(m) - 1] + ' ' + y;
+}
+function fmtTanggalLengkap(iso) {
+  if (!iso) return null;
+  const [y, m, d] = iso.split('-');
+  return Number(d) + ' ' + BULAN_SINGKAT[Number(m) - 1] + ' ' + y;
+}
+function dataPerHtml(label) {
+  return label ? `<div class="popup-date"><span>Data per ${label}</span></div>` : '';
+}
 
 // Status TIDAK PERNAH diisi manual -- selalu dihitung dari nilai debit.
 function statusFromDebit(debit) {
@@ -19,11 +38,21 @@ function statusFromDebit(debit) {
 function fmtID(v) {
   return Number(v).toLocaleString('id-ID', { maximumFractionDigits: 2 });
 }
-function fmtM3(v) {
-  return v === null || v === undefined ? 'Data belum tersedia' : fmtID(v) + ' m3';
+function statBox(label, v, satuan) {
+  const value = (v === null || v === undefined) ? 'Belum ada' : fmtID(v) + (satuan ? ' ' + satuan : '');
+  return `<div class="stat-box"><span class="stat-label">${label}</span><span class="stat-value">${value}</span></div>`;
 }
-function fmtNum(v, satuan) {
-  return v === null || v === undefined ? 'Data belum tersedia' : fmtID(v) + (satuan ? ' ' + satuan : '');
+
+function popupHeader(avatarClass, iconSrc, nama, tanggalLabel) {
+  return `
+    <div class="popup-header">
+      <span class="popup-avatar ${avatarClass}"><img src="${iconSrc}" alt=""></span>
+      <div>
+        <div class="popup-title">${nama}</div>
+        ${dataPerHtml(tanggalLabel)}
+      </div>
+    </div>
+  `;
 }
 
 function makeImgIcon(src, ringClass, extraClass, size) {
@@ -70,42 +99,54 @@ async function init() {
   const wadukLayer = L.layerGroup();
 
   (lokasi.ipa || []).forEach(loc => {
-    const d = latest.ipa && latest.ipa[loc.id] ? latest.ipa[loc.id] : { ap: null, atd: null };
-    const rows = [];
-    if (d.ap !== null && d.ap !== undefined) rows.push(`<div class="popup-row">AP (Air Permukaan): ${fmtM3(d.ap)}</div>`);
-    if (d.atd !== null && d.atd !== undefined) rows.push(`<div class="popup-row">ATD (Air Tanah Dalam): ${fmtM3(d.atd)}</div>`);
-    if (rows.length === 0) rows.push('<div class="popup-row">Data AP/ATD belum tersedia</div>');
+    const d = (latest.ipa && latest.ipa[loc.id]) || { ap: null, atd: null, tanggal: null };
+    const html = `
+      ${popupHeader('a-ipa', 'assets/icon-ipa.png', loc.nama, fmtBulanTahun(d.tanggal))}
+      <div class="stat-grid cols-2">
+        ${statBox('AP', d.ap, 'm3')}
+        ${statBox('ATD', d.atd, 'm3')}
+      </div>
+    `;
     L.marker([loc.lat, loc.lng], { icon: ipaIcon })
-      .bindPopup(`<div class="popup-title">${loc.nama}</div>${rows.join('')}`)
+      .bindPopup(html)
       .bindTooltip(loc.nama, { permanent: true, direction: 'right', offset: [8, -8], className: 'marker-label' })
       .addTo(ipaLayer);
   });
 
   (lokasi.sumur || []).forEach(loc => {
-    const d = latest.sumur && latest.sumur[loc.id] ? latest.sumur[loc.id] : { statis: null, dinamis: null, debit: null };
+    const d = (latest.sumur && latest.sumur[loc.id]) || { statis: null, dinamis: null, debit: null, tanggal: null };
     const status = statusFromDebit(d.debit);
     const icon = status === 'aktif' ? sumurAktifIcon : sumurNonaktifIcon;
     const badgeClass = status === 'aktif' ? 'badge-aktif' : 'badge-nonaktif';
+    const html = `
+      ${popupHeader(status === 'aktif' ? 'a-sumur' : 'a-sumur-non', 'assets/icon-sumur.png', loc.nama, fmtBulanTahun(d.tanggal))}
+      <span class="badge ${badgeClass}">${status === 'aktif' ? 'Aktif' : 'Non-aktif'}</span>
+      <div class="stat-grid cols-3">
+        ${statBox('Statis', d.statis, 'm')}
+        ${statBox('Dinamis', d.dinamis, 'm')}
+        ${statBox('Debit', d.debit, 'm3/jam')}
+      </div>
+    `;
     L.marker([loc.lat, loc.lng], { icon })
-      .bindPopup(`
-        <div class="popup-title">${loc.nama}</div>
-        <div class="popup-row">Level statis: ${fmtNum(d.statis, 'm')}</div>
-        <div class="popup-row">Level dinamis: ${fmtNum(d.dinamis, 'm')}</div>
-        <div class="popup-row">Debit: ${fmtNum(d.debit, 'm3/jam')}</div>
-        <span class="badge ${badgeClass}">${status === 'aktif' ? 'Aktif' : 'Non-aktif'}</span>
-      `)
+      .bindPopup(html)
       .bindTooltip(loc.nama, { direction: 'right', offset: [8, -8], className: 'marker-label' })
       .addTo(sumurLayer);
   });
 
   (lokasi.waduk || []).forEach(loc => {
-    const d = latest.waduk && latest.waduk[loc.id] ? latest.waduk[loc.id] : { level: null, curahHujan: null, ntu: null, ph: null };
-    const rows = [`<div class="popup-row">Level waduk: ${fmtNum(d.level, 'm')}</div>`];
-    if (d.curahHujan !== null && d.curahHujan !== undefined) rows.push(`<div class="popup-row">Curah hujan: ${fmtID(d.curahHujan)} mm</div>`);
-    rows.push(`<div class="popup-row">NTU: ${fmtNum(d.ntu, '')}</div>`);
-    rows.push(`<div class="popup-row">pH: ${fmtNum(d.ph, '')}</div>`);
+    const d = (latest.waduk && latest.waduk[loc.id]) || { level: null, curahHujan: null, ntu: null, ph: null, tanggal: null };
+    const levelDisplay = (d.level === null || d.level === undefined) ? 'Belum ada' : fmtID(d.level) + ' m';
+    const html = `
+      ${popupHeader('a-waduk', 'assets/icon-waduk.png', loc.nama, fmtTanggalLengkap(d.tanggal))}
+      <div class="hero-box"><span class="hero-label">Level waduk</span><span class="hero-value">${levelDisplay}</span></div>
+      <div class="stat-grid cols-3">
+        ${statBox('Hujan', d.curahHujan, 'mm')}
+        ${statBox('NTU', d.ntu, '')}
+        ${statBox('pH', d.ph, '')}
+      </div>
+    `;
     L.marker([loc.lat, loc.lng], { icon: wadukIcon })
-      .bindPopup(`<div class="popup-title">${loc.nama}</div>${rows.join('')}`)
+      .bindPopup(html)
       .bindTooltip(loc.nama, { permanent: true, direction: 'right', offset: [8, -8], className: 'marker-label' })
       .addTo(wadukLayer);
   });

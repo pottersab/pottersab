@@ -27,19 +27,31 @@ const ATD_COLUMNS = ['kampung_damai', 'gunung_sari', 'prapatan', 'zamp', 'kampun
 // Ambil nilai non-null PERTAMA per kolom dari baris yang sudah diurutkan
 // tanggal/bulan DESC -- tiap kolom bisa punya bulan terakhir terisi yang
 // berbeda-beda, jadi tidak bisa ambil 1 baris teratas saja (pola sama dengan
-// api/home-summary.js).
-function firstNonNullPerColumn(rows, columns) {
-  const result = {};
-  columns.forEach(col => { result[col] = null; });
+// api/home-summary.js). Tanggal baris yang dipakai ikut disimpan per kolom
+// (dari kolom `dateCol`, sudah di-to_char di query jadi string 'YYYY-MM-DD')
+// supaya popup peta bisa tampilkan "Data per ...".
+function firstNonNullPerColumn(rows, columns, dateCol) {
+  const values = {};
+  const dates = {};
+  columns.forEach(col => { values[col] = null; dates[col] = null; });
   for (const row of rows) {
     for (const col of columns) {
-      if (result[col] === null && row[col] !== null && row[col] !== undefined) {
-        result[col] = Number(row[col]);
+      if (values[col] === null && row[col] !== null && row[col] !== undefined) {
+        values[col] = Number(row[col]);
+        dates[col] = row[dateCol];
       }
     }
-    if (columns.every(col => result[col] !== null)) break;
+    if (columns.every(col => values[col] !== null)) break;
   }
-  return result;
+  return { values, dates };
+}
+
+// Tanggal PALING BARU di antara beberapa tanggal (string 'YYYY-MM-DD', bisa
+// null) -- dipakai supaya 1 kartu popup cukup tampilkan 1 keterangan
+// "Data per ..." walau field-field di dalamnya berasal dari bulan yang beda.
+function latestDate(...dates) {
+  const valid = dates.filter(Boolean);
+  return valid.length ? valid.reduce((a, b) => (a > b ? a : b)) : null;
 }
 
 // well_name di sumur_debit_readings/sumur_level_readings apa adanya dari
@@ -56,40 +68,48 @@ async function handleMapLatest(req, res) {
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
 
   const [apResult, atdResult, manggarResult, kualitasResult, teritipLevelResult, debitResult, levelResult] = await Promise.all([
-    pool.query(`SELECT ${AP_COLUMNS.join(', ')} FROM air_permukaan ORDER BY bulan DESC`),
-    pool.query(`SELECT ${ATD_COLUMNS.join(', ')} FROM air_tanah_dalam ORDER BY bulan DESC`),
-    pool.query(`SELECT level_waduk_manggar_m, curah_hujan_mm FROM manggar_level_curahhujan ORDER BY tanggal DESC`),
-    pool.query(`SELECT ntu_manggar, ph_manggar, ntu_teritip, ph_teritip FROM kualitas_air_manggar_teritip ORDER BY tanggal DESC`),
-    pool.query(`SELECT level_waduk_teritip_m FROM teritip_level WHERE level_waduk_teritip_m IS NOT NULL ORDER BY tanggal DESC LIMIT 1`),
-    pool.query(`SELECT DISTINCT ON (installation, well_name) installation, well_name, value
+    pool.query(`SELECT to_char(bulan, 'YYYY-MM-DD') as tanggal, ${AP_COLUMNS.join(', ')} FROM air_permukaan ORDER BY bulan DESC`),
+    pool.query(`SELECT to_char(bulan, 'YYYY-MM-DD') as tanggal, ${ATD_COLUMNS.join(', ')} FROM air_tanah_dalam ORDER BY bulan DESC`),
+    pool.query(`SELECT to_char(tanggal, 'YYYY-MM-DD') as tanggal, level_waduk_manggar_m, curah_hujan_mm FROM manggar_level_curahhujan ORDER BY tanggal DESC`),
+    pool.query(`SELECT to_char(tanggal, 'YYYY-MM-DD') as tanggal, ntu_manggar, ph_manggar, ntu_teritip, ph_teritip FROM kualitas_air_manggar_teritip ORDER BY tanggal DESC`),
+    pool.query(`SELECT to_char(tanggal, 'YYYY-MM-DD') as tanggal, level_waduk_teritip_m FROM teritip_level WHERE level_waduk_teritip_m IS NOT NULL ORDER BY tanggal DESC LIMIT 1`),
+    pool.query(`SELECT DISTINCT ON (installation, well_name) installation, well_name, value, to_char(bulan, 'YYYY-MM-DD') as tanggal
                 FROM sumur_debit_readings WHERE value IS NOT NULL
                 ORDER BY installation, well_name, bulan DESC`),
-    pool.query(`SELECT DISTINCT ON (installation, well_name) installation, well_name, statis, dinamis
+    pool.query(`SELECT DISTINCT ON (installation, well_name) installation, well_name, statis, dinamis, to_char(bulan, 'YYYY-MM-DD') as tanggal
                 FROM sumur_level_readings WHERE statis IS NOT NULL OR dinamis IS NOT NULL
                 ORDER BY installation, well_name, bulan DESC`)
   ]);
 
-  const apLatest = firstNonNullPerColumn(apResult.rows, AP_COLUMNS);
-  const atdLatest = firstNonNullPerColumn(atdResult.rows, ATD_COLUMNS);
+  const ap = firstNonNullPerColumn(apResult.rows, AP_COLUMNS, 'tanggal');
+  const atd = firstNonNullPerColumn(atdResult.rows, ATD_COLUMNS, 'tanggal');
   const ipaIds = Array.from(new Set([...AP_COLUMNS, ...ATD_COLUMNS]));
   const ipa = {};
-  ipaIds.forEach(id => { ipa[id] = { ap: apLatest[id] ?? null, atd: atdLatest[id] ?? null }; });
+  ipaIds.forEach(id => {
+    ipa[id] = {
+      ap: ap.values[id] ?? null,
+      atd: atd.values[id] ?? null,
+      tanggal: latestDate(ap.dates[id], atd.dates[id])
+    };
+  });
 
-  const manggarLatest = firstNonNullPerColumn(manggarResult.rows, ['level_waduk_manggar_m', 'curah_hujan_mm']);
-  const kualitasLatest = firstNonNullPerColumn(kualitasResult.rows, ['ntu_manggar', 'ph_manggar', 'ntu_teritip', 'ph_teritip']);
+  const manggar = firstNonNullPerColumn(manggarResult.rows, ['level_waduk_manggar_m', 'curah_hujan_mm'], 'tanggal');
+  const kualitas = firstNonNullPerColumn(kualitasResult.rows, ['ntu_manggar', 'ph_manggar', 'ntu_teritip', 'ph_teritip'], 'tanggal');
   const teritipLevelRow = teritipLevelResult.rows[0];
   const waduk = {
     manggar: {
-      level: manggarLatest.level_waduk_manggar_m,
-      curahHujan: manggarLatest.curah_hujan_mm,
-      ntu: kualitasLatest.ntu_manggar,
-      ph: kualitasLatest.ph_manggar
+      level: manggar.values.level_waduk_manggar_m,
+      curahHujan: manggar.values.curah_hujan_mm,
+      ntu: kualitas.values.ntu_manggar,
+      ph: kualitas.values.ph_manggar,
+      tanggal: latestDate(manggar.dates.level_waduk_manggar_m, manggar.dates.curah_hujan_mm, kualitas.dates.ntu_manggar, kualitas.dates.ph_manggar)
     },
     teritip: {
       level: teritipLevelRow ? Number(teritipLevelRow.level_waduk_teritip_m) : null,
       curahHujan: null,
-      ntu: kualitasLatest.ntu_teritip,
-      ph: kualitasLatest.ph_teritip
+      ntu: kualitas.values.ntu_teritip,
+      ph: kualitas.values.ph_teritip,
+      tanggal: latestDate(teritipLevelRow ? teritipLevelRow.tanggal : null, kualitas.dates.ntu_teritip, kualitas.dates.ph_teritip)
     }
   };
 
@@ -97,15 +117,17 @@ async function handleMapLatest(req, res) {
   debitResult.rows.forEach(r => {
     const id = wellIdFromName(r.installation, r.well_name);
     if (!id) return;
-    if (!sumur[id]) sumur[id] = { statis: null, dinamis: null, debit: null };
+    if (!sumur[id]) sumur[id] = { statis: null, dinamis: null, debit: null, tanggal: null };
     sumur[id].debit = Number(r.value);
+    sumur[id].tanggal = latestDate(sumur[id].tanggal, r.tanggal);
   });
   levelResult.rows.forEach(r => {
     const id = wellIdFromName(r.installation, r.well_name);
     if (!id) return;
-    if (!sumur[id]) sumur[id] = { statis: null, dinamis: null, debit: null };
+    if (!sumur[id]) sumur[id] = { statis: null, dinamis: null, debit: null, tanggal: null };
     sumur[id].statis = r.statis !== null && r.statis !== undefined ? Number(r.statis) : null;
     sumur[id].dinamis = r.dinamis !== null && r.dinamis !== undefined ? Number(r.dinamis) : null;
+    sumur[id].tanggal = latestDate(sumur[id].tanggal, r.tanggal);
   });
 
   return res.status(200).json({ ipa, sumur, waduk });
