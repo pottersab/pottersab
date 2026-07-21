@@ -91,16 +91,18 @@ header{
 }
 
 /* ---------- hero ---------- */
-.hero{max-width:1100px;margin:0 auto;padding:60px 20px 36px;text-align:center}
+.hero{max-width:1100px;margin:0 auto;padding:60px 20px 36px}
+.hero-top{display:flex;gap:28px;align-items:center;flex-wrap:wrap}
+.hero-text{flex:1.2;min-width:280px}
 .eyebrow{
   display:inline-flex;align-items:center;gap:8px;
   font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;
   color:var(--teal-deep);margin-bottom:18px;
 }
-.eyebrow::before,.eyebrow::after{content:"";width:26px;height:2px;background:var(--teal)}
-.hero h1{font-size:clamp(30px,5vw,48px);letter-spacing:-.01em}
+.eyebrow::before{content:"";width:26px;height:2px;background:var(--teal)}
+.hero h1{font-size:clamp(28px,4.2vw,42px);letter-spacing:-.01em}
 .hero h1 em{font-style:normal;color:var(--teal-deep)}
-.hero p{margin:14px auto 0;max-width:560px;color:var(--ink-soft);font-size:16px}
+.hero p{margin:14px 0 0;max-width:480px;color:var(--ink-soft);font-size:16px}
 
 /* ringkasan data */
 .stat-grid{
@@ -131,45 +133,38 @@ header{
 
 /* ---------- kartu peta interaktif (hero) ---------- */
 .peta-card{
-  max-width:760px;margin:24px auto 0;background:var(--card);
+  flex:1;min-width:260px;background:var(--card);
   border:1px solid var(--mist);border-radius:var(--radius);overflow:hidden;
   box-shadow:0 6px 16px rgba(10,37,55,.06);
 }
 .peta-card-header{
   background:linear-gradient(120deg,var(--teal) 0%,var(--ink) 100%);
-  padding:18px 20px;display:flex;align-items:center;gap:14px;cursor:pointer;
+  padding:12px 14px;display:flex;align-items:center;gap:10px;cursor:pointer;
 }
 .peta-card-icon{
-  width:44px;height:44px;border-radius:10px;background:rgba(255,255,255,.15);
+  width:34px;height:34px;border-radius:9px;background:rgba(255,255,255,.15);
   display:flex;align-items:center;justify-content:center;flex-shrink:0;
 }
+.peta-card-icon svg{width:17px;height:17px}
 .peta-card-heading{flex:1;min-width:0}
-.peta-card-heading p:first-child{font-family:'Space Grotesk',sans-serif;font-size:17px;font-weight:700;color:#fff;margin:0}
-.peta-card-heading p:last-child{font-size:12.5px;color:rgba(255,255,255,.8);margin:2px 0 0}
-.peta-badges{display:flex;flex-direction:column;gap:5px;flex-shrink:0}
+.peta-card-heading p:first-child{font-family:'Space Grotesk',sans-serif;font-size:14px;font-weight:700;color:#fff;margin:0}
+.peta-card-heading p:last-child{display:none}
+.peta-badges{display:flex;flex-direction:column;gap:4px;flex-shrink:0}
 .peta-badge{
-  background:rgba(255,255,255,.15);border-radius:999px;padding:5px 12px;
-  display:flex;align-items:center;gap:6px;white-space:nowrap;
-  font-size:11.5px;font-weight:600;color:#fff;
+  background:rgba(255,255,255,.15);border-radius:999px;padding:3px 9px;
+  display:flex;align-items:center;gap:5px;white-space:nowrap;
+  font-size:10px;font-weight:600;color:#fff;
 }
-#heroPetaMap{height:260px;background:var(--mist)}
-.peta-card-footer{padding:16px 20px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
-.peta-card-footer-text{display:flex;align-items:center;gap:10px;flex:1;min-width:200px}
-.peta-card-footer-icon{
-  width:34px;height:34px;border-radius:50%;background:#E7F2F4;
-  display:flex;align-items:center;justify-content:center;flex-shrink:0;
-}
-.peta-card-footer-text p{font-size:12.5px;color:var(--ink-soft);margin:0}
+.peta-badge svg{width:10px;height:10px}
+#heroPetaMap{height:140px;background:var(--mist)}
+.peta-card-footer{padding:10px 14px;display:flex;align-items:center;gap:10px}
+.peta-card-footer-text{display:none}
 .peta-card-cta{
-  background:var(--teal-deep);color:#fff;font-size:13.5px;font-weight:600;
-  padding:10px 18px;border-radius:9px;display:flex;align-items:center;gap:8px;white-space:nowrap;
-  transition:background .15s;
+  background:var(--teal-deep);color:#fff;font-size:12.5px;font-weight:600;
+  padding:8px 14px;border-radius:8px;display:flex;align-items:center;justify-content:center;
+  gap:6px;white-space:nowrap;transition:background .15s;flex:1;
 }
 .peta-card-cta:hover{background:var(--ink)}
-@media(max-width:640px){
-  #heroPetaMap{height:180px}
-  .peta-card-header{flex-wrap:wrap}
-}
 
 /* ---------- cards ---------- */
 .section{max-width:1100px;margin:0 auto;padding:24px 20px 72px}
@@ -423,33 +418,37 @@ footer{border-top:1px solid var(--mist);padding:26px 20px;text-align:center;font
 <!-- ============ BERANDA ============ -->
 <div class="page show" id="page-home">
   <section class="hero">
-    <span class="eyebrow">Perumda Tirta Manuntung Balikpapan</span>
-    <h1>Catatan Perjalanan Tugas,<br><em>Sejak 2014.</em></h1>
-    <p>Ruang dokumentasi Sub Divisi Sumber Air Baku — dokumen administrasi, visualisasi data waduk &amp; sumur, dan pengembangan data lapangan.</p>
-
-    <div class="peta-card">
-      <div class="peta-card-header" onclick="location.href='apps/peta-ipa-sumur/index.html'">
-        <span class="peta-card-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round"><path d="M9 20l-5.447-2.724A1 1 0 0 1 3 16.382V5.618a1 1 0 0 1 1.447-.894L9 7m0 13l6-3m-6-13l6 3m0 0l4.553-2.276A1 1 0 0 1 21 5.618v10.764a1 1 0 0 1-.553.894L15 20m0-13v13"/></svg></span>
-        <div class="peta-card-heading">
-          <p>Peta Interaktif</p>
-          <p>Lokasi IPA, sumur, dan waduk secara interaktif</p>
-        </div>
-        <div class="peta-badges">
-          <span class="peta-badge" id="petaWadukBadge"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M12 2c3 3.5 5 6.8 5 10a5 5 0 0 1-10 0c0-3.2 2-6.5 5-10z"/></svg>2 waduk</span>
-          <span class="peta-badge" id="petaIpaBadge"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M3 20h18"/><path d="M6 20V10l4-4 4 4v10"/><path d="M14 20v-6l3-3 3 3v6"/></svg>9 IPA</span>
-          <span class="peta-badge" id="petaSumurAktifBadge">… sumur aktif</span>
-        </div>
+    <div class="hero-top">
+      <div class="hero-text">
+        <span class="eyebrow">Perumda Tirta Manuntung Balikpapan</span>
+        <h1>Catatan Perjalanan Tugas,<br><em>Sejak 2014.</em></h1>
+        <p>Ruang dokumentasi Sub Divisi Sumber Air Baku — dokumen administrasi, visualisasi data waduk &amp; sumur, dan pengembangan data lapangan.</p>
       </div>
-      <div id="heroPetaMap"></div>
-      <div class="peta-card-footer">
-        <div class="peta-card-footer-text">
-          <span class="peta-card-footer-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#0B5566" stroke-width="2" stroke-linecap="round"><path d="M12 2c3 3.5 5 6.8 5 10a5 5 0 0 1-10 0c0-3.2 2-6.5 5-10z"/></svg></span>
-          <p>Pantau dan telusuri seluruh titik IPA, sumur, dan waduk dengan mudah.</p>
+
+      <div class="peta-card">
+        <div class="peta-card-header" onclick="location.href='apps/peta-ipa-sumur/index.html'">
+          <span class="peta-card-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round"><path d="M9 20l-5.447-2.724A1 1 0 0 1 3 16.382V5.618a1 1 0 0 1 1.447-.894L9 7m0 13l6-3m-6-13l6 3m0 0l4.553-2.276A1 1 0 0 1 21 5.618v10.764a1 1 0 0 1-.553.894L15 20m0-13v13"/></svg></span>
+          <div class="peta-card-heading">
+            <p>Peta Interaktif</p>
+            <p>Lokasi IPA, sumur, dan waduk secara interaktif</p>
+          </div>
+          <div class="peta-badges">
+            <span class="peta-badge" id="petaWadukBadge"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M12 2c3 3.5 5 6.8 5 10a5 5 0 0 1-10 0c0-3.2 2-6.5 5-10z"/></svg>2 waduk</span>
+            <span class="peta-badge" id="petaIpaBadge"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M3 20h18"/><path d="M6 20V10l4-4 4 4v10"/><path d="M14 20v-6l3-3 3 3v6"/></svg>9 IPA</span>
+            <span class="peta-badge" id="petaSumurAktifBadge">… sumur aktif</span>
+          </div>
         </div>
-        <a class="peta-card-cta" href="apps/peta-ipa-sumur/index.html" onclick="recordAccess('Peta Interaktif', 'Peta Interaktif IPA, Sumur & Waduk')">
-          Buka peta lengkap
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
-        </a>
+        <div id="heroPetaMap"></div>
+        <div class="peta-card-footer">
+          <div class="peta-card-footer-text">
+            <span class="peta-card-footer-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#0B5566" stroke-width="2" stroke-linecap="round"><path d="M12 2c3 3.5 5 6.8 5 10a5 5 0 0 1-10 0c0-3.2 2-6.5 5-10z"/></svg></span>
+            <p>Pantau dan telusuri seluruh titik IPA, sumur, dan waduk dengan mudah.</p>
+          </div>
+          <a class="peta-card-cta" href="apps/peta-ipa-sumur/index.html" onclick="recordAccess('Peta Interaktif', 'Peta Interaktif IPA, Sumur & Waduk')">
+            Buka peta lengkap
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          </a>
+        </div>
       </div>
     </div>
 
