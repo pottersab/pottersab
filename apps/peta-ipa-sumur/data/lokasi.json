@@ -1,0 +1,305 @@
+{
+  "ipa": [
+    {
+      "id": "gunung_sari",
+      "nama": "IPA Gunung Sari",
+      "lat": -1.263011,
+      "lng": 116.837947
+    },
+    {
+      "id": "kampung_damai",
+      "nama": "IPA Kampung Damai",
+      "lat": -1.261681,
+      "lng": 116.860022
+    },
+    {
+      "id": "teritip",
+      "nama": "IPA Teritip",
+      "lat": -1.154336,
+      "lng": 116.991172
+    },
+    {
+      "id": "gunung_tembak",
+      "nama": "IPA Gunung Tembak",
+      "lat": -1.134803,
+      "lng": 116.997181
+    },
+    {
+      "id": "prapatan",
+      "nama": "IPA Prapatan",
+      "lat": -1.269533,
+      "lng": 116.824189
+    },
+    {
+      "id": "zamp",
+      "nama": "IPA Zamp",
+      "lat": -1.241667,
+      "lng": 116.887894
+    },
+    {
+      "id": "kampung_baru_ulu",
+      "nama": "IPA Kampung Baru Ulu",
+      "lat": -1.223761,
+      "lng": 116.815997
+    },
+    {
+      "id": "batu_ampar",
+      "nama": "IPA Batu Ampar",
+      "lat": -1.214286,
+      "lng": 116.887011
+    },
+    {
+      "id": "km_12",
+      "nama": "IPA Km 12",
+      "lat": -1.173611,
+      "lng": 116.917842
+    }
+  ],
+  "sumur": [
+    {
+      "id": "gunung_sari_01",
+      "nama": "Sumur 01 — Gunung Sari",
+      "installation": "gunung_sari",
+      "lat": -1.263147,
+      "lng": 116.837969
+    },
+    {
+      "id": "gunung_sari_02",
+      "nama": "Sumur 02 — Gunung Sari",
+      "installation": "gunung_sari",
+      "lat": -1.263014,
+      "lng": 116.838067
+    },
+    {
+      "id": "gunung_sari_03",
+      "nama": "Sumur 03 — Gunung Sari",
+      "installation": "gunung_sari",
+      "lat": -1.262997,
+      "lng": 116.838308
+    },
+    {
+      "id": "gunung_sari_04",
+      "nama": "Sumur 04 — Gunung Sari",
+      "installation": "gunung_sari",
+      "lat": -1.263311,
+      "lng": 116.837931
+    },
+    {
+      "id": "gunung_sari_05",
+      "nama": "Sumur 05 — Gunung Sari",
+      "installation": "gunung_sari",
+      "lat": -1.266619,
+      "lng": 116.832731
+    },
+    {
+      "id": "gunung_sari_06",
+      "nama": "Sumur 06 — Gunung Sari",
+      "installation": "gunung_sari",
+      "lat": -1.268567,
+      "lng": 116.835506
+    },
+    {
+      "id": "gunung_sari_07",
+      "nama": "Sumur 07 — Gunung Sari",
+      "installation": "gunung_sari",
+      "lat": -1.259617,
+      "lng": 116.835811
+    },
+    {
+      "id": "gunung_sari_08",
+      "nama": "Sumur 08 — Gunung Sari",
+      "installation": "gunung_sari",
+      "lat": -1.262822,
+      "lng": 116.842722
+    },
+    {
+      "id": "prapatan_01",
+      "nama": "Sumur 01 — Prapatan",
+      "installation": "prapatan",
+      "lat": -1.273042,
+      "lng": 116.820972
+    },
+    {
+      "id": "prapatan_02",
+      "nama": "Sumur 02 — Prapatan",
+      "installation": "prapatan",
+      "lat": -1.269331,
+      "lng": 116.824361
+    },
+    {
+      "id": "prapatan_03",
+      "nama": "Sumur 03 — Prapatan",
+      "installation": "prapatan",
+      "lat": -1.268653,
+      "lng": 116.822639
+    },
+    {
+      "id": "kampung_damai_01",
+      "nama": "Sumur 01 — Kampung Damai",
+      "installation": "kampung_damai",
+      "lat": -1.260944,
+      "lng": 116.860125
+    },
+    {
+      "id": "kampung_damai_02",
+      "nama": "Sumur 02 — Kampung Damai",
+      "installation": "kampung_damai",
+      "lat": -1.26215,
+      "lng": 116.860003
+    },
+    {
+      "id": "kampung_damai_03",
+      "nama": "Sumur 03 — Kampung Damai",
+      "installation": "kampung_damai",
+      "lat": -1.257792,
+      "lng": 116.866986
+    },
+    {
+      "id": "kampung_damai_04",
+      "nama": "Sumur 04 — Kampung Damai",
+      "installation": "kampung_damai",
+      "lat": -1.256503,
+      "lng": 116.857142
+    },
+    {
+      "id": "kampung_damai_05",
+      "nama": "Sumur 05 — Kampung Damai",
+      "installation": "kampung_damai",
+      "lat": -1.260208,
+      "lng": 116.857058
+    },
+    {
+      "id": "kampung_damai_06",
+      "nama": "Sumur 06 — Kampung Damai",
+      "installation": "kampung_damai",
+      "lat": -1.266044,
+      "lng": 116.859936
+    },
+    {
+      "id": "zamp_01",
+      "nama": "Sumur 01 — Zamp",
+      "installation": "zamp",
+      "lat": -1.241464,
+      "lng": 116.887797
+    },
+    {
+      "id": "zamp_02",
+      "nama": "Sumur 02 — Zamp",
+      "installation": "zamp",
+      "lat": -1.240322,
+      "lng": 116.880228
+    },
+    {
+      "id": "zamp_03",
+      "nama": "Sumur 03 — Zamp",
+      "installation": "zamp",
+      "lat": -1.241911,
+      "lng": 116.888078
+    },
+    {
+      "id": "kampung_baru_ulu_01",
+      "nama": "Sumur 01 — Kampung Baru Ulu",
+      "installation": "kampung_baru_ulu",
+      "lat": -1.223883,
+      "lng": 116.815678
+    },
+    {
+      "id": "kampung_baru_ulu_02",
+      "nama": "Sumur 02 — Kampung Baru Ulu",
+      "installation": "kampung_baru_ulu",
+      "lat": -1.224342,
+      "lng": 116.816767
+    },
+    {
+      "id": "kampung_baru_ulu_03",
+      "nama": "Sumur 03 — Kampung Baru Ulu",
+      "installation": "kampung_baru_ulu",
+      "lat": -1.223753,
+      "lng": 116.814006
+    },
+    {
+      "id": "teritip_04",
+      "nama": "Sumur 04 — Teritip",
+      "installation": "teritip",
+      "lat": -1.162122,
+      "lng": 117.001975
+    },
+    {
+      "id": "teritip_06",
+      "nama": "Sumur 06 — Teritip",
+      "installation": "teritip",
+      "lat": -1.1614,
+      "lng": 117.002233
+    },
+    {
+      "id": "teritip_07",
+      "nama": "Sumur 07 — Teritip",
+      "installation": "teritip",
+      "lat": -1.161258,
+      "lng": 117.001375
+    },
+    {
+      "id": "teritip_10",
+      "nama": "Sumur 10 — Teritip",
+      "installation": "teritip",
+      "lat": -1.162806,
+      "lng": 117.004536
+    },
+    {
+      "id": "teritip_14",
+      "nama": "Sumur 14 — Teritip",
+      "installation": "teritip",
+      "lat": -1.162139,
+      "lng": 117.002811
+    },
+    {
+      "id": "teritip_15",
+      "nama": "Sumur 15 — Teritip",
+      "installation": "teritip",
+      "lat": -1.157567,
+      "lng": 117.006183
+    },
+    {
+      "id": "teritip_16",
+      "nama": "Sumur 16 — Teritip",
+      "installation": "teritip",
+      "lat": -1.162569,
+      "lng": 117.001242
+    },
+    {
+      "id": "teritip_17",
+      "nama": "Sumur 17 — Teritip",
+      "installation": "teritip",
+      "lat": -1.162953,
+      "lng": 117.001583
+    },
+    {
+      "id": "teritip_18",
+      "nama": "Sumur 18 — Teritip",
+      "installation": "teritip",
+      "lat": -1.162339,
+      "lng": 117.003156
+    },
+    {
+      "id": "gunung_tembak_01",
+      "nama": "Sumur 01 — Gunung Tembak",
+      "installation": "gunung_tembak",
+      "lat": -1.134639,
+      "lng": 116.997275
+    }
+  ],
+  "waduk": [
+    {
+      "id": "manggar",
+      "nama": "Waduk Manggar",
+      "lat": -1.172403,
+      "lng": 116.918122
+    },
+    {
+      "id": "teritip",
+      "nama": "Waduk Teritip",
+      "lat": -1.152917,
+      "lng": 116.980025
+    }
+  ]
+}

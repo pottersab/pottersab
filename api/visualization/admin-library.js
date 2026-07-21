@@ -16,6 +16,101 @@ function toNumOrNull(v) {
   return Number.isNaN(n) ? null : n;
 }
 
+// --- action=map-latest: nilai TERAKHIR per lokasi (IPA/Sumur/Waduk) untuk
+// apps/peta-ipa-sumur -- endpoint PUBLIK (tanpa admin), sama seperti
+// api/home-summary.js. Dipasang di sini (bukan file baru) karena /api sudah
+// di batas 12 Serverless Functions Vercel Hobby. Dibaca dari tabel yang SAMA
+// dipakai grafik existing (lihat lib/db.js) supaya selalu sinkron. ----------
+const AP_COLUMNS = ['teritip', 'kampung_damai', 'batu_ampar', 'km_12', 'gunung_tembak'];
+const ATD_COLUMNS = ['kampung_damai', 'gunung_sari', 'prapatan', 'zamp', 'kampung_baru_ulu'];
+
+// Ambil nilai non-null PERTAMA per kolom dari baris yang sudah diurutkan
+// tanggal/bulan DESC -- tiap kolom bisa punya bulan terakhir terisi yang
+// berbeda-beda, jadi tidak bisa ambil 1 baris teratas saja (pola sama dengan
+// api/home-summary.js).
+function firstNonNullPerColumn(rows, columns) {
+  const result = {};
+  columns.forEach(col => { result[col] = null; });
+  for (const row of rows) {
+    for (const col of columns) {
+      if (result[col] === null && row[col] !== null && row[col] !== undefined) {
+        result[col] = Number(row[col]);
+      }
+    }
+    if (columns.every(col => result[col] !== null)) break;
+  }
+  return result;
+}
+
+// well_name di sumur_debit_readings/sumur_level_readings apa adanya dari
+// header CSV lama (mis. "Sumur_01_Dalam_IPA", level pakai "Sumur_1_..." tanpa
+// zero-pad -- lihat arsip apps/library/data/*.csv sebelum dimigrasi). Ambil
+// nomornya saja supaya cocok dengan id di data/lokasi.json ("{installation}_{NN}").
+function wellIdFromName(installation, wellName) {
+  const m = String(wellName).match(/^Sumur_0*(\d+)_/i);
+  if (!m) return null;
+  return `${installation}_${m[1].padStart(2, '0')}`;
+}
+
+async function handleMapLatest(req, res) {
+  if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
+
+  const [apResult, atdResult, manggarResult, kualitasResult, teritipLevelResult, debitResult, levelResult] = await Promise.all([
+    pool.query(`SELECT ${AP_COLUMNS.join(', ')} FROM air_permukaan ORDER BY bulan DESC`),
+    pool.query(`SELECT ${ATD_COLUMNS.join(', ')} FROM air_tanah_dalam ORDER BY bulan DESC`),
+    pool.query(`SELECT level_waduk_manggar_m, curah_hujan_mm FROM manggar_level_curahhujan ORDER BY tanggal DESC`),
+    pool.query(`SELECT ntu_manggar, ph_manggar, ntu_teritip, ph_teritip FROM kualitas_air_manggar_teritip ORDER BY tanggal DESC`),
+    pool.query(`SELECT level_waduk_teritip_m FROM teritip_level WHERE level_waduk_teritip_m IS NOT NULL ORDER BY tanggal DESC LIMIT 1`),
+    pool.query(`SELECT DISTINCT ON (installation, well_name) installation, well_name, value
+                FROM sumur_debit_readings WHERE value IS NOT NULL
+                ORDER BY installation, well_name, bulan DESC`),
+    pool.query(`SELECT DISTINCT ON (installation, well_name) installation, well_name, statis, dinamis
+                FROM sumur_level_readings WHERE statis IS NOT NULL OR dinamis IS NOT NULL
+                ORDER BY installation, well_name, bulan DESC`)
+  ]);
+
+  const apLatest = firstNonNullPerColumn(apResult.rows, AP_COLUMNS);
+  const atdLatest = firstNonNullPerColumn(atdResult.rows, ATD_COLUMNS);
+  const ipaIds = Array.from(new Set([...AP_COLUMNS, ...ATD_COLUMNS]));
+  const ipa = {};
+  ipaIds.forEach(id => { ipa[id] = { ap: apLatest[id] ?? null, atd: atdLatest[id] ?? null }; });
+
+  const manggarLatest = firstNonNullPerColumn(manggarResult.rows, ['level_waduk_manggar_m', 'curah_hujan_mm']);
+  const kualitasLatest = firstNonNullPerColumn(kualitasResult.rows, ['ntu_manggar', 'ph_manggar', 'ntu_teritip', 'ph_teritip']);
+  const teritipLevelRow = teritipLevelResult.rows[0];
+  const waduk = {
+    manggar: {
+      level: manggarLatest.level_waduk_manggar_m,
+      curahHujan: manggarLatest.curah_hujan_mm,
+      ntu: kualitasLatest.ntu_manggar,
+      ph: kualitasLatest.ph_manggar
+    },
+    teritip: {
+      level: teritipLevelRow ? Number(teritipLevelRow.level_waduk_teritip_m) : null,
+      curahHujan: null,
+      ntu: kualitasLatest.ntu_teritip,
+      ph: kualitasLatest.ph_teritip
+    }
+  };
+
+  const sumur = {};
+  debitResult.rows.forEach(r => {
+    const id = wellIdFromName(r.installation, r.well_name);
+    if (!id) return;
+    if (!sumur[id]) sumur[id] = { statis: null, dinamis: null, debit: null };
+    sumur[id].debit = Number(r.value);
+  });
+  levelResult.rows.forEach(r => {
+    const id = wellIdFromName(r.installation, r.well_name);
+    if (!id) return;
+    if (!sumur[id]) sumur[id] = { statis: null, dinamis: null, debit: null };
+    sumur[id].statis = r.statis !== null && r.statis !== undefined ? Number(r.statis) : null;
+    sumur[id].dinamis = r.dinamis !== null && r.dinamis !== undefined ? Number(r.dinamis) : null;
+  });
+
+  return res.status(200).json({ ipa, sumur, waduk });
+}
+
 // --- action=daily: input harian Waduk Manggar/Teritip (Level, Curah Hujan,
 // Kekeruhan, PH), langsung ke Postgres. ---------------------------------
 const DAILY_FIELD_MAP = {
@@ -329,15 +424,20 @@ async function handleWells(req, res) {
 module.exports = async (req, res) => {
   await ensureVizTables();
 
+  const { action } = req.query;
+
+  // Publik, tanpa admin -- dipakai apps/peta-ipa-sumur (sama seperti
+  // api/home-summary.js yang juga publik). Harus dicek SEBELUM requireAdmin.
+  if (action === 'map-latest') return handleMapLatest(req, res);
+
   const user = requireAdmin(req, res);
   if (!user) return;
 
-  const { action } = req.query;
   if (action === 'daily') return handleDaily(req, res);
   if (action === 'daily-history') return handleDailyHistory(req, res);
   if (action === 'sumur') return handleSumur(req, res);
   if (action === 'sumur-history') return handleSumurHistory(req, res);
   if (action === 'wells') return handleWells(req, res);
 
-  return res.status(400).json({ error: 'action wajib diisi (daily/daily-history/sumur/sumur-history/wells)' });
+  return res.status(400).json({ error: 'action wajib diisi (daily/daily-history/sumur/sumur-history/wells/map-latest)' });
 };
