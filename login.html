@@ -272,8 +272,8 @@
     <div class="nav-item" data-nav>
       <button class="nav-link" type="button">About Me <span class="nav-caret"></span></button>
       <div class="nav-dropdown">
-        <a href="index.html#about">Profil &amp; Portfolio</a>
-        <a href="index.html#about">Kontak</a>
+        <a href="index.html?page=about">Profil &amp; Portfolio</a>
+        <a href="index.html?page=about">Kontak</a>
       </div>
     </div>
 
@@ -374,6 +374,8 @@
         localStorage.setItem('token', data.token);
         localStorage.setItem('role', data.role);
         localStorage.setItem('username', data.username);
+        localStorage.setItem('displayName', data.displayName || data.username);
+        localStorage.setItem('avatarInitial', data.avatarInitial || (data.username || '?').charAt(0).toUpperCase());
         window.location.href = getSafeRedirect();
       } else {
         showError(data.error || 'Username atau password salah');

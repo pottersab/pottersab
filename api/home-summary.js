@@ -1,0 +1,58 @@
+const { pool, ensureVizTables } = require('../lib/db');
+
+// Endpoint publik (tanpa auth, sama seperti beranda) buat isi 3 kotak
+// ringkasan di hero index.html. Tanggal/bulan diambil pakai to_char di SQL
+// (bukan dibiarkan jadi objek Date bawaan node-postgres) supaya tidak kena
+// pergeseran timezone -- pola yang sama dipakai lib/visualization/repo.js.
+module.exports = async (req, res) => {
+  if (req.method !== 'GET') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  await ensureVizTables();
+
+  const [levelResult, airBakuResult, sumurResult] = await Promise.all([
+    pool.query(`
+      SELECT to_char(tanggal, 'YYYY-MM-DD') as tanggal, level_waduk_manggar_m
+      FROM manggar_level_curahhujan
+      WHERE level_waduk_manggar_m IS NOT NULL
+      ORDER BY tanggal DESC LIMIT 1
+    `),
+    pool.query(`
+      SELECT to_char(ap.bulan, 'YYYY-MM-DD') as bulan,
+        (ap.teritip + ap.kampung_damai + ap.batu_ampar + ap.km_12 + ap.gunung_tembak) as ap_total,
+        (atd.kampung_damai + atd.gunung_sari + atd.prapatan + atd.zamp + atd.kampung_baru_ulu) as atd_total
+      FROM air_permukaan ap
+      JOIN air_tanah_dalam atd ON atd.bulan = ap.bulan
+      WHERE ap.teritip IS NOT NULL AND ap.kampung_damai IS NOT NULL AND ap.batu_ampar IS NOT NULL
+        AND ap.km_12 IS NOT NULL AND ap.gunung_tembak IS NOT NULL
+        AND atd.kampung_damai IS NOT NULL AND atd.gunung_sari IS NOT NULL AND atd.prapatan IS NOT NULL
+        AND atd.zamp IS NOT NULL AND atd.kampung_baru_ulu IS NOT NULL
+      ORDER BY ap.bulan DESC LIMIT 1
+    `),
+    pool.query(`
+      SELECT to_char(bulan, 'YYYY-MM-DD') as bulan, COUNT(*) as jumlah
+      FROM sumur_debit_readings
+      WHERE value IS NOT NULL AND bulan = (
+        SELECT MAX(bulan) FROM sumur_debit_readings WHERE value IS NOT NULL
+      )
+      GROUP BY bulan
+    `)
+  ]);
+
+  const levelRow = levelResult.rows[0];
+  const airBakuRow = airBakuResult.rows[0];
+  const sumurRow = sumurResult.rows[0];
+
+  return res.status(200).json({
+    level: levelRow
+      ? { value: Number(levelRow.level_waduk_manggar_m), date: levelRow.tanggal }
+      : null,
+    airBaku: airBakuRow
+      ? { value: Number(airBakuRow.ap_total) + Number(airBakuRow.atd_total), periodStart: airBakuRow.bulan }
+      : null,
+    sumurAktif: sumurRow
+      ? { count: Number(sumurRow.jumlah), periodStart: sumurRow.bulan }
+      : null
+  });
+};
