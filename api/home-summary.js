@@ -36,13 +36,16 @@ module.exports = async (req, res) => {
         AND atd.zamp IS NOT NULL AND atd.kampung_baru_ulu IS NOT NULL
       ORDER BY ap.bulan DESC LIMIT 1
     `),
+    // Sumur dianggap aktif kalau ADA data debit (bukan null) yang diinput
+    // SELAMA TAHUN BERJALAN -- bukan lagi cuma "ikut bulan terakhir yang
+    // ada datanya" (sumur yang tidak dilaporkan sejak tahun lalu jadi tidak
+    // terhitung aktif walau dulu pernah ada datanya). Sama dengan logika di
+    // apps/peta-ipa-sumur/app.js (statusFromDebit).
     pool.query(`
-      SELECT to_char(bulan, 'YYYY-MM-DD') as bulan, COUNT(*) as jumlah
+      SELECT COUNT(DISTINCT (installation, well_name)) as jumlah,
+        to_char(MAX(bulan), 'YYYY-MM-DD') as bulan
       FROM sumur_debit_readings
-      WHERE value IS NOT NULL AND bulan = (
-        SELECT MAX(bulan) FROM sumur_debit_readings WHERE value IS NOT NULL
-      )
-      GROUP BY bulan
+      WHERE value IS NOT NULL AND bulan >= date_trunc('year', CURRENT_DATE)
     `)
   ]);
 
@@ -61,7 +64,7 @@ module.exports = async (req, res) => {
     airBaku: airBakuRow
       ? { value: Number(airBakuRow.ap_total) + Number(airBakuRow.atd_total), periodStart: airBakuRow.bulan }
       : null,
-    sumurAktif: sumurRow
+    sumurAktif: (sumurRow && Number(sumurRow.jumlah) > 0)
       ? { count: Number(sumurRow.jumlah), periodStart: sumurRow.bulan }
       : null
   });

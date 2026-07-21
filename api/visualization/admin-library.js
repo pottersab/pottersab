@@ -73,8 +73,13 @@ async function handleMapLatest(req, res) {
     pool.query(`SELECT to_char(tanggal, 'YYYY-MM-DD') as tanggal, level_waduk_manggar_m, curah_hujan_mm FROM manggar_level_curahhujan ORDER BY tanggal DESC`),
     pool.query(`SELECT to_char(tanggal, 'YYYY-MM-DD') as tanggal, ntu_manggar, ph_manggar, ntu_teritip, ph_teritip FROM kualitas_air_manggar_teritip ORDER BY tanggal DESC`),
     pool.query(`SELECT to_char(tanggal, 'YYYY-MM-DD') as tanggal, level_waduk_teritip_m FROM teritip_level WHERE level_waduk_teritip_m IS NOT NULL ORDER BY tanggal DESC LIMIT 1`),
+    // Sumur dianggap aktif kalau ADA data debit yang diinput SELAMA TAHUN
+    // BERJALAN (lihat statusFromDebit di apps/peta-ipa-sumur/app.js dan
+    // catatan yang sama di api/home-summary.js) -- makanya dibatasi ke bulan
+    // >= awal tahun ini, bukan "debit terakhir kapan pun".
     pool.query(`SELECT DISTINCT ON (installation, well_name) installation, well_name, value, to_char(bulan, 'YYYY-MM-DD') as tanggal
-                FROM sumur_debit_readings WHERE value IS NOT NULL
+                FROM sumur_debit_readings
+                WHERE value IS NOT NULL AND bulan >= date_trunc('year', CURRENT_DATE)
                 ORDER BY installation, well_name, bulan DESC`),
     pool.query(`SELECT DISTINCT ON (installation, well_name) installation, well_name, statis, dinamis, to_char(bulan, 'YYYY-MM-DD') as tanggal
                 FROM sumur_level_readings WHERE statis IS NOT NULL OR dinamis IS NOT NULL
