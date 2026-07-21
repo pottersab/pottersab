@@ -7,8 +7,6 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.css">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.Default.css">
 <style>
 :root{
   --ink:#0A2537;
@@ -92,8 +90,8 @@ header{
 
 /* ---------- hero ---------- */
 .hero{max-width:1100px;margin:0 auto;padding:60px 20px 36px}
-.hero-top{display:flex;gap:28px;align-items:center;flex-wrap:wrap}
-.hero-text{flex:1.2;min-width:280px}
+.hero-top{max-width:980px;margin:0 auto;display:flex;gap:24px;align-items:center;flex-wrap:wrap}
+.hero-text{flex:1.3;min-width:280px}
 .eyebrow{
   display:inline-flex;align-items:center;gap:8px;
   font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;
@@ -894,42 +892,33 @@ function doLogout(){
 </script>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/leaflet.markercluster.js"></script>
 <script>
-// ---------- Mini peta interaktif di hero (peta hidup, klik header/tombol -> apps/peta-ipa-sumur) ----------
+// ---------- Mini peta di hero (preview saja -- titik warna polos, tanpa
+// zoom control/cluster, tanpa interaksi. Klik header/tombol -> apps/peta-ipa-sumur) ----------
 (function(){
   var mapEl = document.getElementById('heroPetaMap');
   if(!mapEl || typeof L === 'undefined') return;
 
-  var heroMap = L.map('heroPetaMap', { zoomControl:true, scrollWheelZoom:false, attributionControl:true })
-    .setView([-1.205, 116.91], 10);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom:19, attribution:'&copy; OpenStreetMap contributors'
-  }).addTo(heroMap);
+  var heroMap = L.map('heroPetaMap', {
+    zoomControl:false, dragging:false, scrollWheelZoom:false,
+    doubleClickZoom:false, touchZoom:false, boxZoom:false,
+    keyboard:false, attributionControl:false, tap:false
+  }).setView([-1.205, 116.91], 10);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom:19 }).addTo(heroMap);
 
   var CATEGORY_COLOR = { ipa:'#0B5566', sumur:'#2F8F5B', waduk:'#D98F3E' };
-  function pinIcon(color){
-    return L.divIcon({
-      html:'<div style="width:16px;height:16px;border-radius:50% 50% 50% 0;background:'+color+';transform:rotate(-45deg);border:2px solid #fff"></div>',
-      className:'', iconSize:[16,16], iconAnchor:[8,16]
+  function addDots(list, color, radius){
+    (list || []).forEach(function(d){
+      L.circleMarker([d.lat, d.lng], { radius:radius, color:'#fff', weight:1.3, fillColor:color, fillOpacity:1 }).addTo(heroMap);
     });
   }
-  var cluster = L.markerClusterGroup({
-    iconCreateFunction: function(c){
-      return L.divIcon({
-        html:'<div style="background:#0B5566;color:#fff;width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:\'Space Grotesk\',sans-serif;font-weight:700;font-size:13px;border:2px solid #fff">'+c.getChildCount()+'</div>',
-        className:'', iconSize:[34,34]
-      });
-    }
-  });
 
   fetch('apps/peta-ipa-sumur/data/lokasi.json')
     .then(function(res){ return res.json(); })
     .then(function(data){
-      (data.ipa || []).forEach(function(d){ cluster.addLayer(L.marker([d.lat, d.lng], { icon:pinIcon(CATEGORY_COLOR.ipa) })); });
-      (data.sumur || []).forEach(function(d){ cluster.addLayer(L.marker([d.lat, d.lng], { icon:pinIcon(CATEGORY_COLOR.sumur) })); });
-      (data.waduk || []).forEach(function(d){ cluster.addLayer(L.marker([d.lat, d.lng], { icon:pinIcon(CATEGORY_COLOR.waduk) })); });
-      heroMap.addLayer(cluster);
+      addDots(data.ipa, CATEGORY_COLOR.ipa, 5);
+      addDots(data.sumur, CATEGORY_COLOR.sumur, 3.5);
+      addDots(data.waduk, CATEGORY_COLOR.waduk, 5.5);
 
       var ipaBadge = document.getElementById('petaIpaBadge');
       if(ipaBadge) ipaBadge.lastChild.textContent = (data.ipa || []).length + ' IPA';
