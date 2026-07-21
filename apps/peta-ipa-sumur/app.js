@@ -28,9 +28,12 @@ function dataPerHtml(label) {
   return label ? `<div class="popup-date"><span>Data per ${label}</span></div>` : '';
 }
 
-// Status TIDAK PERNAH diisi manual -- selalu dihitung dari nilai debit.
+// Status TIDAK PERNAH diisi manual -- selalu dihitung dari ADA/TIDAKNYA data
+// debit (null = belum pernah dilaporkan = non-aktif), bukan dari nilainya --
+// sama seperti logika hitung "Sumur Aktif" di beranda (api/home-summary.js),
+// yang menghitung sumur ber-debit IS NOT NULL tanpa peduli nilainya 0 atau bukan.
 function statusFromDebit(debit) {
-  return (debit === null || debit === undefined || debit === 0) ? 'non-aktif' : 'aktif';
+  return (debit === null || debit === undefined) ? 'non-aktif' : 'aktif';
 }
 
 // Format angka gaya Indonesia: koma buat desimal, titik buat ribuan,
