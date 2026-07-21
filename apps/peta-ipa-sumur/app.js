@@ -193,25 +193,65 @@ async function init() {
     closeDropdown();
   }
 
-  function dropdownItemHtml(id, label) {
-    return `<button type="button" class="dropdown-item" data-id="${id}">${label}</button>`;
+  const CHEVRON_RIGHT_SVG = '<svg class="dd-row-chevron" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" width="14" height="14"><path d="M7.5 5l5 5-5 5"/></svg>';
+  const CHEVRON_LEFT_SVG = '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" width="15" height="15"><path d="M12.5 5l-5 5 5 5"/></svg>';
+
+  function ddRow({ avatarClass, iconSrc, label, meta, chevron, statusHtml, dataAttrs }) {
+    const avatar = iconSrc ? `<span class="dd-row-avatar ${avatarClass}"><img src="${iconSrc}" alt=""></span>` : '';
+    const metaHtml = meta ? `<span class="dd-row-meta">${meta}</span>` : '';
+    return `<div class="dd-row" ${dataAttrs}>${avatar}<span class="dd-row-label">${label}</span>${metaHtml}${statusHtml || ''}${chevron ? CHEVRON_RIGHT_SVG : ''}</div>`;
+  }
+
+  // Sumur: pilih instalasi dulu, baru muncul daftar sumur di instalasi itu
+  // (2 langkah) -- state-nya direset tiap dropdown Sumur dibuka ulang.
+  let sumurView = 'installations';
+  let sumurCurrentInstallation = null;
+
+  function renderSumurInstallationList() {
+    return Object.keys(sumurByInstallation).map(installation => {
+      const label = ipaLabelByInstallation[installation] || installation;
+      const count = sumurByInstallation[installation].length;
+      return ddRow({
+        avatarClass: 'a-sumur', iconSrc: 'assets/icon-sumur.png', label, meta: `${count} titik`, chevron: true,
+        dataAttrs: `data-action="drill" data-installation="${installation}"`
+      });
+    }).join('');
+  }
+
+  function renderSumurWellList(installation) {
+    const wells = sumurByInstallation[installation] || [];
+    const header = `
+      <div class="dd-panel-header">
+        <button type="button" class="dd-back" data-action="back">${CHEVRON_LEFT_SVG}</button>
+        <span class="dd-panel-title">Sumur — ${ipaLabelByInstallation[installation] || installation}</span>
+      </div>
+    `;
+    const rows = wells.map(s => {
+      const debit = (latest.sumur && latest.sumur[s.id]) ? latest.sumur[s.id].debit : null;
+      const status = statusFromDebit(debit);
+      const statusHtml = `<span class="dd-status-dot ${status}"></span><span class="dd-status-text ${status}">${status === 'aktif' ? 'Aktif' : 'Non-aktif'}</span>`;
+      return ddRow({ label: s.nama.split('—')[0].trim(), statusHtml, dataAttrs: `data-action="select" data-id="${s.id}"` });
+    }).join('');
+    return header + rows;
   }
 
   function renderDropdownContent(category) {
     if (category === 'ipa') {
-      return (lokasi.ipa || []).map(loc => dropdownItemHtml(loc.id, loc.nama.replace(/^IPA\s+/i, ''))).join('');
+      return (lokasi.ipa || []).map(loc => ddRow({
+        avatarClass: 'a-ipa', iconSrc: 'assets/icon-ipa.png', label: loc.nama.replace(/^IPA\s+/i, ''),
+        dataAttrs: `data-action="select" data-id="${loc.id}"`
+      })).join('');
     }
     if (category === 'waduk') {
-      return (lokasi.waduk || []).map(loc => dropdownItemHtml(loc.id, loc.nama)).join('');
+      return (lokasi.waduk || []).map(loc => ddRow({
+        avatarClass: 'a-waduk', iconSrc: 'assets/icon-waduk.png', label: loc.nama,
+        dataAttrs: `data-action="select" data-id="${loc.id}"`
+      })).join('');
     }
     if (category === 'sumur') {
-      return Object.keys(sumurByInstallation).map(installation => {
-        const groupLabel = ipaLabelByInstallation[installation] || installation;
-        const items = sumurByInstallation[installation]
-          .map(s => dropdownItemHtml(s.id, s.nama.split('—')[0].trim()))
-          .join('');
-        return `<span class="dropdown-group-label">${groupLabel}</span>${items}`;
-      }).join('');
+      return (sumurView === 'wells' && sumurCurrentInstallation)
+        ? renderSumurWellList(sumurCurrentInstallation)
+        : renderSumurInstallationList();
     }
     return '';
   }
@@ -228,6 +268,7 @@ async function init() {
 
   function openDropdownFor(category, btn) {
     openCategory = category;
+    if (category === 'sumur') { sumurView = 'installations'; sumurCurrentInstallation = null; }
     dropdownListEl.innerHTML = renderDropdownContent(category);
     dropdownEl.classList.add('open');
     document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('dropdown-open'));
@@ -235,13 +276,30 @@ async function init() {
   }
 
   dropdownListEl.addEventListener('click', e => {
-    const item = e.target.closest('.dropdown-item');
-    if (item) selectLocation(item.dataset.id);
+    const row = e.target.closest('.dd-row, .dd-back');
+    if (!row) return;
+    const action = row.dataset.action;
+    if (action === 'select') selectLocation(row.dataset.id);
+    else if (action === 'drill') {
+      sumurView = 'wells';
+      sumurCurrentInstallation = row.dataset.installation;
+      dropdownListEl.innerHTML = renderDropdownContent('sumur');
+    } else if (action === 'back') {
+      sumurView = 'installations';
+      sumurCurrentInstallation = null;
+      dropdownListEl.innerHTML = renderDropdownContent('sumur');
+    }
   });
 
+  // Capture phase (bukan bubble) -- klik "drill"/"select" di dalam dropdown
+  // mengganti innerHTML-nya di tengah event yang sama, yang bikin elemen
+  // e.target jadi terlepas dari DOM sebelum event ini sempat bubble ke sini.
+  // Kalau dicek pas bubble, dropdownEl.contains(e.target) jadi salah (false)
+  // walau kliknya memang di dalam dropdown -- jadi dropdown ketutup sendiri.
+  // Dicek di capture phase supaya DOM masih utuh saat pengecekan ini jalan.
   document.addEventListener('click', e => {
     if (!dropdownEl.contains(e.target) && !e.target.closest('.filter-btn')) closeDropdown();
-  });
+  }, true);
 
   document.querySelectorAll('.filter-btn').forEach(btn => {
     btn.addEventListener('click', () => {
