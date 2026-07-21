@@ -12,106 +12,79 @@
 </head>
 <body>
 <header class="ptmb-navbar">
-  <div class="ptmb-brand">
-    <div class="ptmb-brand-mark">PT</div>
-    <div class="ptmb-brand-text">PTMB<span>Portal Internal</span></div>
+  <div class="ptmb-nav-inner">
+    <a class="ptmb-brand" href="../../index.html">
+      <span class="ptmb-brand-mark">PT</span>
+      <span>PTMB<small>Portal Internal · SAB</small></span>
+    </a>
+    <nav class="ptmb-nav-links">
+      <a href="../../index.html">Beranda</a>
+      <a href="../../index.html?page=tools">Tools</a>
+      <a href="../../index.html?page=data" class="active">Data &amp; Visualisasi</a>
+      <a href="../../index.html?page=dev">Development</a>
+      <a href="../../index.html?page=about">About SAB</a>
+    </nav>
+    <div class="nav-right">
+      <a class="ptmb-btn-login" id="navLoginBtn" href="../../login.html" style="display:none">Login</a>
+      <div class="admin-wrap" id="adminWrap" style="display:none">
+        <button class="admin-chip" onclick="toggleAdminMenu()">
+          <span class="admin-avatar" id="adminAvatar">P</span>
+          <span class="name-block">
+            <span id="adminName">Potter</span>
+            <span class="role" id="adminRole">Admin · SAB</span>
+          </span>
+          <span class="admin-caret"></span>
+        </button>
+        <div class="admin-menu">
+          <a href="../../admin-dashboard.html">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>
+            Dashboard Admin
+          </a>
+          <button class="logout" onclick="doLogout()">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>
+            Logout
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
-
-  <nav class="ptmb-nav-links" id="ptmbNavLinks">
-    <a href="../../index.html">Home</a>
-
-    <div class="ptmb-nav-item" data-ptmb-nav>
-      <button class="ptmb-nav-link" type="button">Tools <span class="ptmb-nav-caret"></span></button>
-      <div class="ptmb-nav-dropdown">
-        <a href="../spd.html">Surat Penyediaan Dana (SPD)</a>
-        <a href="../berita-acara.html">Berita Acara (BA)</a>
-        <a href="../surat-permohonan.html">Surat Permohonan (Eksternal)</a>
-        <a href="../laporan-p2k3.html">Laporan P2K3</a>
-        <a href="../ceklist-apd.html">Ceklist Inspeksi APD</a>
-      </div>
-    </div>
-
-    <div class="ptmb-nav-item" data-ptmb-nav>
-      <button class="ptmb-nav-link ptmb-active" type="button">Data Visualization <span class="ptmb-nav-caret"></span></button>
-      <div class="ptmb-nav-dropdown">
-        <a href="../library/index.html">Data Waduk dan Sumur</a>
-        <a href="index.html">Data Pengambilan Air Baku</a>
-      </div>
-    </div>
-
-    <div class="ptmb-nav-item" data-ptmb-nav>
-      <button class="ptmb-nav-link" type="button">Development <span class="ptmb-nav-caret"></span></button>
-      <div class="ptmb-nav-dropdown">
-        <span class="ptmb-nav-dropdown-tag">Admin Only</span>
-        <a href="../input-data-historis.html">Input Data Waduk Dan Sumur</a>
-        <a href="../input-air-baku.html">Input Pengambilan Air Baku</a>
-        <a href="../formulir-sab.html">Input Pekerjaan SAB</a>
-      </div>
-    </div>
-
-    <div class="ptmb-nav-item" data-ptmb-nav>
-      <button class="ptmb-nav-link" type="button">About SAB <span class="ptmb-nav-caret"></span></button>
-      <div class="ptmb-nav-dropdown">
-        <a href="../../profil-potter.html">Profil Potter</a>
-        <a href="../../profil-darto.html">Profil Darto</a>
-        <a href="../../profil-jarot.html">Profil Jarot</a>
-        <a href="../../about.html">Gallery</a>
-      </div>
-    </div>
-
-    <a href="../../login.html" class="ptmb-btn-login" id="authNavBtn">Login</a>
-  </nav>
-
-  <button class="ptmb-nav-toggle" id="ptmbNavToggle" aria-label="Buka menu">
-    <span></span><span></span><span></span>
-  </button>
 </header>
 
 <script>
-  (function(){
-    const toggle = document.getElementById('ptmbNavToggle');
-    const links = document.getElementById('ptmbNavLinks');
-    toggle.addEventListener('click', () => links.classList.toggle('ptmb-open-mobile'));
+function toggleAdminMenu(){
+  document.getElementById('adminWrap').classList.toggle('open');
+}
+document.addEventListener('click', function(e){
+  var wrap = document.getElementById('adminWrap');
+  if(wrap && !wrap.contains(e.target)) wrap.classList.remove('open');
+});
 
-    document.querySelectorAll('[data-ptmb-nav]').forEach((item) => {
-      const btn = item.querySelector('.ptmb-nav-link');
-      btn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const wasOpen = item.classList.contains('ptmb-open');
-        document.querySelectorAll('[data-ptmb-nav]').forEach(i => i.classList.remove('ptmb-open'));
-        if(!wasOpen) item.classList.add('ptmb-open');
-      });
-    });
-    document.addEventListener('click', () => {
-      document.querySelectorAll('[data-ptmb-nav]').forEach(i => i.classList.remove('ptmb-open'));
-    });
-  })();
-</script>
+function doLogout(){
+  if(!confirm('Keluar dari akun admin?')) return;
+  localStorage.removeItem('token');
+  localStorage.removeItem('role');
+  localStorage.removeItem('username');
+  localStorage.removeItem('displayName');
+  localStorage.removeItem('avatarInitial');
+  window.location.href = '../../login.html';
+}
 
-<script>
-  (function(){
-    const authBtn = document.getElementById('authNavBtn');
-    if(!authBtn) return;
-    const token = localStorage.getItem('token');
-    const role = localStorage.getItem('role');
-    const username = localStorage.getItem('username');
-
-    if(token && role === 'admin'){
-      authBtn.textContent = 'Logout';
-      authBtn.href = '#';
-      authBtn.title = 'Login sebagai ' + (username || 'Admin');
-      authBtn.style.background = '#B5502E';
-      authBtn.addEventListener('click', function(e){
-        e.preventDefault();
-        if(confirm('Keluar dari akun admin?')){
-          localStorage.removeItem('token');
-          localStorage.removeItem('role');
-          localStorage.removeItem('username');
-          window.location.href = '../../login.html';
-        }
-      });
-    }
-  })();
+(function(){
+  var token = localStorage.getItem('token');
+  var role = localStorage.getItem('role');
+  var loginBtn = document.getElementById('navLoginBtn');
+  var adminWrap = document.getElementById('adminWrap');
+  if(!loginBtn || !adminWrap) return;
+  if(token && role === 'admin'){
+    var displayName = localStorage.getItem('displayName') || localStorage.getItem('username') || 'Admin';
+    var avatarInitial = localStorage.getItem('avatarInitial') || displayName.charAt(0).toUpperCase();
+    document.getElementById('adminName').textContent = displayName;
+    document.getElementById('adminAvatar').textContent = avatarInitial;
+    adminWrap.style.display = '';
+  } else {
+    loginBtn.style.display = '';
+  }
+})();
 </script>
 
 

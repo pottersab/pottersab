@@ -23,6 +23,13 @@
     --purple:#7C6FC9;
     --purple-light:#A98FE0;
     --purple-pale:#E4DCF5;
+    --paper:#F4F8FA;
+    --card:#FFFFFF;
+    --mist:#DCE9EF;
+    --teal:#0E8E96;
+    --teal-deep:#0A6A72;
+    --amber:#B97709;
+    --radius:14px;
   }
 
   *{box-sizing:border-box; margin:0; padding:0;}
@@ -42,106 +49,80 @@
   ul{ list-style:none; }
   button{ font:inherit; }
 
-  header.nav{
-    position:sticky; top:0; z-index:50;
-    display:flex; align-items:center; justify-content:space-between;
-    padding:16px 5vw;
-    background:rgba(239,245,246,0.78);
+  /* ---------- header ---------- */
+  header{
+    position:sticky;top:0;z-index:50;
+    background:rgba(244,248,250,.85);
     backdrop-filter:blur(10px);
-    border-bottom:1px solid var(--line);
+    border-bottom:1px solid var(--mist);
   }
-  .brand{ display:flex; align-items:center; gap:10px; }
+  .nav{
+    max-width:1100px;margin:0 auto;padding:14px 20px;
+    display:flex;align-items:center;gap:20px;
+  }
+  .brand{display:flex;align-items:center;gap:10px;font-weight:600}
   .brand-mark{
-    width:38px; height:38px; border-radius:10px;
-    background:linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
-    display:flex; align-items:center; justify-content:center;
-    color:#fff; font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:14px;
-    box-shadow:0 4px 12px rgba(11,85,102,0.25);
+    width:34px;height:34px;border-radius:9px;
+    background:linear-gradient(160deg,var(--teal) 0%,var(--ink) 100%);
+    display:grid;place-items:center;color:#fff;
+    font-size:13px;font-weight:700;
   }
-  .brand-text{
-    font-family:'Space Grotesk',sans-serif;
-    font-weight:700; font-size:16px; letter-spacing:0.02em; color:var(--ink);
-    line-height:1.1;
+  .brand small{display:block;font-size:11px;font-weight:400;color:var(--ink-soft);line-height:1.2}
+  .nav-links{display:flex;gap:4px;margin-left:auto}
+  .nav-links button,.nav-links a{
+    padding:7px 12px;border-radius:8px;font-size:14px;color:var(--ink-soft);
+    transition:background .15s,color .15s;
   }
-  .brand-text span{
-    display:block; font-family:'Inter',sans-serif; font-weight:500; font-size:10.5px;
-    letter-spacing:0.06em; color:var(--ink-soft); text-transform:uppercase; margin-top:2px;
-  }
-  nav.links{ display:flex; align-items:center; gap:6px; }
-  nav.links > a{
-    font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:13.5px;
-    color:var(--ink-soft); padding:9px 15px; border-radius:999px; transition:all .18s ease;
-  }
-  nav.links > a:hover, nav.links > a.active{ color:var(--primary); background:var(--accent-pale); }
-
-  .nav-item{ position:relative; }
-  .nav-link{
-    display:flex; align-items:center; gap:6px;
-    font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:13.5px;
-    color:var(--ink-soft); padding:9px 15px; border-radius:999px; border:none; background:none; cursor:pointer;
-    transition:all .18s ease;
-  }
-  .nav-link:hover{ color:var(--primary); background:var(--accent-pale); }
-  .nav-caret{ width:7px; height:7px; border-right:2px solid currentColor; border-bottom:2px solid currentColor; transform:rotate(45deg); margin-top:-3px; transition:transform .18s ease; }
-  .nav-item.open .nav-caret{ transform:rotate(-135deg); margin-top:2px; }
-  .nav-dropdown{
-    position:absolute; top:calc(100% + 8px); left:0; min-width:210px;
-    background:var(--surface); border:1px solid var(--line); border-radius:14px;
-    box-shadow:0 20px 40px -16px rgba(14,42,50,0.25);
-    padding:8px; display:flex; flex-direction:column; gap:2px;
-    opacity:0; visibility:hidden; transform:translateY(-6px);
-    transition:all .18s ease;
-  }
-  .nav-item.open .nav-dropdown{ opacity:1; visibility:visible; transform:translateY(0); }
-  .nav-dropdown a{
-    font-family:'Inter',sans-serif; font-weight:500; font-size:13.5px; color:var(--ink);
-    padding:9px 12px; border-radius:9px; transition:all .15s ease;
-  }
-  .nav-dropdown a:hover{ background:var(--primary-pale); color:var(--primary); }
-  .nav-dropdown-tag{
-    font-family:'Space Grotesk',sans-serif; font-size:10px; font-weight:700; letter-spacing:.08em;
-    text-transform:uppercase; color:var(--accent); padding:6px 12px 2px;
-  }
-
+  .nav-links button:hover,.nav-links button.active,.nav-links a:hover,.nav-links a.active{background:#E7F1F4;color:var(--ink)}
   .btn-login{
-    font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:13.5px;
-    padding:9px 18px; border-radius:999px; background:var(--ink); color:#fff !important;
-    margin-left:6px;
-    transition:all .18s ease;
+    padding:8px 18px;border-radius:9px;font-size:14px;font-weight:600;
+    background:var(--ink);color:#fff;transition:background .15s;
   }
-  .btn-login:hover{ background:var(--primary); }
+  .btn-login:hover{background:var(--teal-deep)}
+  @media(max-width:720px){.nav-links{display:none}}
 
-  .nav-toggle{
-    display:none; flex-direction:column; gap:5px; background:none; border:none; cursor:pointer; padding:8px;
+  /* ---------- admin chip ---------- */
+  .nav-right{display:flex;align-items:center;gap:10px}
+  .admin-wrap{position:relative}
+  .admin-chip{
+    display:flex;align-items:center;gap:8px;
+    padding:6px 12px 6px 6px;border-radius:99px;
+    border:1px solid var(--mist);background:var(--card);
+    font-size:13px;font-weight:600;color:var(--ink);
+    transition:border-color .15s,background .15s;
   }
-  .nav-toggle span{ width:22px; height:2px; background:var(--ink); border-radius:2px; }
-
-  @media (max-width:760px){
-    nav.links{
-      position:fixed; top:64px; left:0; right:0;
-      background:#fff;
-      flex-direction:column; align-items:stretch;
-      padding:12px 6vw; gap:2px;
-      border-bottom:1px solid var(--line);
-      box-shadow:0 12px 24px -12px rgba(14,42,50,0.15);
-      display:none;
-      max-height:calc(100vh - 64px); overflow-y:auto;
-    }
-    nav.links.open{ display:flex; }
-    nav.links > a{ padding:11px 13px; }
-    .nav-item{ width:100%; }
-    .nav-item > button.nav-link{ width:100%; justify-content:space-between; padding:11px 13px; }
-    .nav-dropdown{
-      position:static; transform:none; min-width:0; width:100%;
-      box-shadow:none; border:none; padding:0 0 0 10px;
-      opacity:1; visibility:visible; pointer-events:auto;
-      max-height:0; overflow:hidden;
-    }
-    .nav-item.open .nav-dropdown{ max-height:400px; transform:none; padding:4px 0 6px 10px; }
-    .nav-dropdown-tag{ margin-left:12px; }
-    .btn-login{ margin:8px 0 0; text-align:center; }
-    .nav-toggle{ display:flex; }
+  .admin-chip:hover{border-color:#BFD8E0;background:#F6FAFB}
+  .admin-avatar{
+    width:26px;height:26px;border-radius:50%;flex-shrink:0;
+    display:grid;place-items:center;color:#fff;font-size:11.5px;font-weight:700;
+    background:linear-gradient(150deg,var(--teal) 0%,var(--ink) 100%);
   }
+  .admin-chip .role{font-size:10.5px;font-weight:500;color:var(--ink-soft);display:block;margin-top:-1px}
+  .admin-chip .name-block{text-align:left;line-height:1.15}
+  .admin-caret{
+    width:7px;height:7px;border-right:1.6px solid var(--ink-soft);border-bottom:1.6px solid var(--ink-soft);
+    transform:rotate(45deg);transition:transform .15s;margin-left:2px
+  }
+  .admin-wrap.open .admin-caret{transform:rotate(-135deg);margin-top:3px}
+  .admin-menu{
+    position:absolute;top:calc(100% + 8px);right:0;min-width:150px;
+    background:var(--card);border:1px solid var(--mist);border-radius:12px;
+    padding:6px;box-shadow:0 18px 36px rgba(10,37,55,.14);
+    opacity:0;visibility:hidden;transform:translateY(-4px);
+    transition:opacity .15s,transform .15s,visibility .15s;
+    z-index:60;
+  }
+  .admin-wrap.open .admin-menu{opacity:1;visibility:visible;transform:translateY(0)}
+  .admin-menu a,.admin-menu .logout{
+    width:100%;display:flex;align-items:center;gap:8px;
+    padding:9px 11px;border-radius:9px;font-size:13.5px;font-weight:600;
+    transition:background .12s;text-align:left;
+  }
+  .admin-menu a{color:var(--ink)}
+  .admin-menu a:hover{background:var(--paper)}
+  .admin-menu .logout{color:var(--amber)}
+  .admin-menu .logout:hover{background:#FBF1DE}
+  @media(max-width:820px){.admin-chip .name-block{display:none}}
 
   .back-link{
     max-width:1080px; margin:20px auto 0; padding:0 6vw;
@@ -287,59 +268,43 @@
 </head>
 <body>
 
-<header class="nav">
-  <div class="brand">
-    <div class="brand-mark">PT</div>
-    <div class="brand-text">PTMB<span>Portal Internal</span></div>
+<header>
+  <div class="nav">
+    <a class="brand" href="index.html">
+      <span class="brand-mark">PT</span>
+      <span>PTMB<small>Portal Internal · SAB</small></span>
+    </a>
+    <nav class="nav-links">
+      <a href="index.html">Beranda</a>
+      <a href="index.html?page=tools">Tools</a>
+      <a href="index.html?page=data">Data &amp; Visualisasi</a>
+      <a href="index.html?page=dev">Development</a>
+      <a href="index.html?page=about" class="active">About SAB</a>
+    </nav>
+    <div class="nav-right">
+      <a class="btn-login" id="navLoginBtn" href="login.html" style="display:none">Login</a>
+      <div class="admin-wrap" id="adminWrap" style="display:none">
+        <button class="admin-chip" onclick="toggleAdminMenu()">
+          <span class="admin-avatar" id="adminAvatar">P</span>
+          <span class="name-block">
+            <span id="adminName">Potter</span>
+            <span class="role" id="adminRole">Admin · SAB</span>
+          </span>
+          <span class="admin-caret"></span>
+        </button>
+        <div class="admin-menu">
+          <a href="admin-dashboard.html">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>
+            Dashboard Admin
+          </a>
+          <button class="logout" onclick="doLogout()">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>
+            Logout
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
-
-  <nav class="links" id="navLinks">
-    <a href="index.html">Home</a>
-
-    <div class="nav-item" data-nav>
-      <button class="nav-link" type="button">Tools <span class="nav-caret"></span></button>
-      <div class="nav-dropdown">
-        <a href="apps/spd.html">Surat Penyediaan Dana (SPD)</a>
-        <a href="apps/berita-acara.html">Berita Acara (BA)</a>
-        <a href="apps/surat-permohonan.html">Surat Permohonan (Eksternal)</a>
-        <a href="apps/ceklist-apd.html">Ceklist Inspeksi APD</a>
-      </div>
-    </div>
-
-    <div class="nav-item" data-nav>
-      <button class="nav-link" type="button">Data Visualization <span class="nav-caret"></span></button>
-      <div class="nav-dropdown">
-        <a href="apps/library/index.html">Data Waduk dan Sumur</a>
-        <a href="apps/riwayat-air-baku/index.html">Data Pengambilan Air Baku</a>
-      </div>
-    </div>
-
-    <div class="nav-item" data-nav>
-      <button class="nav-link" type="button">Development <span class="nav-caret"></span></button>
-      <div class="nav-dropdown">
-        <span class="nav-dropdown-tag">Admin Only</span>
-        <a href="apps/input-data-historis.html">Input Data Waduk Dan Sumur</a>
-        <a href="apps/input-air-baku.html">Input Pengambilan Air Baku</a>
-        <a href="apps/formulir-sab.html">Input Pekerjaan SAB</a>
-      </div>
-    </div>
-
-    <div class="nav-item" data-nav>
-      <button class="nav-link" type="button">About SAB <span class="nav-caret"></span></button>
-      <div class="nav-dropdown">
-        <a href="profil-potter.html">Profil Potter</a>
-        <a href="profil-darto.html" class="active">Profil Darto</a>
-        <a href="profil-jarot.html">Profil Jarot</a>
-        <a href="about.html">Gallery</a>
-      </div>
-    </div>
-
-    <a href="login.html" class="btn-login" id="authNavBtn">Login</a>
-  </nav>
-
-  <button class="nav-toggle" id="navToggle" aria-label="Buka menu">
-    <span></span><span></span><span></span>
-  </button>
 </header>
 
 <div class="back-link">
@@ -433,49 +398,40 @@
 </footer>
 
 <script>
-  const toggle = document.getElementById('navToggle');
-  const links = document.getElementById('navLinks');
-  toggle.addEventListener('click', () => links.classList.toggle('open'));
+function toggleAdminMenu(){
+  document.getElementById('adminWrap').classList.toggle('open');
+}
+document.addEventListener('click', function(e){
+  var wrap = document.getElementById('adminWrap');
+  if(wrap && !wrap.contains(e.target)) wrap.classList.remove('open');
+});
 
-  document.querySelectorAll('[data-nav]').forEach((item) => {
-    const btn = item.querySelector('.nav-link');
-    btn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const wasOpen = item.classList.contains('open');
-      document.querySelectorAll('[data-nav]').forEach(i => i.classList.remove('open'));
-      if(!wasOpen) item.classList.add('open');
-    });
-  });
+function doLogout(){
+  if(!confirm('Keluar dari akun admin?')) return;
+  localStorage.removeItem('token');
+  localStorage.removeItem('role');
+  localStorage.removeItem('username');
+  localStorage.removeItem('displayName');
+  localStorage.removeItem('avatarInitial');
+  window.location.href = 'login.html';
+}
 
-  document.addEventListener('click', () => {
-    document.querySelectorAll('[data-nav]').forEach(i => i.classList.remove('open'));
-  });
-</script>
-
-<script>
-  (function(){
-    const authBtn = document.getElementById('authNavBtn');
-    if(!authBtn) return;
-    const token = localStorage.getItem('token');
-    const role = localStorage.getItem('role');
-    const username = localStorage.getItem('username');
-
-    if(token && role === 'admin'){
-      authBtn.textContent = 'Logout';
-      authBtn.href = '#';
-      authBtn.title = 'Login sebagai ' + (username || 'Admin');
-      authBtn.style.background = '#B5502E';
-      authBtn.addEventListener('click', function(e){
-        e.preventDefault();
-        if(confirm('Keluar dari akun admin?')){
-          localStorage.removeItem('token');
-          localStorage.removeItem('role');
-          localStorage.removeItem('username');
-          window.location.href = 'login.html';
-        }
-      });
-    }
-  })();
+(function(){
+  var token = localStorage.getItem('token');
+  var role = localStorage.getItem('role');
+  var loginBtn = document.getElementById('navLoginBtn');
+  var adminWrap = document.getElementById('adminWrap');
+  if(!loginBtn || !adminWrap) return;
+  if(token && role === 'admin'){
+    var displayName = localStorage.getItem('displayName') || localStorage.getItem('username') || 'Admin';
+    var avatarInitial = localStorage.getItem('avatarInitial') || displayName.charAt(0).toUpperCase();
+    document.getElementById('adminName').textContent = displayName;
+    document.getElementById('adminAvatar').textContent = avatarInitial;
+    adminWrap.style.display = '';
+  } else {
+    loginBtn.style.display = '';
+  }
+})();
 </script>
 
 
