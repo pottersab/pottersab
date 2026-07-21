@@ -132,6 +132,26 @@ header.map-top {
 .filter-btn.active { color:#fff; background:var(--primary); border-color:var(--primary); }
 .filter-btn.active.f-sumur { background:var(--sumur); border-color:var(--sumur); }
 .filter-btn.active.f-waduk { background:var(--waduk); border-color:var(--waduk); }
+.filter-btn .chevron { flex:none; transition:transform .15s ease; }
+.filter-btn.dropdown-open .chevron { transform:rotate(180deg); }
+
+.category-dropdown {
+  display:none; background:var(--surface); border-bottom:1px solid var(--line);
+  padding:12px 5vw; max-height:240px; overflow-y:auto;
+}
+.category-dropdown.open { display:block; }
+.dropdown-list { display:flex; flex-wrap:wrap; align-items:center; gap:6px; }
+.dropdown-group-label {
+  flex-basis:100%; font-family:'Space Grotesk',sans-serif; font-size:11px; font-weight:600;
+  color:var(--ink-soft); text-transform:uppercase; letter-spacing:.04em; margin:6px 0 0;
+}
+.dropdown-group-label:first-child { margin-top:0; }
+.dropdown-item {
+  font-family:'Space Grotesk',sans-serif; font-size:12.5px; font-weight:600; color:var(--ink);
+  background:var(--bg); border:none; border-radius:8px; padding:6px 12px; cursor:pointer;
+  transition:background .15s, color .15s;
+}
+.dropdown-item:hover { background:var(--primary-pale); color:var(--primary); }
 
 .legend-bar {
   display:flex; gap:20px; padding:10px 5vw; background:var(--surface);
@@ -291,17 +311,24 @@ function doLogout(){
     <button class="filter-btn f-ipa" data-filter="ipa">
       <img class="btn-icon" src="assets/icon-ipa.png" alt="">
       IPA
+      <svg class="chevron" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" width="12" height="12"><path d="M5 7.5l5 5 5-5"/></svg>
     </button>
     <button class="filter-btn f-sumur" data-filter="sumur">
       <img class="btn-icon" src="assets/icon-sumur.png" alt="">
       Sumur
+      <svg class="chevron" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" width="12" height="12"><path d="M5 7.5l5 5 5-5"/></svg>
     </button>
     <button class="filter-btn f-waduk" data-filter="waduk">
       <img class="btn-icon" src="assets/icon-waduk.png" alt="">
       Waduk
+      <svg class="chevron" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" width="12" height="12"><path d="M5 7.5l5 5 5-5"/></svg>
     </button>
   </div>
 </header>
+
+<div class="category-dropdown" id="categoryDropdown">
+  <div class="dropdown-list" id="dropdownList"></div>
+</div>
 
 <div class="legend-bar">
   <span class="legend-item"><span class="dot" style="background:#0B5566"></span>IPA</span>

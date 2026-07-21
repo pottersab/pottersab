@@ -113,6 +113,10 @@ async function init() {
   const sumurLayer = L.layerGroup();
   const wadukLayer = L.layerGroup();
 
+  // id -> marker Leaflet, dipakai dropdown navigasi cepat (klik nama lokasi
+  // -> peta loncat + buka popup titik itu).
+  const markersById = {};
+
   (lokasi.ipa || []).forEach(loc => {
     const d = (latest.ipa && latest.ipa[loc.id]) || { ap: null, atd: null, apApplicable: true, atdApplicable: true, tanggal: null };
     const html = `
@@ -122,7 +126,7 @@ async function init() {
         ${statBox('ATD', d.atd, 'm3', { applicable: d.atdApplicable, formatter: fmtIDInt })}
       </div>
     `;
-    L.marker([loc.lat, loc.lng], { icon: ipaIcon })
+    markersById[loc.id] = L.marker([loc.lat, loc.lng], { icon: ipaIcon })
       .bindPopup(html)
       .bindTooltip(loc.nama, { permanent: true, direction: 'right', offset: [8, -8], className: 'marker-label' })
       .addTo(ipaLayer);
@@ -142,7 +146,7 @@ async function init() {
         ${statBox('Debit', d.debit, 'm3/jam')}
       </div>
     `;
-    L.marker([loc.lat, loc.lng], { icon })
+    markersById[loc.id] = L.marker([loc.lat, loc.lng], { icon })
       .bindPopup(html)
       .bindTooltip(loc.nama, { direction: 'right', offset: [8, -8], className: 'marker-label' })
       .addTo(sumurLayer);
@@ -160,7 +164,7 @@ async function init() {
         ${statBox('pH', d.ph, '')}
       </div>
     `;
-    L.marker([loc.lat, loc.lng], { icon: wadukIcon })
+    markersById[loc.id] = L.marker([loc.lat, loc.lng], { icon: wadukIcon })
       .bindPopup(html)
       .bindTooltip(loc.nama, { permanent: true, direction: 'right', offset: [8, -8], className: 'marker-label' })
       .addTo(wadukLayer);
@@ -169,6 +173,75 @@ async function init() {
   ipaLayer.addTo(map);
   sumurLayer.addTo(map);
   wadukLayer.addTo(map);
+
+  // ---- Dropdown navigasi cepat (klik nama lokasi -> peta loncat + buka
+  // popup titik itu). Sumur dikelompokkan per instalasi IPA. --------------
+  const ipaLabelByInstallation = {};
+  (lokasi.ipa || []).forEach(ipa => { ipaLabelByInstallation[ipa.id] = ipa.nama.replace(/^IPA\s+/i, ''); });
+
+  const sumurByInstallation = {};
+  (lokasi.sumur || []).forEach(s => {
+    if (!sumurByInstallation[s.installation]) sumurByInstallation[s.installation] = [];
+    sumurByInstallation[s.installation].push(s);
+  });
+
+  function selectLocation(id) {
+    const marker = markersById[id];
+    if (!marker) return;
+    map.flyTo(marker.getLatLng(), 16);
+    marker.openPopup();
+    closeDropdown();
+  }
+
+  function dropdownItemHtml(id, label) {
+    return `<button type="button" class="dropdown-item" data-id="${id}">${label}</button>`;
+  }
+
+  function renderDropdownContent(category) {
+    if (category === 'ipa') {
+      return (lokasi.ipa || []).map(loc => dropdownItemHtml(loc.id, loc.nama.replace(/^IPA\s+/i, ''))).join('');
+    }
+    if (category === 'waduk') {
+      return (lokasi.waduk || []).map(loc => dropdownItemHtml(loc.id, loc.nama)).join('');
+    }
+    if (category === 'sumur') {
+      return Object.keys(sumurByInstallation).map(installation => {
+        const groupLabel = ipaLabelByInstallation[installation] || installation;
+        const items = sumurByInstallation[installation]
+          .map(s => dropdownItemHtml(s.id, s.nama.split('—')[0].trim()))
+          .join('');
+        return `<span class="dropdown-group-label">${groupLabel}</span>${items}`;
+      }).join('');
+    }
+    return '';
+  }
+
+  const dropdownEl = document.getElementById('categoryDropdown');
+  const dropdownListEl = document.getElementById('dropdownList');
+  let openCategory = null;
+
+  function closeDropdown() {
+    openCategory = null;
+    dropdownEl.classList.remove('open');
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('dropdown-open'));
+  }
+
+  function openDropdownFor(category, btn) {
+    openCategory = category;
+    dropdownListEl.innerHTML = renderDropdownContent(category);
+    dropdownEl.classList.add('open');
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('dropdown-open'));
+    btn.classList.add('dropdown-open');
+  }
+
+  dropdownListEl.addEventListener('click', e => {
+    const item = e.target.closest('.dropdown-item');
+    if (item) selectLocation(item.dataset.id);
+  });
+
+  document.addEventListener('click', e => {
+    if (!dropdownEl.contains(e.target) && !e.target.closest('.filter-btn')) closeDropdown();
+  });
 
   document.querySelectorAll('.filter-btn').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -180,6 +253,10 @@ async function init() {
       else if (f === 'ipa') { ipaLayer.addTo(map); }
       else if (f === 'sumur') { sumurLayer.addTo(map); }
       else if (f === 'waduk') { wadukLayer.addTo(map); }
+
+      if (f === 'all') { closeDropdown(); }
+      else if (openCategory === f) { closeDropdown(); }
+      else { openDropdownFor(f, btn); }
     });
   });
 }
