@@ -260,7 +260,7 @@ tbody tr:hover{background:var(--primary-pale);}
     max-width:1100px; margin:0 auto; padding:14px 20px;
     display:flex; align-items:center; gap:20px;
   }
-  .ptmb-brand{ display:flex; align-items:center; gap:10px; font-weight:600; }
+  .ptmb-brand{ display:flex; align-items:center; gap:10px; font-weight:600; color:#0A2537; text-decoration:none; }
   .ptmb-brand-mark{
     width:34px; height:34px; border-radius:9px;
     background:linear-gradient(160deg,#0E8E96 0%,#0A2537 100%);
@@ -270,13 +270,13 @@ tbody tr:hover{background:var(--primary-pale);}
   .ptmb-brand small{ display:block; font-size:11px; font-weight:400; color:#3C5A6E; line-height:1.2; }
   .ptmb-nav-links{ display:flex; gap:4px; margin-left:auto; }
   .ptmb-nav-links a{
-    padding:7px 12px; border-radius:8px; font-size:14px; color:#3C5A6E;
+    padding:7px 12px; border-radius:8px; font-size:14px; color:#3C5A6E; text-decoration:none;
     transition:background .15s, color .15s;
   }
   .ptmb-nav-links a:hover, .ptmb-nav-links a.active{ background:#E7F1F4; color:#0A2537; }
   .ptmb-btn-login{
     padding:8px 18px; border-radius:9px; font-size:14px; font-weight:600;
-    background:#0A2537; color:#fff; transition:background .15s;
+    background:#0A2537; color:#fff; text-decoration:none; transition:background .15s;
   }
   .ptmb-btn-login:hover{ background:#0A6A72; }
   .ptmb-nav-toggle{ display:none;flex-direction:column;align-items:center;justify-content:center;gap:5px;background:none;border:none;cursor:pointer;padding:8px;position:relative; }
@@ -339,7 +339,7 @@ tbody tr:hover{background:var(--primary-pale);}
     padding:9px 11px; border-radius:9px; font-size:13.5px; font-weight:600;
     transition:background .12s; text-align:left;
   }
-  .admin-menu a{ color:#0A2537; }
+  .admin-menu a{ color:#0A2537; text-decoration:none; }
   .admin-menu a:hover{ background:#F4F8FA; }
   .admin-menu .logout{ color:#B97709; }
   .admin-menu .logout:hover{ background:#FBF1DE; }
