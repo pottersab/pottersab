@@ -64,18 +64,27 @@ header{
   background:var(--ink);color:#fff;transition:background .15s;
 }
 .btn-login:hover{background:var(--teal-deep)}
-.nav-toggle{display:none;flex-direction:column;gap:5px;background:none;border:none;cursor:pointer;padding:8px}
-.nav-toggle span{width:22px;height:2px;background:var(--ink);border-radius:2px}
+.nav-toggle{display:none;flex-direction:column;align-items:center;justify-content:center;gap:5px;background:none;border:none;cursor:pointer;padding:8px;position:relative}
+.nav-toggle span{width:22px;height:2px;background:var(--ink);border-radius:2px;transition:transform .2s ease,opacity .2s ease}
+.nav-toggle.open span:nth-child(1){transform:translateY(7px) rotate(45deg)}
+.nav-toggle.open span:nth-child(2){opacity:0}
+.nav-toggle.open span:nth-child(3){transform:translateY(-7px) rotate(-45deg)}
+.nav-ic{display:none;flex-shrink:0}
+.nav-backdrop{display:none;position:fixed;inset:0;background:rgba(10,37,55,.35);z-index:40}
 @media(max-width:720px){
   .nav-toggle{display:flex;margin-left:auto}
+  .nav-backdrop.open{display:block}
   .nav-links{
-    display:none;flex-direction:column;gap:2px;
+    display:flex;flex-direction:column;gap:2px;
     position:absolute;top:100%;left:0;right:0;
     background:var(--card);border-bottom:1px solid var(--mist);
     padding:10px 20px 14px;box-shadow:0 12px 24px -12px rgba(14,42,50,.15);
+    opacity:0;visibility:hidden;transform:translateY(-6px);
+    transition:opacity .18s ease,transform .18s ease,visibility .18s;
   }
-  .nav-links.open{display:flex}
-  .nav-links button,.nav-links a{padding:12px 14px;border-radius:10px}
+  .nav-links.open{opacity:1;visibility:visible;transform:translateY(0)}
+  .nav-links button,.nav-links a{display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:10px}
+  .nav-ic{display:inline-flex}
 }
 
 /* ---------- hero ---------- */
@@ -249,6 +258,7 @@ header{
   font-size:24px;font-weight:700;color:#fff;
   background:linear-gradient(150deg,var(--teal) 0%,var(--ink) 100%);
   margin-bottom:4px;
+  object-fit:cover;object-position:center top;
 }
 .profile-card h3{font-size:17px;font-weight:600}
 .role{font-size:12px;font-weight:600;color:var(--teal-deep);text-transform:uppercase;letter-spacing:.05em}
@@ -329,11 +339,11 @@ footer{border-top:1px solid var(--mist);padding:26px 20px;text-align:center;font
       <span>PTMB<small>Portal Internal · SAB</small></span>
     </a>
     <nav class="nav-links" id="navLinks">
-      <button class="active" data-nav="home" onclick="go('home')">Beranda</button>
-      <button data-nav="tools" onclick="go('tools')">Tools</button>
-      <button data-nav="data" onclick="go('data')">Data &amp; Visualisasi</button>
-      <button data-nav="dev" onclick="go('dev')">Development</button>
-      <button data-nav="about" onclick="go('about')">About SAB</button>
+      <button class="active" data-nav="home" onclick="go('home')"><svg class="nav-ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0A6A72" stroke-width="2" stroke-linecap="round"><path d="M3 12l9-9 9 9"/><path d="M5 10v10h14V10"/></svg>Beranda</button>
+      <button data-nav="tools" onclick="go('tools')"><svg class="nav-ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0E8E96" stroke-width="2" stroke-linecap="round"><path d="M14 3v5h5"/><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/></svg>Tools</button>
+      <button data-nav="data" onclick="go('data')"><svg class="nav-ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#E8791D" stroke-width="2" stroke-linecap="round"><path d="M3 20h18"/><path d="M5 20V12M10 20V7M15 20v-9M20 20V4"/></svg>Data &amp; Visualisasi</button>
+      <button data-nav="dev" onclick="go('dev')"><svg class="nav-ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0F8E7E" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M4.9 4.9l2.8 2.8M16.3 16.3l2.8 2.8M2 12h4M18 12h4M4.9 19.1l2.8-2.8M16.3 7.7l2.8-2.8"/></svg>Development</button>
+      <button data-nav="about" onclick="go('about')"><svg class="nav-ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#7C5CD6" stroke-width="2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"/><circle cx="10" cy="7" r="4"/></svg>About SAB</button>
     </nav>
     <div class="nav-right">
       <a class="btn-login" id="navLoginBtn" href="login.html" style="display:none">Login</a>
@@ -363,6 +373,7 @@ footer{border-top:1px solid var(--mist);padding:26px 20px;text-align:center;font
     </button>
   </div>
 </header>
+<div class="nav-backdrop" id="navBackdrop"></div>
 
 <!-- ============ BERANDA ============ -->
 <div class="page show" id="page-home">
@@ -621,21 +632,21 @@ footer{border-top:1px solid var(--mist);padding:26px 20px;text-align:center;font
 
     <div class="profile-grid">
       <div class="profile-card">
-        <span class="avatar">P</span>
+        <img class="avatar" src="assets/images/potter.jpg" alt="Foto Potter">
         <h3>Potter</h3>
         <span class="role">Staff Sumber Air Baku</span>
         <p>Staff Sumber Air Baku di Perumda Tirta Manuntung Balikpapan. Membangun portal ini sendiri untuk memudahkan pekerjaan administrasi dan dokumentasi data lapangan sehari-hari.</p>
         <a class="open" href="profil-potter.html">Lihat profil</a>
       </div>
       <div class="profile-card">
-        <span class="avatar">D</span>
+        <img class="avatar" src="assets/images/darto.jpg" alt="Foto Darto">
         <h3>Darto</h3>
         <span class="role">Supervisor Sumber Air Baku</span>
         <p>Supervisor Sumber Air Baku di Perumda Tirta Manuntung Balikpapan. Berpengalaman lebih dari tiga dekade, mulai dari lapangan konstruksi hingga memimpin Sub Divisi Sumber Air Baku.</p>
         <a class="open" href="profil-darto.html">Lihat profil</a>
       </div>
       <div class="profile-card">
-        <span class="avatar">J</span>
+        <img class="avatar" src="assets/images/jarot.jpg" alt="Foto Jarot">
         <h3>Jarot</h3>
         <span class="role">Staff Sumber Air Baku</span>
         <p>Staff Sumber Air Baku di Perumda Tirta Manuntung Balikpapan. Sebelumnya berpengalaman di bidang laboratorium dan quality control proyek konstruksi bendungan.</p>
@@ -666,17 +677,30 @@ function go(id){
   document.getElementById('page-'+id).classList.add('show');
   document.querySelectorAll('[data-nav]').forEach(b=>b.classList.toggle('active',b.dataset.nav===id));
   window.scrollTo({top:0,behavior:'smooth'});
+  closeMobileNav();
+}
+
+function closeMobileNav(){
+  var toggle = document.getElementById('navToggle');
   var navLinksEl = document.getElementById('navLinks');
+  var backdrop = document.getElementById('navBackdrop');
+  if(toggle) toggle.classList.remove('open');
   if(navLinksEl) navLinksEl.classList.remove('open');
+  if(backdrop) backdrop.classList.remove('open');
 }
 
 (function(){
   var toggle = document.getElementById('navToggle');
   var navLinksEl = document.getElementById('navLinks');
+  var backdrop = document.getElementById('navBackdrop');
   if(!toggle || !navLinksEl) return;
   toggle.addEventListener('click', function(){
-    navLinksEl.classList.toggle('open');
+    var willOpen = !navLinksEl.classList.contains('open');
+    toggle.classList.toggle('open', willOpen);
+    navLinksEl.classList.toggle('open', willOpen);
+    if(backdrop) backdrop.classList.toggle('open', willOpen);
   });
+  if(backdrop) backdrop.addEventListener('click', closeMobileNav);
 })();
 
 function toggleAdminMenu(){
