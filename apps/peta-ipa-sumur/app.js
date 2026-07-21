@@ -14,11 +14,16 @@ function statusFromDebit(debit) {
   return (debit === null || debit === undefined || debit === 0) ? 'non-aktif' : 'aktif';
 }
 
+// Format angka gaya Indonesia: koma buat desimal, titik buat ribuan,
+// maksimal 2 angka di belakang koma (mis. 363131.67 -> "363.131,67").
+function fmtID(v) {
+  return Number(v).toLocaleString('id-ID', { maximumFractionDigits: 2 });
+}
 function fmtM3(v) {
-  return v === null || v === undefined ? 'Data belum tersedia' : Number(v).toLocaleString('id-ID') + ' m3';
+  return v === null || v === undefined ? 'Data belum tersedia' : fmtID(v) + ' m3';
 }
 function fmtNum(v, satuan) {
-  return v === null || v === undefined ? 'Data belum tersedia' : v + ' ' + satuan;
+  return v === null || v === undefined ? 'Data belum tersedia' : fmtID(v) + (satuan ? ' ' + satuan : '');
 }
 
 function makeImgIcon(src, ringClass, extraClass, size) {
@@ -96,7 +101,7 @@ async function init() {
   (lokasi.waduk || []).forEach(loc => {
     const d = latest.waduk && latest.waduk[loc.id] ? latest.waduk[loc.id] : { level: null, curahHujan: null, ntu: null, ph: null };
     const rows = [`<div class="popup-row">Level waduk: ${fmtNum(d.level, 'm')}</div>`];
-    if (d.curahHujan !== null && d.curahHujan !== undefined) rows.push(`<div class="popup-row">Curah hujan: ${d.curahHujan} mm</div>`);
+    if (d.curahHujan !== null && d.curahHujan !== undefined) rows.push(`<div class="popup-row">Curah hujan: ${fmtID(d.curahHujan)} mm</div>`);
     rows.push(`<div class="popup-row">NTU: ${fmtNum(d.ntu, '')}</div>`);
     rows.push(`<div class="popup-row">pH: ${fmtNum(d.ph, '')}</div>`);
     L.marker([loc.lat, loc.lng], { icon: wadukIcon })
