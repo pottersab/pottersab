@@ -11,11 +11,17 @@ module.exports = async (req, res) => {
 
   await ensureVizTables();
 
-  const [levelResult, airBakuResult, sumurResult] = await Promise.all([
+  const [levelResult, teritipResult, airBakuResult, sumurResult] = await Promise.all([
     pool.query(`
       SELECT to_char(tanggal, 'YYYY-MM-DD') as tanggal, level_waduk_manggar_m
       FROM manggar_level_curahhujan
       WHERE level_waduk_manggar_m IS NOT NULL
+      ORDER BY tanggal DESC LIMIT 1
+    `),
+    pool.query(`
+      SELECT to_char(tanggal, 'YYYY-MM-DD') as tanggal, level_waduk_teritip_m
+      FROM teritip_level
+      WHERE level_waduk_teritip_m IS NOT NULL
       ORDER BY tanggal DESC LIMIT 1
     `),
     pool.query(`
@@ -41,12 +47,16 @@ module.exports = async (req, res) => {
   ]);
 
   const levelRow = levelResult.rows[0];
+  const teritipRow = teritipResult.rows[0];
   const airBakuRow = airBakuResult.rows[0];
   const sumurRow = sumurResult.rows[0];
 
   return res.status(200).json({
     level: levelRow
       ? { value: Number(levelRow.level_waduk_manggar_m), date: levelRow.tanggal }
+      : null,
+    teritip: teritipRow
+      ? { value: Number(teritipRow.level_waduk_teritip_m), date: teritipRow.tanggal }
       : null,
     airBaku: airBakuRow
       ? { value: Number(airBakuRow.ap_total) + Number(airBakuRow.atd_total), periodStart: airBakuRow.bulan }
