@@ -41,8 +41,20 @@ function statusFromDebit(debit) {
 function fmtID(v) {
   return Number(v).toLocaleString('id-ID', { maximumFractionDigits: 2 });
 }
-function statBox(label, v, satuan) {
-  const value = (v === null || v === undefined) ? 'Belum ada' : fmtID(v) + (satuan ? ' ' + satuan : '');
+// Khusus AP/ATD: bilangan bulat saja, tanpa koma/angka desimal (mis.
+// 363131.67 -> "363.131").
+function fmtIDInt(v) {
+  return Math.round(Number(v)).toLocaleString('id-ID');
+}
+// opts.applicable === false -> field ini memang TIDAK ADA buat instalasi ini
+// (beda dari null biasa yang berarti BELUM ADA/belum diisi bulan ini).
+function statBox(label, v, satuan, opts) {
+  opts = opts || {};
+  const formatter = opts.formatter || fmtID;
+  let value;
+  if (opts.applicable === false) value = 'Tidak ada';
+  else if (v === null || v === undefined) value = 'Belum ada';
+  else value = formatter(v) + (satuan ? ' ' + satuan : '');
   return `<div class="stat-box"><span class="stat-label">${label}</span><span class="stat-value">${value}</span></div>`;
 }
 
@@ -102,12 +114,12 @@ async function init() {
   const wadukLayer = L.layerGroup();
 
   (lokasi.ipa || []).forEach(loc => {
-    const d = (latest.ipa && latest.ipa[loc.id]) || { ap: null, atd: null, tanggal: null };
+    const d = (latest.ipa && latest.ipa[loc.id]) || { ap: null, atd: null, apApplicable: true, atdApplicable: true, tanggal: null };
     const html = `
       ${popupHeader('a-ipa', 'assets/icon-ipa.png', loc.nama, fmtBulanTahun(d.tanggal))}
       <div class="stat-grid cols-2">
-        ${statBox('AP', d.ap, 'm3')}
-        ${statBox('ATD', d.atd, 'm3')}
+        ${statBox('AP', d.ap, 'm3', { applicable: d.apApplicable, formatter: fmtIDInt })}
+        ${statBox('ATD', d.atd, 'm3', { applicable: d.atdApplicable, formatter: fmtIDInt })}
       </div>
     `;
     L.marker([loc.lat, loc.lng], { icon: ipaIcon })

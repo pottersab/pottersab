@@ -94,6 +94,12 @@ async function handleMapLatest(req, res) {
     ipa[id] = {
       ap: ap.values[id] ?? null,
       atd: atd.values[id] ?? null,
+      // AP_COLUMNS/ATD_COLUMNS mewakili instalasi yang MEMANG punya sumber
+      // itu (mis. Gunung Sari tidak punya kolom AP sama sekali di skema --
+      // bukan cuma belum diisi). Dipakai frontend buat bedakan "tidak ada"
+      // vs "belum ada".
+      apApplicable: AP_COLUMNS.includes(id),
+      atdApplicable: ATD_COLUMNS.includes(id),
       tanggal: latestDate(ap.dates[id], atd.dates[id])
     };
   });
