@@ -442,14 +442,16 @@ function doLogout(){
     </div>
 
     <div class="card" id="signersAdminCard" style="display:none;">
-      <h2>⚙ Data Nama 2 &rarr; Jabatan &amp; Tindak Lanjut (Admin)</h2>
-      <p class="hint" style="margin-top:0;">Kelola daftar nama yang dipakai untuk auto-isi Jabatan &amp; Tindak Lanjut saat Nama 2 diisi. Tersimpan di database, sama untuk semua admin.</p>
-      <div id="signersList"></div>
-      <div class="btn-row" style="margin-top:10px;">
-        <button type="button" class="pdf-btn" id="btnAddSigner">+ Tambah Data Baru</button>
-        <button type="button" class="download-btn" id="btnSaveSigners">Simpan Semua Perubahan</button>
-      </div>
-      <div class="status" id="signersSaveMsg"></div>
+      <details>
+        <summary>⚙ Data Nama 2 &rarr; Jabatan &amp; Tindak Lanjut (Admin)</summary>
+        <p class="hint" style="margin-top:0;">Kelola daftar nama yang dipakai untuk auto-isi Jabatan &amp; Tindak Lanjut saat Nama 2 diisi. Tersimpan di database, sama untuk semua admin.</p>
+        <div id="signersList"></div>
+        <div class="btn-row" style="margin-top:10px;">
+          <button type="button" class="pdf-btn" id="btnAddSigner">+ Tambah Data Baru</button>
+          <button type="button" class="download-btn" id="btnSaveSigners">Simpan Semua Perubahan</button>
+        </div>
+        <div class="status" id="signersSaveMsg"></div>
+      </details>
     </div>
 
     <div class="card">
