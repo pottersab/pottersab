@@ -1388,7 +1388,10 @@ document.getElementById('downloadBtn').addEventListener('click', ()=>{
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
     setTimeout(()=>URL.revokeObjectURL(url),4000);
     persistAllPersons();
-    saveHistoryEntry('Berita Acara', fname, { state: state, photos: photos });
+    // Nama dokumen di Riwayat Surat pakai nomor urut + subjudul (bukan nama
+    // file unduhan) supaya lebih gampang dikenali di daftar riwayat -- kalau
+    // subjudul kosong, tetap pakai nama file sebagai fallback.
+    saveHistoryEntry('Berita Acara', state.subjudul ? `${state.nomorUrut}_${state.subjudul}` : fname, { state: state, photos: photos });
     setStatus('Berhasil diunduh: '+fname, false);
   }catch(err){
     console.error(err);
@@ -1407,7 +1410,7 @@ document.getElementById('pdfBtn').addEventListener('click', ()=>{
   );
   if(!ok) return;
   persistAllPersons();
-  saveHistoryEntry('Berita Acara', `Berita_Acara_${state.nomorUrut}_${state.tanggalSurat}.pdf`, { state: state, photos: photos });
+  saveHistoryEntry('Berita Acara', state.subjudul ? `${state.nomorUrut}_${state.subjudul}` : `Berita_Acara_${state.nomorUrut}_${state.tanggalSurat}.pdf`, { state: state, photos: photos });
   const prevTitle=document.title;
   document.title=' ';
   window.print();
