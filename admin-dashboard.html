@@ -325,6 +325,72 @@
     color: var(--muted);
   }
 
+  /* ===== Klasifikasi chips ===== */
+  .chip-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+  .chip {
+    border: 1px solid var(--line); background: var(--card); border-radius: 999px;
+    padding: 7px 14px; font-size: 12px; font-weight: 600; color: var(--muted);
+    cursor: pointer; display: flex; align-items: center; gap: 7px;
+    transition: all .15s ease; font-family: inherit;
+  }
+  .chip .n { background: var(--paper); border-radius: 999px; padding: 1px 7px; font-size: 11px; color: var(--navy-dark); }
+  .chip.active { background: var(--navy); color: #fff; border-color: var(--navy); }
+  .chip.active .n { background: rgba(255,255,255,.25); color: #fff; }
+
+  /* ===== Pagination ===== */
+  .pagination-row { display: flex; align-items: center; justify-content: space-between; margin-top: 16px; flex-wrap: wrap; gap: 10px; }
+  .page-info { font-size: 12.5px; color: var(--muted); }
+  .page-btns { display: flex; gap: 6px; flex-wrap: wrap; }
+  .page-btn {
+    min-width: 34px; padding: 7px 10px; border: 1px solid var(--line); background: var(--card);
+    border-radius: 4px; font-size: 12.5px; font-weight: 600; color: var(--navy-dark);
+    cursor: pointer; font-family: inherit;
+  }
+  .page-btn:hover { border-color: var(--navy); }
+  .page-btn.active { background: var(--navy); color: #fff; border-color: var(--navy); }
+  .page-btn:disabled { opacity: .4; cursor: not-allowed; }
+  .page-btn.dots { border: none; background: none; cursor: default; color: var(--muted); }
+
+  /* ===== Aksi tambahan (Cetak Ulang / Edit) ===== */
+  .actions-cell { display: flex; gap: 6px; flex-wrap: wrap; }
+  .mini-btn { padding: 5px 10px; border: none; border-radius: 3px; font-size: 11px; font-weight: 600; cursor: pointer; white-space: nowrap; font-family: inherit; }
+  .mini-btn.print { background: #dbeafe; color: #1d4ed8; }
+  .mini-btn.print:hover { background: #c3ddfd; }
+  .mini-btn.edit { background: #fef3c7; color: #92400e; }
+  .mini-btn.edit:hover { background: #fce6a4; }
+
+  /* ===== Modal umum (Cetak Ulang & Edit) ===== */
+  .modal-bg { position: fixed; inset: 0; background: rgba(21,40,64,.55); display: none; align-items: center; justify-content: center; z-index: 100; padding: 20px; }
+  .modal-bg.show { display: flex; }
+  .modal { background: #fff; border-radius: var(--radius); max-width: 640px; width: 100%; max-height: 88vh; overflow: auto; }
+  .modal-head { display: flex; justify-content: space-between; align-items: center; padding: 16px 22px; border-bottom: 1px solid var(--line); position: sticky; top: 0; background: #fff; }
+  .modal-head h3 { margin: 0; font-size: 15.5px; color: var(--navy-dark); }
+  .modal-close { background: none; border: none; font-size: 20px; cursor: pointer; color: var(--muted); }
+  .modal-actions { padding: 14px 22px; border-top: 1px solid var(--line); display: flex; justify-content: flex-end; gap: 10px; flex-wrap: wrap; }
+
+  #printArea { padding: 26px 30px; font-family: 'Times New Roman', serif; font-size: 13.5px; line-height: 1.6; color: #111; }
+  #printArea .kop { text-align: center; border-bottom: 2px solid #111; padding-bottom: 10px; margin-bottom: 16px; }
+  #printArea .kop .induk { font-size: 11px; letter-spacing: .05em; }
+  #printArea .kop h2 { margin: 2px 0; font-size: 16px; }
+  #printArea table.isi { width: 100%; border-collapse: collapse; margin-top: 10px; }
+  #printArea table.isi td { border: 1px solid #999; padding: 6px 8px; font-size: 12.5px; vertical-align: top; }
+
+  .edit-body { padding: 20px 22px; }
+  .field { margin-bottom: 14px; }
+  .field label { display: block; font-size: 12px; font-weight: 700; color: var(--navy-dark); margin-bottom: 5px; }
+  .field input, .field textarea {
+    width: 100%; padding: 9px 11px; border: 1px solid var(--line); border-radius: 4px;
+    font-size: 13px; font-family: inherit; color: var(--ink); box-sizing: border-box;
+  }
+  .field textarea { min-height: 70px; resize: vertical; }
+  .field-note { font-size: 11.5px; color: var(--muted); }
+
+  @media print {
+    body * { visibility: hidden; }
+    #printArea, #printArea * { visibility: visible; }
+    #printArea { position: absolute; top: 0; left: 0; width: 100%; padding: 0; }
+  }
+
   /* ===== Loading & Messages ===== */
   .loading {
     text-align: center;
@@ -621,6 +687,8 @@ function doLogout(){
   </div>
 
   <div class="tab-panel active" id="tabPanel-history">
+    <div class="chip-row" id="chipRow"></div>
+
     <div class="stats">
       <div class="stat-card">
         <div class="stat-label">Total Surat</div>
@@ -645,6 +713,8 @@ function doLogout(){
           <option value="Berita Acara">Berita Acara</option>
           <option value="Formulir SAB">Formulir SAB</option>
           <option value="Surat Permohonan">Surat Permohonan</option>
+          <option value="Laporan P2K3">Laporan P2K3</option>
+          <option value="Ceklist APD">Ceklist APD</option>
         </select>
       </div>
       <div class="control-group">
@@ -671,9 +741,7 @@ function doLogout(){
       </div>
     </div>
 
-    <div class="load-more-row">
-      <button class="action-btn btn-secondary" id="loadMoreHistoryBtn" style="display:none;">Muat Lebih Banyak</button>
-    </div>
+    <div class="pagination-row" id="paginationRow"></div>
   </div>
 
   <div class="tab-panel" id="tabPanel-access">
@@ -703,6 +771,48 @@ function doLogout(){
   <strong>Perumda Tirta Manuntung Kota Balikpapan</strong> — Sub Divisi Sumber Air Baku
 </footer>
 
+<!-- ===== Modal: Cetak Ulang ===== -->
+<div class="modal-bg" id="printModalBg">
+  <div class="modal">
+    <div class="modal-head">
+      <h3>Pratinjau &amp; Cetak Ulang</h3>
+      <button type="button" class="modal-close" data-close="print">✕</button>
+    </div>
+    <div id="printArea"></div>
+    <div class="modal-actions">
+      <button type="button" class="action-btn btn-secondary" data-close="print">Tutup</button>
+      <button type="button" class="action-btn btn-secondary" id="redownloadBtn" style="display:none;">⬇ Unduh Ulang</button>
+      <button type="button" class="action-btn btn-primary" id="printNowBtn">🖨 Cetak / Simpan PDF</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Modal: Edit Surat ===== -->
+<div class="modal-bg" id="editModalBg">
+  <div class="modal">
+    <div class="modal-head">
+      <h3 id="editModalTitle">Edit Surat</h3>
+      <button type="button" class="modal-close" data-close="edit">✕</button>
+    </div>
+    <div class="edit-body" id="editBody"></div>
+    <div class="modal-actions">
+      <button type="button" class="action-btn btn-secondary" data-close="edit">Batal</button>
+      <button type="button" class="action-btn btn-primary" id="saveEditBtn">Simpan Perubahan</button>
+    </div>
+  </div>
+</div>
+
+<!-- Builder tiap jenis surat -- dipakai fitur "Unduh Ulang (format asli)" di
+     Riwayat Surat. Sama persis dengan yang dipakai halaman surat aslinya
+     (apps/builders/*.js), supaya file yang dibangun ulang dari sini identik
+     strukturnya dengan file yang pertama kali diunduh admin. -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+<script src="apps/builders/spd-builder.js"></script>
+<script src="apps/builders/berita-acara-builder.js"></script>
+<script src="apps/builders/surat-permohonan-builder.js"></script>
+<script src="apps/builders/laporan-p2k3-builder.js"></script>
+<script src="apps/builders/ceklist-apd-builder.js"></script>
+
 <script>
   const API_URL = '';
   const PAGE_SIZE = 50;
@@ -720,7 +830,9 @@ function doLogout(){
   // dimuat, apakah masih ada lagi) supaya tidak saling memengaruhi. Tab
   // yang belum pernah dibuka tidak fetch apa pun -- baru fetch pertama
   // kali diaktifkan (lihat `loaded`).
-  const historyState = { offset: 0, rows: [], hasMore: true, loaded: false, filters: {} };
+  const HISTORY_PAGE_SIZE = 10;
+  const DOC_TYPES = ['SPD', 'Berita Acara', 'Formulir SAB', 'Surat Permohonan', 'Laporan P2K3', 'Ceklist APD'];
+  const historyState = { page: 1, rows: [], total: 0, byType: {}, loaded: false, filters: {}, activeChip: '' };
   const accessState = { offset: 0, rows: [], hasMore: true, loaded: false };
 
   // Pilihan checkbox multi-select, disimpan sebagai id (string) supaya
@@ -744,7 +856,7 @@ function doLogout(){
     document.getElementById('tabPanel-history').classList.toggle('active', tab === 'history');
     document.getElementById('tabPanel-access').classList.toggle('active', tab === 'access');
 
-    if (tab === 'history' && !historyState.loaded) loadHistory(true, {});
+    if (tab === 'history' && !historyState.loaded) loadHistory(1, {});
     if (tab === 'access' && !accessState.loaded) loadAccessRequests(true);
   }
 
@@ -763,7 +875,7 @@ function doLogout(){
     document.getElementById('filterType').value = '';
     document.getElementById('filterStart').value = '';
     document.getElementById('filterEnd').value = '';
-    loadHistory(true, {});
+    loadHistory(1, {});
   });
   document.getElementById('filterBtn').addEventListener('click', () => {
     const type = document.getElementById('filterType').value;
@@ -773,33 +885,31 @@ function doLogout(){
       showMessage('Pilih rentang tanggal', 'error');
       return;
     }
-    loadHistory(true, { type, startDate, endDate });
+    loadHistory(1, { type, startDate, endDate });
   });
   document.getElementById('exportBtn').addEventListener('click', exportCSV);
-  document.getElementById('loadMoreHistoryBtn').addEventListener('click', () => loadHistory(false));
   document.getElementById('refreshRequestsBtn').addEventListener('click', () => loadAccessRequests(true));
   document.getElementById('loadMoreAccessBtn').addEventListener('click', () => loadAccessRequests(false));
   document.getElementById('bulkDeleteHistoryBtn').addEventListener('click', bulkDeleteHistory);
   document.getElementById('bulkDeleteAccessBtn').addEventListener('click', bulkDeleteAccess);
 
   // ===== Riwayat Surat (history) =====
-  // reset=true mulai dari batch pertama lagi (dipakai saat ganti filter /
-  // refresh / pertama kali tab dibuka); reset=false lanjutkan batch
-  // berikutnya (dipakai tombol "Muat Lebih Banyak"), tetap pakai filter
-  // yang sama dengan batch sebelumnya (historyState.filters).
-  async function loadHistory(reset, filters) {
-    if (reset) {
-      historyState.offset = 0;
-      historyState.rows = [];
-      historyState.hasMore = true;
+  // Pagination bernomor, 10 per halaman. `page` undefined berarti tetap di
+  // halaman historyState.page saat ini (dipakai tombol Prev/Next/nomor
+  // halaman); `filters` undefined berarti tetap pakai filter yang sama
+  // dengan pemanggilan sebelumnya (dipakai navigasi halaman).
+  async function loadHistory(page, filters) {
+    if (filters !== undefined) {
       historyState.filters = filters || {};
-      selectedHistoryIds.clear();
-      updateBulkBar('history');
+      historyState.activeChip = historyState.filters.type || '';
     }
+    historyState.page = Math.max(1, page || historyState.page || 1);
+    selectedHistoryIds.clear();
 
     try {
       const f = historyState.filters;
-      let url = `${API_URL}/api/history?limit=${PAGE_SIZE}&offset=${historyState.offset}`;
+      const offset = (historyState.page - 1) * HISTORY_PAGE_SIZE;
+      let url = `${API_URL}/api/history?limit=${HISTORY_PAGE_SIZE}&offset=${offset}`;
       if (f.type) url += `&type=${encodeURIComponent(f.type)}`;
       if (f.startDate) url += `&startDate=${encodeURIComponent(f.startDate)}`;
       if (f.endDate) url += `&endDate=${encodeURIComponent(f.endDate)}`;
@@ -808,21 +918,89 @@ function doLogout(){
       if (!response.ok) throw new Error('Failed to load history');
 
       const data = await response.json();
-      const batch = data.data || [];
+      const stats = data.stats || { total: 0, admin: 0, guest: 0, byType: {} };
 
-      historyState.rows = historyState.rows.concat(batch);
-      historyState.offset += batch.length;
-      historyState.hasMore = !!data.hasMore;
+      // Kalau halaman yang diminta ternyata sudah tidak ada lagi (mis. entri
+      // terakhir di halaman terakhir baru saja dihapus), mundur satu halaman
+      // dan muat ulang -- supaya tabel tidak pernah tampil kosong padahal
+      // masih ada data di halaman sebelumnya.
+      const totalPages = Math.max(1, Math.ceil(stats.total / HISTORY_PAGE_SIZE));
+      if (historyState.page > totalPages) {
+        return loadHistory(totalPages, undefined);
+      }
+
+      historyState.rows = data.data || [];
+      historyState.total = stats.total;
+      historyState.byType = stats.byType || {};
       historyState.loaded = true;
 
+      renderChips();
       renderTable(historyState.rows);
-      updateStats(data.stats || { total: 0, admin: 0, guest: 0 });
+      updateStats(stats);
       updateBulkBar('history');
-      document.getElementById('loadMoreHistoryBtn').style.display = historyState.hasMore ? 'inline-block' : 'none';
+      renderPagination();
     } catch (err) {
       showMessage('Gagal memuat data history', 'error');
       console.error(err);
     }
+  }
+
+  function renderChips() {
+    const counts = historyState.byType || {};
+    const total = Object.values(counts).reduce((a, b) => a + b, 0);
+    let html = `<button type="button" class="chip ${!historyState.activeChip ? 'active' : ''}" data-chip="">Semua Jenis <span class="n">${total}</span></button>`;
+    DOC_TYPES.forEach(t => {
+      html += `<button type="button" class="chip ${historyState.activeChip === t ? 'active' : ''}" data-chip="${escapeAttr(t)}">${escapeHtml(t)} <span class="n">${counts[t] || 0}</span></button>`;
+    });
+    const chipRow = document.getElementById('chipRow');
+    chipRow.innerHTML = html;
+    chipRow.querySelectorAll('[data-chip]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const t = btn.getAttribute('data-chip');
+        document.getElementById('filterType').value = t;
+        const f = Object.assign({}, historyState.filters, { type: t || undefined });
+        if (!t) delete f.type;
+        loadHistory(1, f);
+      });
+    });
+  }
+
+  function renderPagination() {
+    const el = document.getElementById('paginationRow');
+    const total = historyState.total;
+    if (total === 0) { el.innerHTML = ''; return; }
+
+    const totalPages = Math.max(1, Math.ceil(total / HISTORY_PAGE_SIZE));
+    const page = historyState.page;
+    const start = (page - 1) * HISTORY_PAGE_SIZE + 1;
+    const end = Math.min(page * HISTORY_PAGE_SIZE, total);
+
+    const addBtn = p => `<button type="button" class="page-btn ${p === page ? 'active' : ''}" data-page="${p}">${p}</button>`;
+    const addDots = () => `<span class="page-btn dots">…</span>`;
+    let pageBtns = '';
+    if (totalPages <= 7) {
+      for (let p = 1; p <= totalPages; p++) pageBtns += addBtn(p);
+    } else {
+      pageBtns += addBtn(1);
+      if (page > 3) pageBtns += addDots();
+      for (let p = Math.max(2, page - 1); p <= Math.min(totalPages - 1, page + 1); p++) pageBtns += addBtn(p);
+      if (page < totalPages - 2) pageBtns += addDots();
+      pageBtns += addBtn(totalPages);
+    }
+
+    el.innerHTML = `
+      <div class="page-info">Menampilkan <strong>${start}–${end}</strong> dari <strong>${total}</strong> riwayat &middot; 10 per halaman</div>
+      <div class="page-btns">
+        <button type="button" class="page-btn" id="prevPageBtn" ${page === 1 ? 'disabled' : ''}>‹ Sebelumnya</button>
+        ${pageBtns}
+        <button type="button" class="page-btn" id="nextPageBtn" ${page === totalPages ? 'disabled' : ''}>Selanjutnya ›</button>
+      </div>
+    `;
+    document.getElementById('prevPageBtn').addEventListener('click', () => { if (historyState.page > 1) loadHistory(historyState.page - 1); });
+    document.getElementById('nextPageBtn').addEventListener('click', () => { if (historyState.page < totalPages) loadHistory(historyState.page + 1); });
+    el.querySelectorAll('[data-page]').forEach(btn => {
+      btn.addEventListener('click', () => loadHistory(Number(btn.getAttribute('data-page'))));
+    });
   }
 
   function updateStats(stats) {
@@ -848,7 +1026,7 @@ function doLogout(){
             <th>Nama Dokumen</th>
             <th>Pembuat</th>
             <th>Tanggal</th>
-            <th>Aksi</th>
+            <th style="min-width:200px;">Aksi</th>
           </tr>
         </thead>
         <tbody>
@@ -874,7 +1052,11 @@ function doLogout(){
             <div style="font-size: 11px; color: var(--muted);">${formattedDate}</div>
           </td>
           <td>
-            <button class="delete-btn" onclick="deleteEntry(${item.id})">Hapus</button>
+            <div class="actions-cell">
+              <button type="button" class="mini-btn print" onclick="openPrintModal(${item.id})">🖨 Cetak Ulang</button>
+              <button type="button" class="mini-btn edit" onclick="openEditModal(${item.id})">✎ Edit</button>
+              <button class="delete-btn" onclick="deleteEntry(${item.id})">Hapus</button>
+            </div>
           </td>
         </tr>
       `;
@@ -910,7 +1092,7 @@ function doLogout(){
 
       if (response.ok) {
         showMessage('Entry berhasil dihapus', 'success');
-        loadHistory(true, historyState.filters);
+        loadHistory(historyState.page);
       } else {
         showMessage('Gagal menghapus entry', 'error');
       }
@@ -932,7 +1114,7 @@ function doLogout(){
 
       if (response.ok) {
         showMessage(`${ids.length} entri berhasil dihapus`, 'success');
-        loadHistory(true, historyState.filters);
+        loadHistory(historyState.page);
       } else {
         showMessage('Gagal menghapus entri terpilih', 'error');
       }
@@ -1162,6 +1344,237 @@ function doLogout(){
     div.textContent = text;
     return div.innerHTML;
   }
+
+  function escapeAttr(text) {
+    return String(text == null ? '' : text)
+      .replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  // ===== Cetak Ulang & Unduh Ulang (format asli) =====
+  // Judul kop dipakai di pratinjau; builder per jenis dipakai untuk "Unduh
+  // Ulang (format asli)" -- sama persis dengan builder yang dipakai halaman
+  // surat aslinya (apps/builders/*.js, di-load lewat <script src> di atas),
+  // supaya file yang dibangun ulang identik strukturnya dengan yang pertama
+  // kali diunduh. Berita Acara & Surat Permohonan menyimpan detailsnya
+  // sebagai { state, photos } (lihat saveHistoryEntry di halaman surat
+  // masing-masing), jenis lain menyimpan objek data langsung.
+  const DOC_TITLE = {
+    'SPD': 'SURAT PENYEDIAAN DANA (SPD)',
+    'Berita Acara': 'BERITA ACARA',
+    'Formulir SAB': 'FORMULIR SAB',
+    'Surat Permohonan': 'SURAT PERMOHONAN',
+    'Laporan P2K3': 'LAPORAN P2K3',
+    'Ceklist APD': 'CEKLIST INSPEKSI APD'
+  };
+  const REGEN = {
+    'SPD': {
+      generate: (d) => window.SpdBuilder.generateBytes(d),
+      filename: (d) => window.SpdBuilder.filename(d),
+      mime: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    },
+    'Berita Acara': {
+      generate: (d) => window.BeritaAcaraBuilder.generateBytes(d.state, d.photos || []),
+      filename: (d) => window.BeritaAcaraBuilder.filename(d.state),
+      mime: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    },
+    'Surat Permohonan': {
+      generate: (d) => window.SuratPermohonanBuilder.generateBytes(d.state, d.photos || []),
+      filename: (d) => window.SuratPermohonanBuilder.filename(d.state),
+      mime: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    },
+    'Laporan P2K3': {
+      generate: (d) => window.LaporanP2k3Builder.generateBytes(d),
+      filename: (d) => window.LaporanP2k3Builder.filename(d),
+      mime: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    },
+    'Ceklist APD': {
+      generate: (d) => window.CeklistApdBuilder.generateBytes(d),
+      filename: (d) => window.CeklistApdBuilder.filename(d),
+      mime: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    }
+  };
+
+  function findHistoryRow(id) {
+    return historyState.rows.find(x => String(x.id) === String(id));
+  }
+
+  // Pratinjau generik: menampilkan field-field isi surat sebagai tabel
+  // nomor/nilai. Bukan replika persis file asli (itu tugas "Unduh Ulang") --
+  // cukup untuk melihat isi & dipakai sebagai dasar cetak/PDF lewat print
+  // dialog browser, sama seperti tombol "Cetak" yang sudah ada di beberapa
+  // halaman surat asli.
+  function buildPreviewHtml(item) {
+    const raw = item.details || {};
+    const src = (raw && typeof raw === 'object' && raw.state && typeof raw.state === 'object') ? raw.state : raw;
+    let rows = '';
+    Object.keys(src || {}).forEach(k => {
+      const v = src[k];
+      if (v === null || v === undefined || v === '') return;
+      if (Array.isArray(v) || typeof v === 'object') return;
+      const val = escapeHtml(String(v)).replace(/\n/g, '<br>');
+      rows += `<tr><td style="width:170px;"><strong>${escapeHtml(k)}</strong></td><td>${val}</td></tr>`;
+    });
+    if (!rows) rows = '<tr><td colspan="2" style="color:#777;">(tidak ada data isi tersimpan)</td></tr>';
+    const title = DOC_TITLE[item.documentType] || item.documentType;
+    return `
+      <div class="kop">
+        <div class="induk">PERUMDA TIRTA MANUNTUNG KOTA BALIKPAPAN</div>
+        <h2>${escapeHtml(title)}</h2>
+        <div class="induk">Sub Divisi Sumber Air Baku</div>
+      </div>
+      <table class="isi">${rows}</table>
+      <p style="margin-top:24px;font-size:11.5px;color:#555;">Dicetak ulang dari riwayat pada ${new Date().toLocaleString('id-ID')}. Dokumen: ${escapeHtml(item.documentName)}.</p>
+    `;
+  }
+
+  let currentPrintId = null;
+  function openPrintModal(id) {
+    const item = findHistoryRow(id);
+    if (!item) return;
+    currentPrintId = id;
+    document.getElementById('printArea').innerHTML = buildPreviewHtml(item);
+    const redl = document.getElementById('redownloadBtn');
+    const regen = REGEN[item.documentType];
+    if (regen) {
+      redl.style.display = 'inline-block';
+      redl.textContent = '⬇ Unduh Ulang ' + (regen.mime.indexOf('wordprocessing') >= 0 ? 'Word (.docx)' : 'Excel (.xlsx)');
+    } else {
+      redl.style.display = 'none';
+    }
+    document.getElementById('printModalBg').classList.add('show');
+  }
+
+  document.getElementById('printNowBtn').addEventListener('click', () => window.print());
+
+  document.getElementById('redownloadBtn').addEventListener('click', async () => {
+    const item = findHistoryRow(currentPrintId);
+    if (!item) return;
+    const regen = REGEN[item.documentType];
+    if (!regen) return;
+    try {
+      const bytes = await regen.generate(item.details || {});
+      const blob = new Blob([bytes], { type: regen.mime });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = regen.filename(item.details || {}) || item.documentName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 4000);
+    } catch (err) {
+      console.error(err);
+      showMessage('Gagal membuat ulang file: ' + err.message, 'error');
+    }
+  });
+
+  // ===== Edit riwayat surat =====
+  // Form generik: satu input/textarea per field skalar dari details (atau
+  // details.state untuk Berita Acara/Surat Permohonan), field berupa
+  // array/objek (items, cells, photos, dst) digabung jadi satu textarea JSON
+  // supaya tetap bisa dikoreksi tanpa perlu form khusus per jenis surat --
+  // field-nya berbeda cukup banyak antar jenis surat.
+  let editingItem = null;
+  let editingContext = null;
+  function openEditModal(id) {
+    const item = findHistoryRow(id);
+    if (!item) return;
+    editingItem = item;
+    document.getElementById('editModalTitle').textContent = 'Edit — ' + item.documentName;
+
+    const raw = item.details || {};
+    const isNested = raw && typeof raw === 'object' && raw.state && typeof raw.state === 'object';
+    const src = isNested ? raw.state : raw;
+    editingContext = { isNested };
+
+    let html = `<div class="field"><label>Nama Dokumen</label><input type="text" id="editDocumentName" value="${escapeAttr(item.documentName)}"></div>`;
+    const scalarKeys = Object.keys(src || {}).filter(k => src[k] === null || typeof src[k] !== 'object');
+    scalarKeys.forEach(k => {
+      const v = src[k] == null ? '' : String(src[k]);
+      const long = v.length > 60 || /\n/.test(v);
+      html += `<div class="field"><label>${escapeHtml(k)}</label>${long
+        ? `<textarea data-field="${escapeAttr(k)}">${escapeHtml(v)}</textarea>`
+        : `<input type="text" data-field="${escapeAttr(k)}" value="${escapeAttr(v)}">`}</div>`;
+    });
+    const complexKeys = Object.keys(src || {}).filter(k => src[k] !== null && typeof src[k] === 'object');
+    if (complexKeys.length) {
+      const complexObj = {};
+      complexKeys.forEach(k => { complexObj[k] = src[k]; });
+      html += `<div class="field"><label>Data terstruktur (JSON: ${escapeHtml(complexKeys.join(', '))}) — edit hati-hati, harus tetap format JSON valid</label>` +
+        `<textarea id="editComplexJson" style="min-height:140px;font-family:monospace;font-size:12px;">${escapeHtml(JSON.stringify(complexObj, null, 2))}</textarea></div>`;
+    }
+    html += `<div class="field-note">Mengedit riwayat yang sudah terunduh tidak mengubah file PDF/Word/Excel yang sudah lebih dulu terkirim/tersimpan di tempat lain — hanya memperbarui catatan riwayat, supaya "Cetak Ulang" berikutnya pakai data yang sudah dikoreksi.</div>`;
+    document.getElementById('editBody').innerHTML = html;
+    document.getElementById('editModalBg').classList.add('show');
+  }
+
+  document.getElementById('saveEditBtn').addEventListener('click', async () => {
+    if (!editingItem || !editingContext) return;
+    const body = document.getElementById('editBody');
+    const documentName = body.querySelector('#editDocumentName').value.trim() || editingItem.documentName;
+
+    const updatedScalars = {};
+    body.querySelectorAll('[data-field]').forEach(el => {
+      updatedScalars[el.getAttribute('data-field')] = el.value;
+    });
+
+    let updatedComplex = {};
+    const jsonEl = document.getElementById('editComplexJson');
+    if (jsonEl) {
+      try {
+        updatedComplex = JSON.parse(jsonEl.value);
+      } catch (e) {
+        showMessage('Data terstruktur (JSON) tidak valid: ' + e.message, 'error');
+        return;
+      }
+    }
+
+    // Ceklist APD: apds (daftar item) dan cells (matriks status per orang x
+    // item) harus tetap sinkron -- kalau admin mengedit JSON dan cuma
+    // mengubah salah satunya, "Unduh Ulang" berikutnya bisa gagal/rusak.
+    // Tolak simpan kalau ketahuan tidak sinkron, daripada diam-diam
+    // menyimpan data yang korup.
+    if (Array.isArray(updatedComplex.apds) && Array.isArray(updatedComplex.cells)) {
+      const nApd = updatedComplex.apds.length;
+      const nPersons = Array.isArray(updatedComplex.persons) ? updatedComplex.persons.length : updatedComplex.cells.length;
+      const rowsMismatch = updatedComplex.cells.length !== nPersons;
+      const colsMismatch = updatedComplex.cells.some(row => !Array.isArray(row) || row.length !== nApd);
+      if (rowsMismatch || colsMismatch) {
+        showMessage('Data "apds"/"cells"/"persons" tidak sinkron (jumlah baris/kolom harus sama) -- perubahan tidak disimpan.', 'error');
+        return;
+      }
+    }
+
+    const newSrc = Object.assign({}, updatedScalars, updatedComplex);
+    const newDetails = editingContext.isNested
+      ? Object.assign({}, editingItem.details, { state: newSrc })
+      : newSrc;
+
+    try {
+      const response = await fetch(`${API_URL}/api/history?id=${editingItem.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ documentType: editingItem.documentType, documentName, details: newDetails })
+      });
+      if (!response.ok) throw new Error('Gagal menyimpan');
+      const data = await response.json();
+
+      const idx = historyState.rows.findIndex(x => x.id === editingItem.id);
+      if (idx >= 0) historyState.rows[idx] = data.entry;
+      renderTable(historyState.rows);
+      closeModal('edit');
+      showMessage('Perubahan surat disimpan', 'success');
+    } catch (err) {
+      showMessage('Gagal menyimpan perubahan surat', 'error');
+    }
+  });
+
+  function closeModal(which) {
+    document.getElementById(which === 'print' ? 'printModalBg' : 'editModalBg').classList.remove('show');
+  }
+  document.querySelectorAll('[data-close]').forEach(btn => {
+    btn.addEventListener('click', () => closeModal(btn.getAttribute('data-close')));
+  });
 </script>
 
 </body>
