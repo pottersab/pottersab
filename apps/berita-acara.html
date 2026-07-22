@@ -909,7 +909,12 @@ let photos = loadPhotos(); // {id, dataUrl, mime, w, h, orientation}
 /* =============== Person datalist & auto-fill jabatan =============== */
 function renderPersonList(){
   const dl=document.getElementById('personList');
-  dl.innerHTML = persons.map(p=>`<option value="${escapeAttr(p.nama)}">`).join('');
+  // Digabung dengan nama dari data baku "signers" (panel Admin Nama 2) --
+  // dideklarasikan `let signers = []` di bawah, tapi function declaration di
+  // sini di-hoist jadi aman dipanggil sebelum deklarasi itu tereksekusi.
+  const names = new Set(persons.map(p=>p.nama));
+  (typeof signers !== 'undefined' ? signers : []).forEach(s=>{ if(s.nama) names.add(s.nama); });
+  dl.innerHTML = Array.from(names).map(n=>`<option value="${escapeAttr(n)}">`).join('');
 }
 function findJabatanByNama(nama){
   const p = persons.find(p=>p.nama.trim().toLowerCase()===String(nama).trim().toLowerCase());
@@ -1044,6 +1049,7 @@ function renderSignersAdmin(){
   const card = document.getElementById('signersAdminCard');
   if(!card || !isAdminUser()) return;
   card.style.display = '';
+  renderPersonList(); // refresh datalist Nama 2 supaya ikut daftar nama baku terbaru
   const listEl = document.getElementById('signersList');
   listEl.innerHTML = signers.map((p,i)=>`
     <div class="signer-row" data-idx="${i}" data-original="${escapeAttr(p.nama)}">
