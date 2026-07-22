@@ -1,4 +1,4 @@
-const { pool, ensureVizTables } = require('../../lib/db');
+const { pool, ensureVizTables, ensureSignersTable } = require('../../lib/db');
 const { requireAdmin } = require('../../lib/auth');
 const { DATASETS } = require('../../lib/visualization/columns');
 const { fetchSumurWells } = require('../../lib/visualization/repo');
@@ -454,6 +454,45 @@ async function handleWells(req, res) {
   return res.status(405).json({ error: 'Method not allowed' });
 }
 
+// --- action=signers: CRUD Nama 2 -> Jabatan & Tindak Lanjut baku untuk
+// apps/berita-acara.html. nama dipakai sebagai primary key (case-sensitive
+// apa adanya) -- pencocokan case-insensitive/partial dilakukan di frontend,
+// bukan di query ini. -------------------------------------------------------
+async function handleSigners(req, res) {
+  await ensureSignersTable();
+
+  if (req.method === 'GET') {
+    const { rows } = await pool.query(
+      'SELECT nama, jabatan, tindak_lanjut FROM berita_acara_signers ORDER BY nama'
+    );
+    return res.status(200).json({
+      signers: rows.map(r => ({ nama: r.nama, jabatan: r.jabatan || '', tindakLanjut: r.tindak_lanjut || '' }))
+    });
+  }
+
+  if (req.method === 'POST') {
+    const { nama, jabatan, tindakLanjut } = req.body || {};
+    if (!nama || !String(nama).trim()) {
+      return res.status(400).json({ error: 'nama wajib diisi' });
+    }
+    await pool.query(
+      `INSERT INTO berita_acara_signers (nama, jabatan, tindak_lanjut, updated_at) VALUES ($1, $2, $3, now())
+       ON CONFLICT (nama) DO UPDATE SET jabatan = EXCLUDED.jabatan, tindak_lanjut = EXCLUDED.tindak_lanjut, updated_at = now()`,
+      [String(nama).trim(), jabatan || '', tindakLanjut || '']
+    );
+    return res.status(200).json({ success: true });
+  }
+
+  if (req.method === 'DELETE') {
+    const { nama } = req.query;
+    if (!nama) return res.status(400).json({ error: 'nama wajib diisi' });
+    await pool.query('DELETE FROM berita_acara_signers WHERE nama = $1', [nama]);
+    return res.status(200).json({ success: true });
+  }
+
+  return res.status(405).json({ error: 'Method not allowed' });
+}
+
 module.exports = async (req, res) => {
   await ensureVizTables();
 
@@ -471,6 +510,7 @@ module.exports = async (req, res) => {
   if (action === 'sumur') return handleSumur(req, res);
   if (action === 'sumur-history') return handleSumurHistory(req, res);
   if (action === 'wells') return handleWells(req, res);
+  if (action === 'signers') return handleSigners(req, res);
 
-  return res.status(400).json({ error: 'action wajib diisi (daily/daily-history/sumur/sumur-history/wells/map-latest)' });
+  return res.status(400).json({ error: 'action wajib diisi (daily/daily-history/sumur/sumur-history/wells/signers/map-latest)' });
 };

@@ -51,6 +51,19 @@
   .status{font-size:12.5px;text-align:center;margin-top:10px;color:var(--muted);min-height:16px;}
   .field-group{border:1px solid var(--line);border-radius:8px;padding:12px 14px 14px;margin-bottom:12px;background:#fdfcfa;}
   .field-group-title{font-size:12px;font-weight:700;color:var(--navy);margin-bottom:6px;}
+  .signer-status{display:none;font-size:12px;margin-top:8px;padding:6px 9px;border-radius:6px;line-height:1.4;}
+  .signer-status.auto{display:block;background:#e3f5ea;color:#1c7a4d;}
+  .signer-status.manual{display:block;background:#fff3e0;color:#a05a00;}
+  .signer-status.ambiguous{display:block;background:#fff3e0;color:#a05a00;}
+  .signer-status.none{display:block;background:#f3f3f3;color:var(--muted);}
+  .signer-status .chip{border:1px solid var(--accent);background:#fff;color:#a05a00;font-size:11.5px;padding:3px 9px;border-radius:99px;cursor:pointer;margin:4px 6px 0 0;display:inline-block;}
+  .signer-status .chip:hover{background:var(--accent-soft);}
+  .signer-row{border:1px solid var(--line);border-radius:8px;padding:12px 14px;margin-bottom:10px;background:#fdfcfa;position:relative;}
+  .signer-row label{margin-top:8px;}
+  .signer-row label:first-of-type{margin-top:0;}
+  .signer-row .rm{position:absolute;top:10px;right:10px;background:none;border:none;color:var(--danger);font-size:12px;cursor:pointer;font-weight:700;}
+  .signer-row .rm:hover{text-decoration:underline;}
+  .signer-row textarea{min-height:70px;font-size:13px;}
   .photo-upload{border:1.5px dashed var(--navy);border-radius:8px;padding:16px;text-align:center;cursor:pointer;color:var(--navy);font-size:13.5px;font-weight:600;}
   .photo-upload:hover{background:#eef2f6;}
   .photo-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:8px;margin-top:12px;}
@@ -422,9 +435,21 @@ function doLogout(){
             <input type="text" id="jabatan2" list="personList">
           </div>
         </div>
+        <div id="nama2SignerStatus" class="signer-status"></div>
       </div>
-      <div class="hint">Nama &amp; jabatan yang pernah diisi akan muncul otomatis (scroll-down) saat mengetik, dan tersimpan sebagai riwayat.</div>
+      <div class="hint">Nama &amp; jabatan yang pernah diisi akan muncul otomatis (scroll-down) saat mengetik, dan tersimpan sebagai riwayat. Untuk Nama 2, Jabatan &amp; Tindak Lanjut baku bisa terisi otomatis (lihat panel Admin di bawah).</div>
       <datalist id="personList"></datalist>
+    </div>
+
+    <div class="card" id="signersAdminCard" style="display:none;">
+      <h2>⚙ Data Nama 2 &rarr; Jabatan &amp; Tindak Lanjut (Admin)</h2>
+      <p class="hint" style="margin-top:0;">Kelola daftar nama yang dipakai untuk auto-isi Jabatan &amp; Tindak Lanjut saat Nama 2 diisi. Tersimpan di database, sama untuk semua admin.</p>
+      <div id="signersList"></div>
+      <div class="btn-row" style="margin-top:10px;">
+        <button type="button" class="pdf-btn" id="btnAddSigner">+ Tambah Data Baru</button>
+        <button type="button" class="download-btn" id="btnSaveSigners">Simpan Semua Perubahan</button>
+      </div>
+      <div class="status" id="signersSaveMsg"></div>
     </div>
 
     <div class="card">
@@ -898,7 +923,11 @@ function rememberPerson(nama, jabatan){
   renderPersonList();
 }
 
-const NAMA_JABATAN_PAIRS = [['nama1','jabatan1'],['nama2','jabatan2'],['diperiksaNama','diperiksaJabatan'],['mengetahuiNama','mengetahuiJabatan']];
+// nama2/jabatan2 SENGAJA tidak dimasukkan di sini -- Nama 2 pakai mekanisme
+// autofill tersendiri (lihat "Nama 2 -> Jabatan & Tindak Lanjut baku" di
+// bawah) yang juga mengisi Tindak Lanjut sekaligus, bukan cuma Jabatan dari
+// riwayat ketikan.
+const NAMA_JABATAN_PAIRS = [['nama1','jabatan1'],['diperiksaNama','diperiksaJabatan'],['mengetahuiNama','mengetahuiJabatan']];
 
 function bindNamaJabatanAutofill(){
   NAMA_JABATAN_PAIRS.forEach(([namaId,jabId])=>{
@@ -914,6 +943,183 @@ function bindNamaJabatanAutofill(){
     });
   });
 }
+
+/* =============== Nama 2 -> Jabatan & Tindak Lanjut baku (Admin, dari DB) ===
+   Khusus admin (sesuai lingkup awal fitur ini): data disimpan di Postgres
+   lewat api/visualization/admin-library.js?action=signers (endpoint itu
+   me-require admin untuk semua method), jadi non-admin tidak akan bisa GET
+   listnya -- makanya seluruh fitur ini (autofill maupun panel kelola) hanya
+   dijalankan kalau isAdminUser() true. ======================================= */
+let signers = [];
+let lastAutoJabatan2 = '';
+let lastAutoTindakLanjut = '';
+
+function authHeaders(){
+  const token = localStorage.getItem('token');
+  return token ? { 'Authorization': 'Bearer ' + token } : {};
+}
+function isAdminUser(){
+  return !!(localStorage.getItem('token') && localStorage.getItem('role') === 'admin');
+}
+function normalizeSignerName(s){ return String(s||'').trim().toLowerCase().replace(/\s+/g,' '); }
+
+function findSignerMatches(nama){
+  const q = normalizeSignerName(nama);
+  if(q.length < 3) return [];
+  const exact = signers.filter(p=>normalizeSignerName(p.nama)===q);
+  if(exact.length) return exact;
+  return signers.filter(p=>{
+    const n = normalizeSignerName(p.nama);
+    return n.includes(q) || q.includes(n);
+  });
+}
+
+function setSignerStatus(kind, html){
+  const el = document.getElementById('nama2SignerStatus');
+  if(!el) return;
+  el.className = 'signer-status' + (kind ? ' '+kind : '');
+  el.innerHTML = html || '';
+}
+
+function applySignerAutofill(force){
+  const nama2El = document.getElementById('nama2');
+  const jabatan2El = document.getElementById('jabatan2');
+  const tlEl = document.getElementById('tindakLanjut');
+  const raw = nama2El.value;
+  if(normalizeSignerName(raw)===''){ setSignerStatus('',''); return; }
+
+  const matches = findSignerMatches(raw);
+
+  if(matches.length === 1){
+    const match = matches[0];
+    const jabEmpty = jabatan2El.value.trim()==='';
+    const jabUntouched = jabatan2El.value === lastAutoJabatan2;
+    const tlEmpty = tlEl.value.trim()==='';
+    const tlUntouched = tlEl.value === lastAutoTindakLanjut;
+    const canFillJab = force || jabEmpty || jabUntouched;
+    const canFillTl = force || tlEmpty || tlUntouched;
+
+    if(canFillJab){ jabatan2El.value = match.jabatan||''; lastAutoJabatan2 = match.jabatan||''; state.jabatan2 = jabatan2El.value; }
+    if(canFillTl){ tlEl.value = match.tindakLanjut||''; lastAutoTindakLanjut = match.tindakLanjut||''; state.tindakLanjut = tlEl.value; }
+    if(canFillJab || canFillTl){ saveDraft(); renderPreview(); }
+
+    if(canFillJab && canFillTl){
+      setSignerStatus('auto', '✓ Jabatan &amp; Tindak Lanjut terisi otomatis untuk "'+escapeAttr(match.nama)+'"');
+    } else if(!canFillJab && !canFillTl){
+      setSignerStatus('manual', 'Nama "'+escapeAttr(match.nama)+'" dikenali, tapi Jabatan &amp; Tindak Lanjut sudah diubah manual. <button type="button" class="chip" onclick="applySignerAutofill(true)">Isi Ulang Otomatis</button>');
+    } else {
+      setSignerStatus('manual', 'Nama "'+escapeAttr(match.nama)+'" dikenali, sebagian field sudah diubah manual. <button type="button" class="chip" onclick="applySignerAutofill(true)">Isi Ulang Otomatis (Timpa Semua)</button>');
+    }
+  } else if(matches.length > 1){
+    const chips = matches.map(m=>`<button type="button" class="chip" data-signer-nama="${escapeAttr(m.nama)}">${escapeAttr(m.nama)}</button>`).join('');
+    setSignerStatus('ambiguous', '⚠ Ada '+matches.length+' nama mirip, pilih salah satu:<br>'+chips);
+    document.querySelectorAll('#nama2SignerStatus [data-signer-nama]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        nama2El.value = btn.dataset.signerNama;
+        state.nama2 = nama2El.value;
+        saveDraft(); renderPreview();
+        applySignerAutofill(false);
+      });
+    });
+  } else {
+    setSignerStatus('none', 'Nama tidak ada di data baku (Admin) — isi Jabatan/Tindak Lanjut manual, atau tambahkan lewat panel Admin di bawah.');
+  }
+}
+
+async function loadSigners(){
+  try{
+    const res = await fetch('/api/visualization/admin-library?action=signers', { headers: authHeaders() });
+    if(!res.ok) return;
+    const data = await res.json();
+    signers = Array.isArray(data.signers) ? data.signers : [];
+    renderSignersAdmin();
+  }catch(err){
+    console.error('Gagal memuat data signers:', err);
+  }
+}
+
+function renderSignersAdmin(){
+  const card = document.getElementById('signersAdminCard');
+  if(!card || !isAdminUser()) return;
+  card.style.display = '';
+  const listEl = document.getElementById('signersList');
+  listEl.innerHTML = signers.map((p,i)=>`
+    <div class="signer-row" data-idx="${i}" data-original="${escapeAttr(p.nama)}">
+      <button type="button" class="rm" data-idx="${i}">Hapus ✕</button>
+      <label>Nama</label>
+      <input type="text" class="signer-nama" value="${escapeAttr(p.nama)}">
+      <label>Jabatan</label>
+      <input type="text" class="signer-jabatan" value="${escapeAttr(p.jabatan||'')}">
+      <label>Tindak Lanjut</label>
+      <textarea class="signer-tl">${escapeAttr(p.tindakLanjut||'')}</textarea>
+    </div>
+  `).join('');
+  listEl.querySelectorAll('.rm').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const idx = Number(btn.dataset.idx);
+      const row = signers[idx];
+      if(!row) return;
+      if(!confirm('Hapus data "'+row.nama+'" dari database?')) return;
+      try{
+        const params = new URLSearchParams({ nama: row.nama });
+        const res = await fetch(`/api/visualization/admin-library?action=signers&${params.toString()}`, { method:'DELETE', headers: authHeaders() });
+        const data = await res.json();
+        if(!res.ok || !data.success) throw new Error(data.error || 'Gagal menghapus.');
+        signers.splice(idx,1);
+        renderSignersAdmin();
+        showSignersSaveMsg('Baris dihapus.', false);
+      }catch(err){
+        alert('Gagal menghapus: '+err.message);
+      }
+    });
+  });
+}
+
+function showSignersSaveMsg(msg, isError){
+  const el = document.getElementById('signersSaveMsg');
+  if(!el) return;
+  el.textContent = msg;
+  el.style.color = isError ? '#b3413a' : '#245c40';
+}
+
+document.getElementById('btnAddSigner').addEventListener('click', ()=>{
+  signers.push({ nama:'', jabatan:'', tindakLanjut:'' });
+  renderSignersAdmin();
+});
+
+document.getElementById('btnSaveSigners').addEventListener('click', async ()=>{
+  const rows = document.querySelectorAll('#signersList .signer-row');
+  const btn = document.getElementById('btnSaveSigners');
+  btn.disabled = true;
+  try{
+    for(const row of rows){
+      const nama = row.querySelector('.signer-nama').value.trim();
+      const jabatan = row.querySelector('.signer-jabatan').value.trim();
+      const tindakLanjut = row.querySelector('.signer-tl').value.trim();
+      const original = row.dataset.original || '';
+      if(!nama){ continue; }
+      const res = await fetch('/api/visualization/admin-library?action=signers', {
+        method: 'POST',
+        headers: Object.assign({ 'Content-Type':'application/json' }, authHeaders()),
+        body: JSON.stringify({ nama, jabatan, tindakLanjut })
+      });
+      const data = await res.json();
+      if(!res.ok || !data.success) throw new Error(data.error || 'Gagal menyimpan "'+nama+'".');
+      // Nama diubah (rename) -- hapus baris lama supaya tidak ada 2 data untuk 1 orang.
+      if(original && original.trim().toLowerCase() !== nama.toLowerCase()){
+        const params = new URLSearchParams({ nama: original });
+        await fetch(`/api/visualization/admin-library?action=signers&${params.toString()}`, { method:'DELETE', headers: authHeaders() });
+      }
+    }
+    await loadSigners();
+    showSignersSaveMsg('✓ Tersimpan ke database.', false);
+    applySignerAutofill(false);
+  }catch(err){
+    showSignersSaveMsg('Gagal: '+err.message, true);
+  }finally{
+    btn.disabled = false;
+  }
+});
 
 /* =============== Field binding =============== */
 const TEXT_FIELDS = ['judul','subjudul','nomorUrut','kodeTetap1','kodeTetap2','tanggalSurat',
@@ -1440,6 +1646,12 @@ wireAccessControls();
 restoreVizSession();
 updateAccessBanner();
 renderPreview();
+
+if(isAdminUser()){
+  document.getElementById('nama2').addEventListener('input', ()=>applySignerAutofill(false));
+  document.getElementById('nama2').addEventListener('change', ()=>applySignerAutofill(false));
+  loadSigners();
+}
 </script>
 </body>
 </html>
