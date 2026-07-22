@@ -1035,7 +1035,7 @@ function doLogout(){
     data.forEach(item => {
       const date = new Date(item.createdAt);
       const timeAgo = getTimeAgo(date);
-      const formattedDate = date.toLocaleString('id-ID');
+      const formattedDate = formatTanggalWaktuIndo(date);
       const checked = selectedHistoryIds.has(String(item.id)) ? 'checked' : '';
 
       html += `
@@ -1350,6 +1350,39 @@ function doLogout(){
       .replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   }
 
+  // "pesawatAngkat" -> "Pesawat Angkat" -- supaya label field di pratinjau &
+  // form edit tidak tampil sebagai satu kata camelCase yang menyambung.
+  function humanizeFieldLabel(key) {
+    return String(key)
+      .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+      .replace(/^./, c => c.toUpperCase());
+  }
+
+  const BULAN_ID = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+  // Terima Date object atau string "YYYY-MM-DD..." (details field bertipe
+  // tanggal disimpan begitu oleh halaman surat). Balikin null kalau bukan
+  // salah satu dari itu, supaya pemanggil tahu harus tampilkan apa adanya.
+  function formatTanggalIndo(value) {
+    let d;
+    if (value instanceof Date) {
+      d = value;
+    } else if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}/.test(value)) {
+      const [y, m, day] = value.slice(0, 10).split('-').map(Number);
+      d = new Date(y, m - 1, day);
+    } else {
+      return null;
+    }
+    if (isNaN(d.getTime())) return null;
+    return `${d.getDate()} ${BULAN_ID[d.getMonth()]} ${d.getFullYear()}`;
+  }
+
+  function formatTanggalWaktuIndo(date) {
+    const tgl = formatTanggalIndo(date);
+    const hh = String(date.getHours()).padStart(2, '0');
+    const mm = String(date.getMinutes()).padStart(2, '0');
+    return `${tgl}, ${hh}.${mm}`;
+  }
+
   // ===== Cetak Ulang & Unduh Ulang (format asli) =====
   // Judul kop dipakai di pratinjau; builder per jenis dipakai untuk "Unduh
   // Ulang (format asli)" -- sama persis dengan builder yang dipakai halaman
@@ -1421,8 +1454,9 @@ function doLogout(){
       const v = src[k];
       if (v === null || v === undefined || v === '') return;
       if (Array.isArray(v) || typeof v === 'object') return;
-      const val = escapeHtml(String(v)).replace(/\n/g, '<br>');
-      rows += `<tr><td style="width:170px;"><strong>${escapeHtml(k)}</strong></td><td>${val}</td></tr>`;
+      const displayVal = formatTanggalIndo(v) || String(v);
+      const val = escapeHtml(displayVal).replace(/\n/g, '<br>');
+      rows += `<tr><td style="width:170px;"><strong>${escapeHtml(humanizeFieldLabel(k))}</strong></td><td>${val}</td></tr>`;
     });
     if (!rows) rows = '<tr><td colspan="2" style="color:#777;">(tidak ada data isi tersimpan)</td></tr>';
     const title = DOC_TITLE[item.documentType] || item.documentType;
@@ -1438,7 +1472,7 @@ function doLogout(){
         <div class="induk">Sub Divisi Sumber Air Baku</div>
       </div>
       <table class="isi">${rows}</table>
-      <p style="margin-top:24px;font-size:11.5px;color:#555;">Dicetak ulang dari riwayat pada ${new Date().toLocaleString('id-ID')}. Dokumen: ${escapeHtml(item.documentName)}.</p>
+      <p style="margin-top:24px;font-size:11.5px;color:#555;">Dicetak ulang dari riwayat pada ${formatTanggalWaktuIndo(new Date())}. Dokumen: ${escapeHtml(item.documentName)}.</p>
       ${warning}
     `;
   }
@@ -1489,10 +1523,10 @@ function doLogout(){
 
   // ===== Edit riwayat surat =====
   // Form generik: satu input/textarea per field skalar dari details (atau
-  // details.state untuk Berita Acara/Surat Permohonan), field berupa
-  // array/objek (items, cells, photos, dst) digabung jadi satu textarea JSON
-  // supaya tetap bisa dikoreksi tanpa perlu form khusus per jenis surat --
-  // field-nya berbeda cukup banyak antar jenis surat.
+  // details.state untuk Berita Acara/Surat Permohonan). Field berupa
+  // array/objek (items, cells, photos, dst) TIDAK ditampilkan/diedit di sini
+  // -- dibawa apa adanya ke penyimpanan supaya tidak berisiko rusak/tidak
+  // sinkron (mis. daftar APD vs matriks ceklist-nya).
   let editingItem = null;
   let editingContext = null;
   function openEditModal(id) {
@@ -1504,24 +1538,17 @@ function doLogout(){
     const raw = item.details || {};
     const isNested = raw && typeof raw === 'object' && raw.state && typeof raw.state === 'object';
     const src = isNested ? raw.state : raw;
-    editingContext = { isNested };
+    editingContext = { isNested, src };
 
     let html = `<div class="field"><label>Nama Dokumen</label><input type="text" id="editDocumentName" value="${escapeAttr(item.documentName)}"></div>`;
     const scalarKeys = Object.keys(src || {}).filter(k => src[k] === null || typeof src[k] !== 'object');
     scalarKeys.forEach(k => {
       const v = src[k] == null ? '' : String(src[k]);
       const long = v.length > 60 || /\n/.test(v);
-      html += `<div class="field"><label>${escapeHtml(k)}</label>${long
+      html += `<div class="field"><label>${escapeHtml(humanizeFieldLabel(k))}</label>${long
         ? `<textarea data-field="${escapeAttr(k)}">${escapeHtml(v)}</textarea>`
         : `<input type="text" data-field="${escapeAttr(k)}" value="${escapeAttr(v)}">`}</div>`;
     });
-    const complexKeys = Object.keys(src || {}).filter(k => src[k] !== null && typeof src[k] === 'object');
-    if (complexKeys.length) {
-      const complexObj = {};
-      complexKeys.forEach(k => { complexObj[k] = src[k]; });
-      html += `<div class="field"><label>Data terstruktur (JSON: ${escapeHtml(complexKeys.join(', '))}) — edit hati-hati, harus tetap format JSON valid</label>` +
-        `<textarea id="editComplexJson" style="min-height:140px;font-family:monospace;font-size:12px;">${escapeHtml(JSON.stringify(complexObj, null, 2))}</textarea></div>`;
-    }
     html += `<div class="field-note">Mengedit riwayat yang sudah terunduh tidak mengubah file PDF/Word/Excel yang sudah lebih dulu terkirim/tersimpan di tempat lain — hanya memperbarui catatan riwayat, supaya "Cetak Ulang" berikutnya pakai data yang sudah dikoreksi.</div>`;
     document.getElementById('editBody').innerHTML = html;
     document.getElementById('editModalBg').classList.add('show');
@@ -1537,34 +1564,10 @@ function doLogout(){
       updatedScalars[el.getAttribute('data-field')] = el.value;
     });
 
-    let updatedComplex = {};
-    const jsonEl = document.getElementById('editComplexJson');
-    if (jsonEl) {
-      try {
-        updatedComplex = JSON.parse(jsonEl.value);
-      } catch (e) {
-        showMessage('Data terstruktur (JSON) tidak valid: ' + e.message, 'error');
-        return;
-      }
-    }
-
-    // Ceklist APD: apds (daftar item) dan cells (matriks status per orang x
-    // item) harus tetap sinkron -- kalau admin mengedit JSON dan cuma
-    // mengubah salah satunya, "Unduh Ulang" berikutnya bisa gagal/rusak.
-    // Tolak simpan kalau ketahuan tidak sinkron, daripada diam-diam
-    // menyimpan data yang korup.
-    if (Array.isArray(updatedComplex.apds) && Array.isArray(updatedComplex.cells)) {
-      const nApd = updatedComplex.apds.length;
-      const nPersons = Array.isArray(updatedComplex.persons) ? updatedComplex.persons.length : updatedComplex.cells.length;
-      const rowsMismatch = updatedComplex.cells.length !== nPersons;
-      const colsMismatch = updatedComplex.cells.some(row => !Array.isArray(row) || row.length !== nApd);
-      if (rowsMismatch || colsMismatch) {
-        showMessage('Data "apds"/"cells"/"persons" tidak sinkron (jumlah baris/kolom harus sama) -- perubahan tidak disimpan.', 'error');
-        return;
-      }
-    }
-
-    const newSrc = Object.assign({}, updatedScalars, updatedComplex);
+    // Field array/objek (items, cells, apds, photos, dst) tidak ada di form
+    // ini -- bawa apa adanya dari data asli (editingContext.src) supaya tidak
+    // pernah tidak sinkron/rusak, cuma field skalar yang benar-benar diedit.
+    const newSrc = Object.assign({}, editingContext.src, updatedScalars);
     const newDetails = editingContext.isNested
       ? Object.assign({}, editingItem.details, { state: newSrc })
       : newSrc;
