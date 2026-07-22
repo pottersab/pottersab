@@ -1461,10 +1461,14 @@ function doLogout(){
     if (!rows) rows = '<tr><td colspan="2" style="color:#777;">(tidak ada data isi tersimpan)</td></tr>';
     const title = DOC_TITLE[item.documentType] || item.documentType;
     const regen = REGEN[item.documentType];
-    const incomplete = regen && !regen.validate(raw);
-    const warning = incomplete
-      ? '<p style="margin-top:14px;font-size:12px;color:#92400e;background:#fef3c7;padding:8px 10px;border-radius:4px;">⚠ Riwayat ini tidak menyimpan data surat yang lengkap (kemungkinan cuma tercatat "dibuka", bukan hasil unduhan) — "Unduh Ulang" tidak tersedia untuk entri ini.</p>'
-      : '';
+    const hasRegen = !!(regen && regen.validate(raw));
+    // Tabel pratinjau ini cuma ringkasan field:nilai, bukan tata letak surat
+    // asli -- kalau "Unduh Ulang" tersedia, itu jauh lebih akurat buat
+    // dicetak (file Word/Excel asli), jadi arahkan ke situ alih-alih
+    // menyarankan print dari pratinjau generik ini.
+    const note = hasRegen
+      ? '<p style="margin-top:14px;font-size:12px;color:#1d4ed8;background:#dbeafe;padding:8px 10px;border-radius:4px;">ℹ Pratinjau ini cuma ringkasan data, bukan tata letak surat asli. Untuk cetak/PDF yang persis seperti surat aslinya, pakai tombol "Unduh Ulang" lalu cetak dari Word/Excel.</p>'
+      : (regen ? '<p style="margin-top:14px;font-size:12px;color:#92400e;background:#fef3c7;padding:8px 10px;border-radius:4px;">⚠ Riwayat ini tidak menyimpan data surat yang lengkap (kemungkinan cuma tercatat "dibuka", bukan hasil unduhan) — "Unduh Ulang" tidak tersedia untuk entri ini.</p>' : '');
     return `
       <div class="kop">
         <div class="induk">PERUMDA TIRTA MANUNTUNG KOTA BALIKPAPAN</div>
@@ -1473,7 +1477,7 @@ function doLogout(){
       </div>
       <table class="isi">${rows}</table>
       <p style="margin-top:24px;font-size:11.5px;color:#555;">Dicetak ulang dari riwayat pada ${formatTanggalWaktuIndo(new Date())}. Dokumen: ${escapeHtml(item.documentName)}.</p>
-      ${warning}
+      ${note}
     `;
   }
 
@@ -1484,12 +1488,19 @@ function doLogout(){
     currentPrintId = id;
     document.getElementById('printArea').innerHTML = buildPreviewHtml(item);
     const redl = document.getElementById('redownloadBtn');
+    const printBtn = document.getElementById('printNowBtn');
     const regen = REGEN[item.documentType];
-    if (regen && regen.validate(item.details || {})) {
+    const hasRegen = regen && regen.validate(item.details || {});
+    if (hasRegen) {
       redl.style.display = 'inline-block';
       redl.textContent = '⬇ Unduh Ulang ' + (regen.mime.indexOf('wordprocessing') >= 0 ? 'Word (.docx)' : 'Excel (.xlsx)');
+      // Kalau "Unduh Ulang" (file asli) tersedia, tombol print pratinjau
+      // generik disembunyikan -- hasil cetak dari file Word/Excel asli jauh
+      // lebih akurat daripada tabel ringkasan ini.
+      printBtn.style.display = 'none';
     } else {
       redl.style.display = 'none';
+      printBtn.style.display = 'inline-block';
     }
     document.getElementById('printModalBg').classList.add('show');
   }
