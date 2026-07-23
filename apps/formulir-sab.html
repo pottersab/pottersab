@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Formulir Pekerjaan SAB</title>
+<script defer src="../assets/js/kompres-foto.js"></script>
 <style>
   :root{
     --ink:#1c2b3a;
@@ -429,6 +430,7 @@ const state = {
   judulPerbaikan:'',
   arahInstalasi:'',
   itemPerbaikan:'',
+  jenisPekerjaan:'',
   diameterTransmisi:'', diameterTransmisiLain:'',
   diameterSumur:'', diameterSumurLain:'',
   materialPipa:'',
@@ -444,10 +446,11 @@ const state = {
 const steps = [
   { id:'judulPerbaikan', title:'Judul Perbaikan', show:()=>true },
   { id:'arahInstalasi', title:'Arah Instalasi Pengolahan', show:()=>true },
-  { id:'item', title:'Item Perbaikan', show:()=>true },
+  { id:'item', title:'Bidang Pekerjaan', show:()=>true },
+  { id:'jenis', title:'Jenis Pekerjaan', show:()=>JENIS_OPTIONS[state.itemPerbaikan] !== undefined },
   { id:'diaTransmisi', title:'Diameter Pipa Transmisi', show:()=>state.itemPerbaikan==='Pipa Transmisi' },
   { id:'diaSumur', title:'Diameter Pipa Sumur', show:()=>state.itemPerbaikan==='Pipa Sumur' },
-  { id:'material', title:'Material Pipa', show:()=>state.itemPerbaikan!=='Jalan' },
+  { id:'material', title:'Material Pipa', show:()=>state.itemPerbaikan==='Pipa Transmisi' || state.itemPerbaikan==='Pipa Sumur' },
   { id:'kontraktor', title:'Perusahaan Kontraktor', show:()=>true },
   { id:'pengadaanYN', title:'Barang Pengadaan?', show:()=>true },
   { id:'pengadaanDetail', title:'Detail Barang Pengadaan', show:()=>state.adaPengadaan==='Ya' },
@@ -500,6 +503,33 @@ const ARAH_INSTALASI_OPTIONS = [
   'IPA 6 Zamp'
 ];
 
+// Nama baku instalasi untuk halaman Riwayat Pekerjaan SAB: tanpa awalan
+// "IPA n", karena nomor IPA tidak unik (IPA 3 dipakai Gunung Sari maupun
+// Prapatan, IPA 5 Teritip maupun Gunung Tembak). Yang mengidentifikasi
+// instalasi adalah namanya.
+function instalasiBaku(v){
+  return String(v || '').replace(/^(IPA\s*\d+|Pump House)\s*/i, '').trim() || (v || null);
+}
+
+// Empat bidang pekerjaan, sama persis dengan yang dipakai halaman Riwayat
+// Pekerjaan SAB. Dua bidang terakhir punya lanjutan "jenis pekerjaan";
+// dua bidang pipa tidak, karena yang membedakannya diameter & material.
+const BIDANG_OPTIONS = ['Pipa Transmisi','Pipa Sumur','Service Sumur','Pekerjaan Lainnya'];
+const BIDANG_KODE = {
+  'Pipa Transmisi':'transmisi',
+  'Pipa Sumur':'pipa-sumur',
+  'Service Sumur':'service-sumur',
+  'Pekerjaan Lainnya':'lainnya'
+};
+const JENIS_OPTIONS = {
+  'Service Sumur': ['Pompa & Service Sumur','Sarana Sumur'],
+  'Pekerjaan Lainnya': [
+    'Waduk & Bangunan Air','Instalasi Pengolahan / Reservoar','Intake',
+    'Valve / Air Valve / Gate Valve','Valve / Wash Out','Pompa & Pipa Ponton',
+    'Pemeliharaan Sarana & Bangunan','Jalan & Akses','Lainnya'
+  ]
+};
+
 function renderStep(id){
   switch(id){
     case 'judulPerbaikan':
@@ -516,10 +546,13 @@ function renderStep(id){
       </div>`;
 
     case 'item':
-      return `<div class="card"><h2>Item Perbaikan</h2><p class="hint">Pilih jenis pekerjaan yang dilakukan.</p>
-        ${optHtml('item','Pipa Transmisi', state.itemPerbaikan)}
-        ${optHtml('item','Pipa Sumur', state.itemPerbaikan)}
-        ${optHtml('item','Jalan', state.itemPerbaikan)}
+      return `<div class="card"><h2>Bidang Pekerjaan</h2><p class="hint">Pilih bidang pekerjaan yang dilakukan.</p>
+        ${BIDANG_OPTIONS.map(v=>optHtml('item',v,state.itemPerbaikan)).join('')}
+      </div>`;
+
+    case 'jenis':
+      return `<div class="card"><h2>Jenis Pekerjaan</h2><p class="hint">Perinci pekerjaan ${state.itemPerbaikan.toLowerCase()} ini.</p>
+        ${(JENIS_OPTIONS[state.itemPerbaikan]||[]).map(v=>optHtml('jenis',v,state.jenisPekerjaan)).join('')}
       </div>`;
 
     case 'diaTransmisi':
@@ -538,7 +571,7 @@ function renderStep(id){
 
     case 'material':
       return `<div class="card"><h2>Material Pipa</h2><p class="hint">Pilih jenis material pipa.</p>
-        ${['Steel','Ductile','HDPE','PVC','PVC-O'].map(v=>optHtml('material',v,state.materialPipa)).join('')}
+        ${['Steel','Ductile','HDPE','PVC','PVC-O','Stainless Steel'].map(v=>optHtml('material',v,state.materialPipa)).join('')}
       </div>`;
 
     case 'kontraktor':
@@ -596,10 +629,11 @@ function renderStep(id){
       return `<div class="card"><h2>Periksa Kembali</h2><p class="hint">Pastikan data sudah benar sebelum dikirim.</p>
         ${reviewRow('Judul Perbaikan', state.judulPerbaikan)}
         ${reviewRow('Arah Instalasi Pengolahan', state.arahInstalasi)}
-        ${reviewRow('Item Perbaikan', state.itemPerbaikan)}
+        ${reviewRow('Bidang Pekerjaan', state.itemPerbaikan)}
+        ${state.jenisPekerjaan ? reviewRow('Jenis Pekerjaan', state.jenisPekerjaan) : ''}
         ${state.itemPerbaikan==='Pipa Transmisi' ? reviewRow('Diameter', state.diameterTransmisi==='Yang lain'?state.diameterTransmisiLain:state.diameterTransmisi) : ''}
         ${state.itemPerbaikan==='Pipa Sumur' ? reviewRow('Diameter', state.diameterSumur==='Yang lain'?state.diameterSumurLain:state.diameterSumur) : ''}
-        ${state.itemPerbaikan!=='Jalan' ? reviewRow('Material Pipa', state.materialPipa) : ''}
+        ${(state.itemPerbaikan==='Pipa Transmisi'||state.itemPerbaikan==='Pipa Sumur') ? reviewRow('Material Pipa', state.materialPipa) : ''}
         ${reviewRow('Kontraktor', state.namaKontraktor)}
         ${reviewRow('Barang Pengadaan', state.adaPengadaan==='Ya' ? state.barangPengadaan : 'Tidak ada')}
         ${reviewRow('Barang Gudang Induk', state.adaGudangInduk==='Ya' ? state.barangGudangInduk : 'Tidak ada')}
@@ -616,7 +650,8 @@ function attachStepEvents(id){
   document.querySelectorAll('input[type=radio]').forEach(r=>{
     r.addEventListener('change', e=>{
       const name=e.target.name, val=e.target.value;
-      if(name==='item') state.itemPerbaikan=val;
+      if(name==='item'){ state.itemPerbaikan=val; state.jenisPekerjaan=''; }
+      if(name==='jenis') state.jenisPekerjaan=val;
       if(name==='diaT') state.diameterTransmisi=val;
       if(name==='diaS') state.diameterSumur=val;
       if(name==='material') state.materialPipa=val;
@@ -655,21 +690,26 @@ function attachStepEvents(id){
   }
 }
 
-function handlePhoto(e){
+// Foto dikecilkan dulu di HP sebelum dikirim (assets/js/kompres-foto.js).
+// Foto kamera 3-8 MB jadi ~250 KB, sehingga tidak menabrak batas ukuran
+// kiriman dan tidak membuat unggahan lama di jaringan lapangan.
+async function handlePhoto(e){
   const file = e.target.files[0];
   if(!file) return;
-  const reader = new FileReader();
-  reader.onload = ()=>{
-    const result = reader.result;
-    state.fotoBase64 = result.split(',')[1];
-    state.fotoMime = file.type;
-    state.fotoName = file.name;
-    document.getElementById('photoLabel').textContent = file.name;
+  const label = document.getElementById('photoLabel');
+  label.textContent = 'Memproses foto...';
+  try{
+    const foto = await kompresFoto(file);
+    state.fotoBase64 = foto.base64;
+    state.fotoMime = foto.mime;
+    state.fotoName = foto.nama;
+    label.textContent = `${foto.nama} · ${formatUkuran(foto.ukuranAsli)} → ${formatUkuran(foto.ukuranBaru)}`;
     const prev = document.getElementById('photoPreview');
-    prev.src = result;
+    prev.src = foto.dataUrl;
     prev.style.display = 'block';
-  };
-  reader.readAsDataURL(file);
+  }catch(err){
+    label.textContent = 'Gagal memproses foto: ' + err.message;
+  }
 }
 
 function requestGps(){
@@ -698,7 +738,8 @@ function validateCurrent(){
   switch(def.id){
     case 'judulPerbaikan': return state.judulPerbaikan.trim() ? '' : 'Isi judul perbaikan dulu ya.';
     case 'arahInstalasi': return state.arahInstalasi ? '' : 'Pilih arah instalasi pengolahan.';
-    case 'item': return state.itemPerbaikan ? '' : 'Pilih item perbaikan dulu ya.';
+    case 'item': return state.itemPerbaikan ? '' : 'Pilih bidang pekerjaan dulu ya.';
+    case 'jenis': return state.jenisPekerjaan ? '' : 'Pilih jenis pekerjaan dulu ya.';
     case 'diaTransmisi': return state.diameterTransmisi ? '' : 'Pilih diameter pipa transmisi.';
     case 'diaSumur': return state.diameterSumur ? '' : 'Pilih diameter pipa sumur.';
     case 'material': return state.materialPipa ? '' : 'Pilih material pipa.';
@@ -732,6 +773,58 @@ document.getElementById('nextBtn').addEventListener('click', async ()=>{
     submitForm();
   }
 });
+
+// Diameter disimpan terpisah nilai & satuannya: pipa transmisi memakai mm,
+// pipa sumur memakai inch.
+function diameterUntukDb(){
+  let teks = null, satuan = null;
+  if(state.itemPerbaikan==='Pipa Transmisi'){
+    teks = state.diameterTransmisi==='Yang lain' ? state.diameterTransmisiLain : state.diameterTransmisi;
+    satuan = 'mm';
+  } else if(state.itemPerbaikan==='Pipa Sumur'){
+    teks = state.diameterSumur==='Yang lain' ? state.diameterSumurLain : state.diameterSumur;
+    satuan = 'inch';
+  }
+  const nilai = parseFloat(String(teks||'').replace(',','.'));
+  return Number.isNaN(nilai) ? { nilai:null, satuan:null } : { nilai:nilai, satuan:satuan };
+}
+
+// Laporan masuk sebagai DRAFT: belum muncul di Riwayat Pekerjaan SAB sampai
+// admin membuatkan berita acaranya. Jumlah draft inilah yang dihitung lonceng
+// notifikasi di navbar.
+async function simpanKeDatabase(){
+  const token = localStorage.getItem('token');
+  if(!token) return { ok:false, error:'sesi admin habis' };
+  const dia = diameterUntukDb();
+  try{
+    const res = await fetch('/api/pekerjaan', {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json', 'Authorization':'Bearer '+token },
+      body: JSON.stringify({
+        bidang: BIDANG_KODE[state.itemPerbaikan],
+        jenis: state.jenisPekerjaan || null,
+        instalasi: instalasiBaku(state.arahInstalasi),
+        uraian: state.judulPerbaikan,
+        material: (state.itemPerbaikan==='Pipa Transmisi'||state.itemPerbaikan==='Pipa Sumur') ? state.materialPipa : null,
+        diameter_nilai: dia.nilai,
+        diameter_satuan: dia.satuan,
+        kontraktor: state.namaKontraktor,
+        jam_mulai: state.jamMulai,
+        jam_selesai: state.jamSelesai,
+        barang_pengadaan: state.adaPengadaan==='Ya' ? state.barangPengadaan : null,
+        barang_gudang: state.adaGudangInduk==='Ya' ? state.barangGudangInduk : null,
+        gps_lat: state.gpsLat,
+        gps_lng: state.gpsLng,
+        gps_akurasi: state.gpsAccuracy
+      })
+    });
+    const d = await res.json().catch(()=>({}));
+    if(!res.ok || !d.success) return { ok:false, error: d.error || ('HTTP '+res.status) };
+    return { ok:true, id:d.id };
+  }catch(err){
+    return { ok:false, error: err.message };
+  }
+}
 
 async function submitForm(){
   const btn = document.getElementById('nextBtn');
@@ -773,8 +866,19 @@ async function submitForm(){
     });
     const data = await res.json();
     if(data.status==='ok'){
-      msg.textContent = 'Laporan berhasil dikirim. Terima kasih!';
-      msg.className='status-msg ok';
+      // Google Sheet sudah menerima laporannya. Sekarang dicatat juga ke
+      // database supaya muncul di halaman Riwayat Pekerjaan SAB. Sengaja
+      // ditulis ganda selama masa peralihan: kalau database bermasalah,
+      // laporannya tetap aman di Sheet dan staf tidak perlu mengisi ulang.
+      const hasilDb = await simpanKeDatabase();
+      if(hasilDb.ok){
+        msg.textContent = 'Laporan berhasil dikirim. Terima kasih!';
+        msg.className='status-msg ok';
+      } else {
+        msg.textContent = 'Laporan tersimpan, tapi belum masuk daftar riwayat ('
+          + hasilDb.error + '). Beri tahu admin — datanya tidak hilang.';
+        msg.className='status-msg';
+      }
       btn.textContent = 'Terkirim';
     } else {
       throw new Error(data.message || 'Gagal tanpa keterangan');
@@ -789,5 +893,6 @@ async function submitForm(){
 
 render();
 </script>
+<script defer src="../assets/js/nav-badge.js"></script>
 </body>
 </html>
