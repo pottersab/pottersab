@@ -1620,8 +1620,8 @@ document.getElementById('downloadBtn').addEventListener('click', ()=>{
     // Nama dokumen di Riwayat Surat pakai nomor urut + subjudul (bukan nama
     // file unduhan) supaya lebih gampang dikenali di daftar riwayat -- kalau
     // subjudul kosong, tetap pakai nama file sebagai fallback.
-    saveHistoryEntry('Berita Acara', state.subjudul ? `${state.nomorUrut}_${state.subjudul}` : fname, { state: state, photos: photos });
-    finalkanDraft();
+    saveHistoryEntry('Berita Acara', state.subjudul ? `${state.nomorUrut}_${state.subjudul}` : fname, { state: state, photos: photos })
+      .then(entry => finalkanDraft(entry && entry.id));
     setStatus('Berhasil diunduh: '+fname, false);
   }catch(err){
     console.error(err);
@@ -1640,8 +1640,8 @@ document.getElementById('pdfBtn').addEventListener('click', ()=>{
   );
   if(!ok) return;
   persistAllPersons();
-  saveHistoryEntry('Berita Acara', state.subjudul ? `${state.nomorUrut}_${state.subjudul}` : `Berita_Acara_${state.nomorUrut}_${state.tanggalSurat}.pdf`, { state: state, photos: photos });
-  finalkanDraft();
+  saveHistoryEntry('Berita Acara', state.subjudul ? `${state.nomorUrut}_${state.subjudul}` : `Berita_Acara_${state.nomorUrut}_${state.tanggalSurat}.pdf`, { state: state, photos: photos })
+    .then(entry => finalkanDraft(entry && entry.id));
   const prevTitle=document.title;
   document.title=' ';
   window.print();
@@ -1694,8 +1694,14 @@ async function muatDraft(){
     if(!res.ok) return;
     const d = await res.json();
     draftRows = d.rows || [];
-    if(!state.nomorUrut && d.usulNomor) {
+    // Nomor urut diisi otomatis dengan nomor berikutnya, tapi cuma kalau
+    // masih kosong -- angka yang sudah diketik admin tidak pernah ditimpa.
+    if(d.usulNomor){
       document.getElementById('nomorUrut').placeholder = 'usul: ' + d.usulNomor;
+      if(!state.nomorUrut){
+        state.nomorUrut = String(d.usulNomor);
+        fillForm(); saveDraft(); renderPreview();
+      }
     }
     renderDraftList(d.usulNomor);
   }catch(e){ /* diam -- kartu ini pelengkap, bukan syarat membuat BA */ }
@@ -1735,32 +1741,112 @@ function idTerpilih(){
   return [...document.querySelectorAll('.draft-cb:checked')].map(c=>c.value);
 }
 
-function pakaiDraft(){
+// Koordinat GPS diterjemahkan jadi nama tempat lewat Nominatim (OpenStreetMap,
+// gratis & tanpa kunci). Berita acara menyebut lokasi dengan nama jalan/daerah,
+// bukan angka koordinat. Kalau layanannya gagal atau tidak mengenali titiknya,
+// jatuh kembali ke koordinat apa adanya supaya lokasinya tidak hilang.
+const cacheTempat = {};
+async function namaTempat(lat, lng){
+  const kunci = lat.toFixed(5)+','+lng.toFixed(5);
+  if(cacheTempat[kunci] !== undefined) return cacheTempat[kunci];
+  try{
+    const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&zoom=18&accept-language=id`;
+    const res = await fetch(url, { headers:{ 'Accept':'application/json' } });
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    const d = await res.json();
+    const a = d.address || {};
+    const bagian = [
+      a.road || a.pedestrian || a.footway || a.neighbourhood || a.hamlet,
+      a.village || a.suburb || a.city_district,
+      a.city || a.town || a.county
+    ].filter(Boolean);
+    const hasil = bagian.length ? [...new Set(bagian)].join(', ') : null;
+    cacheTempat[kunci] = hasil;
+    return hasil;
+  }catch(e){
+    cacheTempat[kunci] = null;
+    return null;
+  }
+}
+
+// Foto laporan lapangan diambil terpisah (bukan ikut di daftar draft) supaya
+// lonceng notifikasi di setiap halaman tidak ikut mengunduh gambar.
+async function ambilFotoDraft(ids){
+  try{
+    const res = await fetch('/api/pekerjaan?foto=' + ids.join(','), { headers: authHeaders() });
+    if(!res.ok) return [];
+    const d = await res.json();
+    return d.rows || [];
+  }catch(e){ return []; }
+}
+
+function ukurGambar(dataUrl){
+  return new Promise(resolve=>{
+    const img = new Image();
+    img.onload = ()=>resolve({ w: img.naturalWidth, h: img.naturalHeight,
+      orientation: img.naturalWidth >= img.naturalHeight ? 'landscape' : 'portrait' });
+    img.onerror = ()=>resolve(null);
+    img.src = dataUrl;
+  });
+}
+
+async function pakaiDraft(){
   const ids = idTerpilih();
   if(!ids.length){ setDraftMsg('Centang dulu laporan yang mau dipakai.', true); return; }
   const dipilih = draftRows.filter(r=>ids.includes(String(r.id)));
 
-  // Isi bagian "Telah melakukan pemeriksaan pada" dari laporan lapangan.
-  // Yang sudah diketik admin tidak ditimpa diam-diam -- ditambahkan di bawahnya.
-  const baris = dipilih.map(r=>{
+  const btn = document.getElementById('btnPakaiDraft');
+  btn.disabled = true;
+  setDraftMsg('Menyiapkan data laporan…', false);
+
+  // Isi bagian "Telah melakukan pemeriksaan pada" DARI NOL memakai data
+  // laporan lapangan -- kalimat contoh/isian lama sengaja ditimpa supaya
+  // tidak tertulis dua kali.
+  const baris = [];
+  for(const r of dipilih){
     const bagian = [r.uraian || BIDANG_LABEL_BA[r.bidang]];
+    if(r.gps_lat!=null && r.gps_lng!=null){
+      const tempat = await namaTempat(r.gps_lat, r.gps_lng);
+      bagian.push(tempat ? ('di ' + tempat)
+        : ('di koordinat ' + r.gps_lat.toFixed(6) + ', ' + r.gps_lng.toFixed(6)));
+    }
     if(r.instalasi) bagian.push('arah instalasi ' + r.instalasi);
     if(r.diameter_nilai) bagian.push('diameter ' + r.diameter_nilai + ' ' + (r.diameter_satuan||''));
     if(r.material) bagian.push('material ' + r.material);
-    if(r.gps_lat!=null && r.gps_lng!=null) bagian.push('koordinat ' + r.gps_lat.toFixed(6) + ', ' + r.gps_lng.toFixed(6));
-    return bagian.join(', ');
-  });
-  const teks = baris.join('\n');
-  state.periksaPada = state.periksaPada ? (state.periksaPada.trim() + '\n' + teks) : teks;
+    baris.push(bagian.join(', '));
+  }
+  state.periksaPada = baris.join('\n');
 
-  if(!state.subjudul && dipilih[0].uraian) state.subjudul = dipilih[0].uraian.toUpperCase();
-  if(!state.tanggalSurat) state.tanggalSurat = dipilih[0].tanggal;
+  // Sub judul mengikuti judul yang diisi di Formulir Pekerjaan SAB.
+  if(dipilih[0].uraian) state.subjudul = dipilih[0].uraian.toUpperCase();
+  state.tanggalSurat = state.tanggalSurat || dipilih[0].tanggal;
+
+  // Foto dari lapangan langsung jadi lampiran berita acara.
+  let jumlahFoto = 0;
+  const fotoRows = await ambilFotoDraft(ids);
+  for(const fr of fotoRows){
+    for(const url of (fr.foto_urls || [])){
+      if(!url || !url.startsWith('data:')) continue;
+      if(photos.some(p=>p.dataUrl === url)) continue;
+      const ukuran = await ukurGambar(url);
+      if(!ukuran) continue;
+      photos.push(Object.assign({
+        id:'p'+Date.now()+Math.random().toString(36).slice(2,7),
+        dataUrl:url, mime:'image/jpeg'
+      }, ukuran));
+      jumlahFoto++;
+    }
+  }
+  if(jumlahFoto){ savePhotos(); renderPhotoGrid(); }
 
   draftDipakai = ids;
   fillForm();
   saveDraft();
   renderPreview();
-  setDraftMsg(ids.length + ' laporan dipakai. Setelah berita acara ini diunduh atau dicetak, laporannya otomatis masuk ke Riwayat Pekerjaan SAB.', false);
+  btn.disabled = false;
+  setDraftMsg(ids.length + ' laporan dipakai'
+    + (jumlahFoto ? (' beserta ' + jumlahFoto + ' foto lapangan') : '')
+    + '. Setelah berita acara ini diunduh atau dicetak, laporannya otomatis masuk ke Riwayat Pekerjaan SAB.', false);
 }
 
 async function batalkanDraft(){
@@ -1777,19 +1863,26 @@ async function batalkanDraft(){
   }catch(err){ setDraftMsg('Gagal membatalkan: ' + err.message, true); }
 }
 
-// Dipanggil setelah berita acara berhasil diunduh/dicetak.
-async function finalkanDraft(){
+// Dipanggil setelah berita acara berhasil diunduh/dicetak. historyId dipakai
+// sebagai tali penghubung ke Riwayat Surat: kalau nanti berita acaranya
+// diedit di Dashboard Admin, baris pekerjaannya ikut diperbarui.
+async function finalkanDraft(historyId){
   if(!draftDipakai.length) return;
+  const nomor = nomorLengkap();
   try{
     const res = await fetch('/api/pekerjaan?id=' + draftDipakai.join(','), {
       method:'PUT',
       headers: Object.assign({ 'Content-Type':'application/json' }, authHeaders()),
-      body: JSON.stringify({ no_ba: nomorLengkap() })
+      body: JSON.stringify({ no_ba: nomor, history_id: historyId || null })
     });
     if(!res.ok) throw new Error('HTTP ' + res.status);
     const d = await res.json();
-    setDraftMsg(d.diperbarui + ' laporan sudah masuk ke Riwayat Pekerjaan SAB dengan nomor ' + nomorLengkap() + '.', false);
+    setDraftMsg(d.diperbarui + ' laporan sudah masuk ke Riwayat Pekerjaan SAB dengan nomor ' + nomor + '.', false);
     draftDipakai = [];
+    // Nomor dikosongkan supaya berita acara berikutnya otomatis mendapat
+    // nomor urut sesudah yang barusan dipakai.
+    state.nomorUrut = '';
+    fillForm(); saveDraft();
     await muatDraft();
     if(window.segarkanLoncengDraft) window.segarkanLoncengDraft();
   }catch(err){

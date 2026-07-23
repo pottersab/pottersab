@@ -1565,6 +1565,32 @@ function doLogout(){
     document.getElementById('editModalBg').classList.add('show');
   }
 
+  // Nomor lengkap dibangun dengan aturan yang sama persis dengan
+  // apps/berita-acara.html (nomorLengkap()), supaya nomor hasil edit di sini
+  // cocok dengan yang tercatat di tabel pekerjaan.
+  const ROMAWI_BULAN = ['I','II','III','IV','V','VI','VII','VIII','IX','X','XI','XII'];
+  function nomorLengkapBA(s) {
+    const bulan = s.tanggalSurat ? ROMAWI_BULAN[Number(String(s.tanggalSurat).slice(5, 7)) - 1] : '';
+    const tahun = s.tanggalSurat ? String(s.tanggalSurat).slice(0, 4) : '';
+    return `${s.nomorUrut || '...'}/${s.kodeTetap1 || ''}/${s.kodeTetap2 || ''}/${bulan || ''}/${tahun}-Q`;
+  }
+
+  async function sinkronkanPekerjaan(item, newState) {
+    if (item.documentType !== 'Berita Acara' || !newState) return false;
+    try {
+      const res = await fetch(`${API_URL}/api/pekerjaan?history_id=${item.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ no_ba: nomorLengkapBA(newState), uraian: newState.subjudul || null })
+      });
+      if (!res.ok) return false;
+      const d = await res.json();
+      return !!(d && d.diperbarui);
+    } catch (err) {
+      return false;
+    }
+  }
+
   document.getElementById('saveEditBtn').addEventListener('click', async () => {
     if (!editingItem || !editingContext) return;
     const body = document.getElementById('editBody');
@@ -1596,7 +1622,14 @@ function doLogout(){
       if (idx >= 0) historyState.rows[idx] = data.entry;
       renderTable(historyState.rows);
       closeModal('edit');
-      showMessage('Perubahan surat disimpan', 'success');
+
+      // Berita Acara yang lahir dari laporan Formulir SAB juga tercatat di
+      // Riwayat Pekerjaan SAB. Nomor & uraiannya ikut disegarkan di sini,
+      // supaya rekap pekerjaan tidak memakai data yang sudah dikoreksi.
+      const disinkron = await sinkronkanPekerjaan(editingItem, newSrc);
+      showMessage(disinkron
+        ? 'Perubahan surat disimpan, Riwayat Pekerjaan SAB ikut diperbarui'
+        : 'Perubahan surat disimpan', 'success');
     } catch (err) {
       showMessage('Gagal menyimpan perubahan surat', 'error');
     }

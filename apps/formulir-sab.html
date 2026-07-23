@@ -815,7 +815,11 @@ async function simpanKeDatabase(){
         barang_gudang: state.adaGudangInduk==='Ya' ? state.barangGudangInduk : null,
         gps_lat: state.gpsLat,
         gps_lng: state.gpsLng,
-        gps_akurasi: state.gpsAccuracy
+        gps_akurasi: state.gpsAccuracy,
+        // Foto ikut disimpan (sudah dikompres ~250 KB) supaya admin tidak
+        // perlu meminta ulang -- langsung jadi lampiran saat berita acaranya
+        // dibuat. Aslinya tetap tersimpan di Google Drive lewat Apps Script.
+        foto_urls: state.fotoBase64 ? ['data:' + state.fotoMime + ';base64,' + state.fotoBase64] : []
       })
     });
     const d = await res.json().catch(()=>({}));

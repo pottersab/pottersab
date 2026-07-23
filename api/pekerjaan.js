@@ -205,18 +205,35 @@ module.exports = async (req, res) => {
     const user = adminDariRequest(req);
     if (!user) return res.status(403).json({ error: 'Khusus admin' });
 
-    const ids = String(req.query.id || '').split(',').map(s => s.trim()).filter(Boolean);
-    if (!ids.length) return res.status(400).json({ error: 'id wajib diisi' });
-
-    const noBa = teksAtauNull((req.body || {}).no_ba, 120);
+    const b = req.body || {};
+    const noBa = teksAtauNull(b.no_ba, 120);
     if (!noBa) return res.status(400).json({ error: 'no_ba wajib diisi' });
 
     await ensurePekerjaanTable();
+
+    // Dipanggil dari Dashboard Admin setelah berita acaranya diedit: baris
+    // pekerjaan yang lahir dari entri riwayat itu ikut diperbarui, supaya
+    // Riwayat Pekerjaan SAB tidak memakai nomor/uraian yang sudah usang.
+    if (req.query.history_id) {
+      const { rowCount } = await pool.query(
+        `UPDATE pekerjaan
+         SET no_ba = $1,
+             uraian = COALESCE($2, uraian),
+             updated_by = $3, updated_at = now()
+         WHERE history_id = $4 AND deleted_at IS NULL`,
+        [noBa, teksAtauNull(b.uraian, 500), user.username || 'admin', req.query.history_id]
+      );
+      return res.status(200).json({ success: true, diperbarui: rowCount });
+    }
+
+    const ids = String(req.query.id || '').split(',').map(s => s.trim()).filter(Boolean);
+    if (!ids.length) return res.status(400).json({ error: 'id atau history_id wajib diisi' });
+
     const { rowCount } = await pool.query(
       `UPDATE pekerjaan
-       SET status = 'final', no_ba = $1, updated_by = $2, updated_at = now()
-       WHERE id = ANY($3::bigint[]) AND status = 'draft' AND deleted_at IS NULL`,
-      [noBa, user.username || 'admin', ids]
+       SET status = 'final', no_ba = $1, history_id = $2, updated_by = $3, updated_at = now()
+       WHERE id = ANY($4::bigint[]) AND status = 'draft' AND deleted_at IS NULL`,
+      [noBa, angkaAtauNull(b.history_id), user.username || 'admin', ids]
     );
     return res.status(200).json({ success: true, diperbarui: rowCount });
   }
@@ -242,6 +259,28 @@ module.exports = async (req, res) => {
 
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  // --- Foto laporan lapangan, diambil terpisah ---
+  // Sengaja tidak ikut di ?draft=1: daftar itu dimuat lonceng notifikasi di
+  // SETIAP halaman, jadi tidak boleh menyeret gambar. Foto cuma diambil saat
+  // admin benar-benar memakai laporannya untuk berita acara.
+  if (req.query.foto !== undefined) {
+    const user = adminDariRequest(req);
+    if (!user) return res.status(403).json({ error: 'Khusus admin' });
+
+    const ids = String(req.query.foto || '').split(',').map(s => s.trim()).filter(Boolean);
+    if (!ids.length) return res.status(400).json({ error: 'id wajib diisi' });
+
+    await ensurePekerjaanTable();
+    const { rows } = await pool.query(
+      `SELECT id, foto_urls FROM pekerjaan
+       WHERE id = ANY($1::bigint[]) AND deleted_at IS NULL`,
+      [ids]
+    );
+    return res.status(200).json({
+      rows: rows.map(r => ({ id: Number(r.id), foto_urls: r.foto_urls || [] }))
+    });
   }
 
   // --- Laporan lapangan yang belum dibuatkan berita acara ---

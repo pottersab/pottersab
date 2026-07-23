@@ -338,10 +338,15 @@ function renderFilters() {
   if ($('fDia')) $('fDia').onchange = e => { filterState.dia = e.target.value; page = 1; renderTable(); };
 }
 
+// Daftar tabel diurutkan dari yang paling baru. REC sendiri tetap menaik
+// karena grafik tren & kartu statistik ("terakhir ...") mengandalkan urutan
+// itu -- yang dibalik cuma tampilan tabelnya.
 function filtered() {
   const c = cfg();
   const q = filterState.cari.trim().toLowerCase();
-  return pool().filter(r => {
+  return pool().slice().sort((a, b) =>
+    a.tanggal < b.tanggal ? 1 : a.tanggal > b.tanggal ? -1 : b.id - a.id
+  ).filter(r => {
     if (filterState.tahun && String(r.tahun) !== String(filterState.tahun)) return false;
     if (filterState.kat && c.katOf(r) !== filterState.kat) return false;
     if (filterState.dia && String(r.diameter_nilai) !== String(filterState.dia)) return false;
