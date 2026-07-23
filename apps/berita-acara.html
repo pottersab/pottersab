@@ -1672,6 +1672,34 @@ const BIDANG_LABEL_BA = {
 let draftRows = [];
 let draftDipakai = [];   // id laporan yang dipakai untuk BA yang sedang diisi
 
+// Nama 2 mengikuti Arah Instalasi Pengolahan. Talinya sudah ada di datamu
+// sendiri: nomor IPA pada daftar Arah Instalasi sama dengan nomor Unit pada
+// jabatan supervisor pengolahan di panel "Data Nama 2" --
+//   IPA 1 Kilometer 12 -> Supervisor Pengolahan Unit I
+//   IPA 2 Batu Ampar   -> Unit II
+//   IPA 3 Gunung Sari / Prapatan  -> Unit III   (satu unit, dua instalasi)
+//   IPA 4 Kampung Damai -> Unit IV
+//   IPA 5 Teritip / Gunung Tembak -> Unit V
+//   IPA 6 Kampung Baru / Zamp     -> Unit VI
+// Jadi tidak perlu tabel pemetaan baru; cukup dibaca dari jabatan yang sudah
+// tersimpan. Kalau jabatannya nanti diubah formatnya, auto-isi ini berhenti
+// bekerja tanpa merusak apa pun -- Nama 2 tinggal diisi manual seperti biasa.
+const INSTALASI_UNIT = {
+  'kilometer 12':1, 'batu ampar':2, 'gunung sari':3, 'prapatan':3,
+  'kampung damai':4, 'teritip':5, 'gunung tembak':5, 'kampung baru':6, 'zamp':6
+};
+const ROMAWI_UNIT = ['','I','II','III','IV','V','VI','VII','VIII','IX','X'];
+
+function signerUntukInstalasi(instalasi){
+  if(!instalasi || !signers.length) return null;
+  const nama = String(instalasi).replace(/^(IPA\s*\d+|Pump House)\s*/i,'').trim().toLowerCase();
+  const unit = INSTALASI_UNIT[nama];
+  if(!unit) return null;
+  // Lookahead supaya "Unit I" tidak ikut cocok dengan "Unit II"/"Unit III".
+  const pola = new RegExp('unit\\s+' + ROMAWI_UNIT[unit] + '(?![IVX])', 'i');
+  return signers.find(s => pola.test(String(s.jabatan||''))) || null;
+}
+
 function escBA(s){
   return String(s==null?'':s).replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
 }
@@ -1821,6 +1849,10 @@ async function pakaiDraft(){
   if(dipilih[0].uraian) state.subjudul = dipilih[0].uraian.toUpperCase();
   state.tanggalSurat = state.tanggalSurat || dipilih[0].tanggal;
 
+  // Nama 2 mengikuti arah instalasi laporan pertama yang dipakai.
+  const signerInstalasi = signerUntukInstalasi(dipilih[0].instalasi);
+  if(signerInstalasi) state.nama2 = signerInstalasi.nama;
+
   // Foto dari lapangan langsung jadi lampiran berita acara.
   let jumlahFoto = 0;
   const fotoRows = await ambilFotoDraft(ids);
@@ -1842,10 +1874,14 @@ async function pakaiDraft(){
   draftDipakai = ids;
   fillForm();
   saveDraft();
+  // Jabatan & Tindak Lanjut ikut terisi dari data baku Nama 2. Dipanggil
+  // setelah fillForm() karena fungsinya membaca nilai dari kolom Nama 2.
+  if(signerInstalasi) applySignerAutofill(true);
   renderPreview();
   btn.disabled = false;
   setDraftMsg(ids.length + ' laporan dipakai'
     + (jumlahFoto ? (' beserta ' + jumlahFoto + ' foto lapangan') : '')
+    + (signerInstalasi ? (', Nama 2 diisi ' + signerInstalasi.nama) : '')
     + '. Setelah berita acara ini diunduh atau dicetak, laporannya otomatis masuk ke Riwayat Pekerjaan SAB.', false);
 }
 
