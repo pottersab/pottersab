@@ -1684,15 +1684,35 @@ let draftDipakai = [];   // id laporan yang dipakai untuk BA yang sedang diisi
 // Jadi tidak perlu tabel pemetaan baru; cukup dibaca dari jabatan yang sudah
 // tersimpan. Kalau jabatannya nanti diubah formatnya, auto-isi ini berhenti
 // bekerja tanpa merusak apa pun -- Nama 2 tinggal diisi manual seperti biasa.
+// Pump House ikut Unit I. Unit VI (Kampung Baru & Zamp) belum ada
+// supervisornya -- begitu namanya ditambahkan lewat panel Admin dengan
+// jabatan memuat "Unit VI", langsung ikut otomatis tanpa perlu ubah kode.
 const INSTALASI_UNIT = {
-  'kilometer 12':1, 'batu ampar':2, 'gunung sari':3, 'prapatan':3,
+  'pump house':1, 'kilometer 12':1, 'batu ampar':2, 'gunung sari':3, 'prapatan':3,
   'kampung damai':4, 'teritip':5, 'gunung tembak':5, 'kampung baru':6, 'zamp':6
 };
 const ROMAWI_UNIT = ['','I','II','III','IV','V','VI','VII','VIII','IX','X'];
 
-function signerUntukInstalasi(instalasi){
-  if(!instalasi || !signers.length) return null;
-  const nama = String(instalasi).replace(/^(IPA\s*\d+|Pump House)\s*/i,'').trim().toLowerCase();
+// Pekerjaan di luar instalasi pengolahan (waduk, intake, valve, jalan, dsb)
+// ditandatangani staf Sumber Air Baku, bukan supervisor pengolahan.
+const SIGNER_PEKERJAAN_LAINNYA = {
+  nama: 'M RAHMAD HIDAYAT',
+  jabatan: 'Staff Sumber Air Baku & Lingkungan Perumda Tirta Manuntung Balikpapan'
+};
+
+function signerUntukLaporan(r){
+  if(!r) return null;
+
+  if(r.bidang === 'lainnya'){
+    // Kalau namanya sudah terdaftar di data baku, pakai yang di sana supaya
+    // Tindak Lanjut-nya ikut terisi; kalau belum, pakai jabatan bawaan.
+    const terdaftar = signers.find(s =>
+      normalizeSignerName(s.nama) === normalizeSignerName(SIGNER_PEKERJAAN_LAINNYA.nama));
+    return terdaftar || SIGNER_PEKERJAAN_LAINNYA;
+  }
+
+  if(!signers.length) return null;
+  const nama = String(r.instalasi || '').replace(/^IPA\s*\d+\s*/i,'').trim().toLowerCase();
   const unit = INSTALASI_UNIT[nama];
   if(!unit) return null;
   // Lookahead supaya "Unit I" tidak ikut cocok dengan "Unit II"/"Unit III".
@@ -1849,9 +1869,19 @@ async function pakaiDraft(){
   if(dipilih[0].uraian) state.subjudul = dipilih[0].uraian.toUpperCase();
   state.tanggalSurat = state.tanggalSurat || dipilih[0].tanggal;
 
-  // Nama 2 mengikuti arah instalasi laporan pertama yang dipakai.
-  const signerInstalasi = signerUntukInstalasi(dipilih[0].instalasi);
-  if(signerInstalasi) state.nama2 = signerInstalasi.nama;
+  // Nama 2 mengikuti laporan pertama yang dipakai: supervisor unit sesuai
+  // arah instalasinya, atau staf Sumber Air Baku untuk bidang Pekerjaan
+  // Lainnya.
+  const signerInstalasi = signerUntukLaporan(dipilih[0]);
+  let signerTerdaftar = false;
+  if(signerInstalasi){
+    state.nama2 = signerInstalasi.nama;
+    signerTerdaftar = signers.some(s =>
+      normalizeSignerName(s.nama) === normalizeSignerName(signerInstalasi.nama));
+    // Kalau namanya belum ada di data baku, jabatannya diisi langsung karena
+    // applySignerAutofill tidak akan menemukan padanannya.
+    if(!signerTerdaftar && signerInstalasi.jabatan) state.jabatan2 = signerInstalasi.jabatan;
+  }
 
   // Foto dari lapangan langsung jadi lampiran berita acara.
   let jumlahFoto = 0;
@@ -1876,7 +1906,7 @@ async function pakaiDraft(){
   saveDraft();
   // Jabatan & Tindak Lanjut ikut terisi dari data baku Nama 2. Dipanggil
   // setelah fillForm() karena fungsinya membaca nilai dari kolom Nama 2.
-  if(signerInstalasi) applySignerAutofill(true);
+  if(signerInstalasi && signerTerdaftar) applySignerAutofill(true);
   renderPreview();
   btn.disabled = false;
   setDraftMsg(ids.length + ' laporan dipakai'
