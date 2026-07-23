@@ -405,10 +405,29 @@ function jump(f) {
   scrollKeTabel();
 }
 
+// Tampilan saat database memang belum berisi apa-apa. Dipisah dari pesan
+// "tidak ada yang cocok dengan filter" supaya tidak membingungkan: grafik
+// kosong tanpa keterangan terlihat seperti halaman yang rusak, padahal
+// datanya yang memang belum ada.
+function renderKosong() {
+  charts.forEach(c => c.destroy()); charts = [];
+  $('stats').innerHTML = '';
+  $('charts').innerHTML = `<div class="panel wide"><div class="empty-note">
+      <b>Belum ada data pekerjaan tersimpan.</b>
+      <span>Daftar ini akan terisi sendiri begitu ada pekerjaan baru yang dicatat lewat Formulir SAB dan dibuatkan berita acaranya.</span>
+    </div></div>`;
+  $('filters').innerHTML = '';
+  $('thead').innerHTML = '';
+  $('tbody').innerHTML = '';
+  $('pager').innerHTML = '';
+  $('tblCap').textContent = cfg().caption;
+}
+
 function renderAll(resetFilter = true) {
   if (resetFilter) { filterState.cari = ''; filterState.tahun = ''; filterState.kat = ''; filterState.dia = ''; }
   renderTabs();
   renderSubs();
+  if (!REC.length) { renderKosong(); return; }
   renderStats();
   renderCharts();
   renderFilters();
