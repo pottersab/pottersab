@@ -7,8 +7,12 @@ const { checkVizAccess } = require('../lib/visualization/viz-auth');
 // file supaya jumlah Serverless Function tetap di bawah batas 12 Vercel Hobby
 // -- pola yang sama dipakai api/history.js dan api/visualization/admin-library.js.
 //
-//   GET /api/pekerjaan             -> { locked, rows } (dummy kalau tanpa akses)
-//   GET /api/pekerjaan?export=csv  -> unduh CSV (admin saja)
+//   GET  /api/pekerjaan             -> { locked, rows } (dummy kalau tanpa akses)
+//   GET  /api/pekerjaan?export=csv  -> unduh CSV (admin saja)
+//   GET  /api/pekerjaan?draft=1     -> { count, rows } laporan lapangan yang
+//                                      belum dibuatkan berita acara (admin)
+//   POST /api/pekerjaan             -> simpan laporan Formulir SAB sebagai
+//                                      draft (admin)
 //
 // Tiga tingkat akses, persis mekanisme yang sudah dipakai halaman data lain:
 //   publik        -> locked:true, yang dikirim data CONTOH
@@ -125,9 +129,94 @@ const BIDANG_LABEL = {
   lainnya: 'Pekerjaan Lainnya'
 };
 
+const BIDANG_VALID = ['transmisi', 'pipa-sumur', 'service-sumur', 'lainnya'];
+
+function angkaAtauNull(v) {
+  if (v === undefined || v === null || v === '') return null;
+  const n = Number(v);
+  return Number.isNaN(n) ? null : n;
+}
+
+function teksAtauNull(v, maks) {
+  if (v === undefined || v === null) return null;
+  const s = String(v).trim();
+  if (!s) return null;
+  return maks ? s.slice(0, maks) : s;
+}
+
+// Jam dari <input type="time"> berbentuk "HH:MM". Apa pun selain itu ditolak
+// supaya tidak ada string aneh yang masuk ke kolom TIME.
+function jamAtauNull(v) {
+  const s = teksAtauNull(v);
+  return s && /^\d{2}:\d{2}$/.test(s) ? s : null;
+}
+
 module.exports = async (req, res) => {
+  // --- Simpan laporan lapangan sebagai draft ---
+  if (req.method === 'POST') {
+    const user = adminDariRequest(req);
+    if (!user) return res.status(403).json({ error: 'Khusus admin' });
+
+    const b = req.body || {};
+    if (!BIDANG_VALID.includes(b.bidang)) {
+      return res.status(400).json({ error: 'bidang tidak dikenal' });
+    }
+
+    await ensurePekerjaanTable();
+    const { rows } = await pool.query(
+      `INSERT INTO pekerjaan
+         (tanggal, bidang, jenis, instalasi, gps_lat, gps_lng, gps_akurasi,
+          material, diameter_nilai, diameter_satuan, uraian, kontraktor,
+          jam_mulai, jam_selesai, barang_pengadaan, barang_gudang, foto_urls,
+          status, sumber, created_by)
+       VALUES
+         ((now() AT TIME ZONE 'Asia/Makassar')::date,
+          $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,
+          'draft', 'formulir-sab', $17)
+       RETURNING id`,
+      [
+        b.bidang,
+        teksAtauNull(b.jenis, 80),
+        teksAtauNull(b.instalasi, 80),
+        angkaAtauNull(b.gps_lat),
+        angkaAtauNull(b.gps_lng),
+        angkaAtauNull(b.gps_akurasi),
+        teksAtauNull(b.material, 40),
+        angkaAtauNull(b.diameter_nilai),
+        teksAtauNull(b.diameter_satuan, 10),
+        teksAtauNull(b.uraian, 500),
+        teksAtauNull(b.kontraktor, 200),
+        jamAtauNull(b.jam_mulai),
+        jamAtauNull(b.jam_selesai),
+        teksAtauNull(b.barang_pengadaan, 1000),
+        teksAtauNull(b.barang_gudang, 1000),
+        Array.isArray(b.foto_urls) ? b.foto_urls.filter(u => typeof u === 'string').slice(0, 10) : [],
+        user.username || user.displayName || 'admin'
+      ]
+    );
+
+    return res.status(200).json({ success: true, id: Number(rows[0].id) });
+  }
+
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  // --- Laporan lapangan yang belum dibuatkan berita acara ---
+  // Dipakai lonceng notifikasi di navbar (assets/js/nav-badge.js) dan nanti
+  // oleh panel antrean di halaman Berita Acara.
+  if (req.query.draft !== undefined) {
+    const user = adminDariRequest(req);
+    if (!user) return res.status(403).json({ error: 'Khusus admin' });
+
+    await ensurePekerjaanTable();
+    const { rows } = await pool.query(
+      `SELECT ${SELECT_COLS}, created_by, to_char(created_at, 'YYYY-MM-DD') AS dibuat
+       FROM pekerjaan
+       WHERE deleted_at IS NULL AND status = 'draft'
+       ORDER BY tanggal, id`
+    );
+    return res.status(200).json({ count: rows.length, rows: rows.map(toRow) });
   }
 
   // --- Unduh CSV: admin saja ---

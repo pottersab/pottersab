@@ -1159,33 +1159,33 @@ function nomorLengkap(src){
 }
 
 /* =============== Foto: upload & pengelompokan halaman =============== */
-document.getElementById('photoInput').addEventListener('change', (e)=>{
+// Foto dikecilkan dulu sebelum disimpan (assets/js/kompres-foto.js). Foto
+// kamera mentah 3-8 MB dulu langsung dijejalkan apa adanya ke localStorage
+// (kuota ~5 MB) dan ke /api/history (batas body ~4,5 MB) -- dua-duanya diam
+// -diam gagal, sehingga riwayat surat tidak pernah tersimpan. Setelah
+// dikecilkan ke 1600px/JPEG 0.8 ukurannya jadi ~250 KB per foto.
+document.getElementById('photoInput').addEventListener('change', async (e)=>{
   const files = Array.from(e.target.files || []);
-  let pending = files.length;
-  if(!pending) return;
-  files.forEach(file=>{
-    const reader = new FileReader();
-    reader.onload = (ev)=>{
-      const dataUrl = ev.target.result;
-      const img = new Image();
-      img.onload = ()=>{
-        photos.push({
-          id: 'p'+Date.now()+Math.random().toString(36).slice(2,7),
-          dataUrl,
-          mime: file.type || 'image/jpeg',
-          w: img.naturalWidth,
-          h: img.naturalHeight,
-          orientation: img.naturalWidth >= img.naturalHeight ? 'landscape' : 'portrait'
-        });
-        savePhotos();
-        renderPhotoGrid();
-        renderPreview();
-      };
-      img.src = dataUrl;
-    };
-    reader.readAsDataURL(file);
-  });
   e.target.value = '';
+  if(!files.length) return;
+  for(const file of files){
+    try{
+      const foto = await kompresFoto(file);
+      photos.push({
+        id: 'p'+Date.now()+Math.random().toString(36).slice(2,7),
+        dataUrl: foto.dataUrl,
+        mime: foto.mime,
+        w: foto.w,
+        h: foto.h,
+        orientation: foto.orientation
+      });
+    }catch(err){
+      setStatus('Gagal memproses foto '+(file.name||'')+': '+err.message, true);
+    }
+  }
+  savePhotos();
+  renderPhotoGrid();
+  renderPreview();
 });
 
 function renderPhotoGrid(){
@@ -1661,5 +1661,7 @@ if(isAdminUser()){
   loadSigners();
 }
 </script>
+<script defer src="../assets/js/kompres-foto.js"></script>
+<script defer src="../assets/js/nav-badge.js"></script>
 </body>
 </html>
