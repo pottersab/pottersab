@@ -389,6 +389,21 @@ function doLogout(){
 
   <div>
 
+    <!-- Laporan dari Formulir Pekerjaan SAB yang belum dibuatkan berita
+         acara. Kartu ini yang menyambungkan laporan lapangan ke rekap:
+         admin memilih laporannya, formulir terisi otomatis, dan begitu BA
+         diunduh/dicetak laporannya berpindah ke Riwayat Pekerjaan SAB. -->
+    <div class="card" id="draftCard" style="display:none;">
+      <h2>Laporan Lapangan Belum Ber-BA <span id="draftCount">0</span></h2>
+      <p class="hint" style="margin-top:4px;">Centang satu atau beberapa laporan — satu berita acara boleh mencakup beberapa titik pekerjaan — lalu tekan tombol di bawah untuk mengisi formulir ini otomatis.</p>
+      <div id="draftList"></div>
+      <div class="btn-row" style="margin-top:12px;">
+        <button type="button" class="download-btn" id="btnPakaiDraft">Pakai untuk Berita Acara ini</button>
+        <button type="button" class="pdf-btn" id="btnBatalDraft">Batalkan laporan terpilih</button>
+      </div>
+      <div class="status" id="draftMsg"></div>
+    </div>
+
     <div class="card">
       <h2>Judul &amp; Nomor</h2>
       <label for="judul">Judul Berita Acara</label>
@@ -1606,6 +1621,7 @@ document.getElementById('downloadBtn').addEventListener('click', ()=>{
     // file unduhan) supaya lebih gampang dikenali di daftar riwayat -- kalau
     // subjudul kosong, tetap pakai nama file sebagai fallback.
     saveHistoryEntry('Berita Acara', state.subjudul ? `${state.nomorUrut}_${state.subjudul}` : fname, { state: state, photos: photos });
+    finalkanDraft();
     setStatus('Berhasil diunduh: '+fname, false);
   }catch(err){
     console.error(err);
@@ -1625,6 +1641,7 @@ document.getElementById('pdfBtn').addEventListener('click', ()=>{
   if(!ok) return;
   persistAllPersons();
   saveHistoryEntry('Berita Acara', state.subjudul ? `${state.nomorUrut}_${state.subjudul}` : `Berita_Acara_${state.nomorUrut}_${state.tanggalSurat}.pdf`, { state: state, photos: photos });
+  finalkanDraft();
   const prevTitle=document.title;
   document.title=' ';
   window.print();
@@ -1644,6 +1661,142 @@ function setStatus(msg,isError){
   },6000);
 }
 
+/* =============== Laporan lapangan yang belum ber-BA =============== */
+// Sumbernya tabel `pekerjaan` berstatus 'draft' (diisi Formulir Pekerjaan
+// SAB). Begitu berita acaranya diunduh/dicetak, laporan yang dipakai
+// ditandai final beserta nomor BA-nya, lalu muncul di Riwayat Pekerjaan SAB.
+const BIDANG_LABEL_BA = {
+  transmisi:'Pipa Transmisi', 'pipa-sumur':'Pipa Sumur',
+  'service-sumur':'Service Sumur', lainnya:'Pekerjaan Lainnya'
+};
+let draftRows = [];
+let draftDipakai = [];   // id laporan yang dipakai untuk BA yang sedang diisi
+
+function escBA(s){
+  return String(s==null?'':s).replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
+}
+function tanggalPanjangBA(s){
+  if(!s) return '';
+  const d=new Date(s+'T00:00:00');
+  return isNaN(d)?s:d.toLocaleDateString('id-ID',{day:'numeric',month:'long',year:'numeric'});
+}
+function setDraftMsg(msg,isError){
+  const el=document.getElementById('draftMsg');
+  if(!el) return;
+  el.textContent=msg||'';
+  el.style.color=isError?'#b3413a':'#2f7a4d';
+}
+
+async function muatDraft(){
+  if(!isAdminUser()) return;
+  try{
+    const res = await fetch('/api/pekerjaan?draft=1', { headers: authHeaders() });
+    if(!res.ok) return;
+    const d = await res.json();
+    draftRows = d.rows || [];
+    if(!state.nomorUrut && d.usulNomor) {
+      document.getElementById('nomorUrut').placeholder = 'usul: ' + d.usulNomor;
+    }
+    renderDraftList(d.usulNomor);
+  }catch(e){ /* diam -- kartu ini pelengkap, bukan syarat membuat BA */ }
+}
+
+function renderDraftList(usulNomor){
+  const kartu=document.getElementById('draftCard');
+  const daftar=document.getElementById('draftList');
+  if(!kartu||!daftar) return;
+  if(!draftRows.length){ kartu.style.display='none'; return; }
+
+  kartu.style.display='';
+  document.getElementById('draftCount').textContent = '(' + draftRows.length + ')';
+  daftar.innerHTML = draftRows.map(r=>{
+    const judul = r.uraian || BIDANG_LABEL_BA[r.bidang] || 'Laporan lapangan';
+    const koor = (r.gps_lat!=null && r.gps_lng!=null)
+      ? `<a href="https://www.google.com/maps?q=${r.gps_lat},${r.gps_lng}" target="_blank" rel="noopener">${r.gps_lat.toFixed(5)}, ${r.gps_lng.toFixed(5)} 📍</a>` : '—';
+    return `<label style="display:flex;gap:10px;align-items:flex-start;border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin-bottom:8px;cursor:pointer;">
+      <input type="checkbox" class="draft-cb" value="${r.id}" style="margin-top:3px;flex-shrink:0;">
+      <span style="flex:1;min-width:0;">
+        <b style="display:block;font-size:13.5px;">${escBA(judul)}</b>
+        <span style="font-size:12px;color:var(--muted);">
+          ${escBA(BIDANG_LABEL_BA[r.bidang]||r.bidang)}${r.jenis?' · '+escBA(r.jenis):''}${r.instalasi?' · '+escBA(r.instalasi):''}<br>
+          ${escBA(tanggalPanjangBA(r.tanggal))}${r.created_by?' · dilaporkan '+escBA(r.created_by):''}<br>
+          Koordinat: ${koor}
+        </span>
+      </span>
+    </label>`;
+  }).join('');
+
+  if(usulNomor && !state.nomorUrut){
+    setDraftMsg('Nomor urut berikutnya diperkirakan ' + usulNomor + ' — periksa dulu, deret nomor sub divisi juga dipakai dokumen lain.', false);
+  }
+}
+
+function idTerpilih(){
+  return [...document.querySelectorAll('.draft-cb:checked')].map(c=>c.value);
+}
+
+function pakaiDraft(){
+  const ids = idTerpilih();
+  if(!ids.length){ setDraftMsg('Centang dulu laporan yang mau dipakai.', true); return; }
+  const dipilih = draftRows.filter(r=>ids.includes(String(r.id)));
+
+  // Isi bagian "Telah melakukan pemeriksaan pada" dari laporan lapangan.
+  // Yang sudah diketik admin tidak ditimpa diam-diam -- ditambahkan di bawahnya.
+  const baris = dipilih.map(r=>{
+    const bagian = [r.uraian || BIDANG_LABEL_BA[r.bidang]];
+    if(r.instalasi) bagian.push('arah instalasi ' + r.instalasi);
+    if(r.diameter_nilai) bagian.push('diameter ' + r.diameter_nilai + ' ' + (r.diameter_satuan||''));
+    if(r.material) bagian.push('material ' + r.material);
+    if(r.gps_lat!=null && r.gps_lng!=null) bagian.push('koordinat ' + r.gps_lat.toFixed(6) + ', ' + r.gps_lng.toFixed(6));
+    return bagian.join(', ');
+  });
+  const teks = baris.join('\n');
+  state.periksaPada = state.periksaPada ? (state.periksaPada.trim() + '\n' + teks) : teks;
+
+  if(!state.subjudul && dipilih[0].uraian) state.subjudul = dipilih[0].uraian.toUpperCase();
+  if(!state.tanggalSurat) state.tanggalSurat = dipilih[0].tanggal;
+
+  draftDipakai = ids;
+  fillForm();
+  saveDraft();
+  renderPreview();
+  setDraftMsg(ids.length + ' laporan dipakai. Setelah berita acara ini diunduh atau dicetak, laporannya otomatis masuk ke Riwayat Pekerjaan SAB.', false);
+}
+
+async function batalkanDraft(){
+  const ids = idTerpilih();
+  if(!ids.length){ setDraftMsg('Centang dulu laporan yang mau dibatalkan.', true); return; }
+  if(!confirm('Batalkan ' + ids.length + ' laporan terpilih?\n\nLaporan tidak akan muncul lagi di daftar ini. Datanya tidak dihapus permanen — masih bisa dipulihkan lewat database kalau ternyata keliru.')) return;
+  try{
+    const res = await fetch('/api/pekerjaan?id=' + ids.join(','), { method:'DELETE', headers: authHeaders() });
+    if(!res.ok) throw new Error('HTTP ' + res.status);
+    draftDipakai = draftDipakai.filter(id=>!ids.includes(id));
+    setDraftMsg(ids.length + ' laporan dibatalkan.', false);
+    await muatDraft();
+    if(window.segarkanLoncengDraft) window.segarkanLoncengDraft();
+  }catch(err){ setDraftMsg('Gagal membatalkan: ' + err.message, true); }
+}
+
+// Dipanggil setelah berita acara berhasil diunduh/dicetak.
+async function finalkanDraft(){
+  if(!draftDipakai.length) return;
+  try{
+    const res = await fetch('/api/pekerjaan?id=' + draftDipakai.join(','), {
+      method:'PUT',
+      headers: Object.assign({ 'Content-Type':'application/json' }, authHeaders()),
+      body: JSON.stringify({ no_ba: nomorLengkap() })
+    });
+    if(!res.ok) throw new Error('HTTP ' + res.status);
+    const d = await res.json();
+    setDraftMsg(d.diperbarui + ' laporan sudah masuk ke Riwayat Pekerjaan SAB dengan nomor ' + nomorLengkap() + '.', false);
+    draftDipakai = [];
+    await muatDraft();
+    if(window.segarkanLoncengDraft) window.segarkanLoncengDraft();
+  }catch(err){
+    setDraftMsg('Berita acara berhasil dibuat, tapi laporannya belum tercatat di Riwayat Pekerjaan SAB (' + err.message + '). Coba unduh sekali lagi.', true);
+  }
+}
+
 /* =============== Init =============== */
 fillForm();
 renderPersonList();
@@ -1659,6 +1812,9 @@ if(isAdminUser()){
   document.getElementById('nama2').addEventListener('input', ()=>applySignerAutofill(false));
   document.getElementById('nama2').addEventListener('change', ()=>applySignerAutofill(false));
   loadSigners();
+  document.getElementById('btnPakaiDraft').addEventListener('click', pakaiDraft);
+  document.getElementById('btnBatalDraft').addEventListener('click', batalkanDraft);
+  muatDraft();
 }
 </script>
 <script defer src="../assets/js/kompres-foto.js"></script>

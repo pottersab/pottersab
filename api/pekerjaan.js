@@ -198,6 +198,48 @@ module.exports = async (req, res) => {
     return res.status(200).json({ success: true, id: Number(rows[0].id) });
   }
 
+  // --- Tandai draft jadi final setelah berita acaranya dibuat ---
+  // Satu berita acara bisa mencakup beberapa titik pekerjaan sekaligus,
+  // makanya id-nya berupa daftar.
+  if (req.method === 'PUT') {
+    const user = adminDariRequest(req);
+    if (!user) return res.status(403).json({ error: 'Khusus admin' });
+
+    const ids = String(req.query.id || '').split(',').map(s => s.trim()).filter(Boolean);
+    if (!ids.length) return res.status(400).json({ error: 'id wajib diisi' });
+
+    const noBa = teksAtauNull((req.body || {}).no_ba, 120);
+    if (!noBa) return res.status(400).json({ error: 'no_ba wajib diisi' });
+
+    await ensurePekerjaanTable();
+    const { rowCount } = await pool.query(
+      `UPDATE pekerjaan
+       SET status = 'final', no_ba = $1, updated_by = $2, updated_at = now()
+       WHERE id = ANY($3::bigint[]) AND status = 'draft' AND deleted_at IS NULL`,
+      [noBa, user.username || 'admin', ids]
+    );
+    return res.status(200).json({ success: true, diperbarui: rowCount });
+  }
+
+  // --- Batalkan laporan (soft delete) ---
+  // Jalan keluar untuk laporan yang salah kirim -- tanpa ini antrean draft
+  // tidak akan pernah bisa dikosongkan. Datanya tidak benar-benar dihapus.
+  if (req.method === 'DELETE') {
+    const user = adminDariRequest(req);
+    if (!user) return res.status(403).json({ error: 'Khusus admin' });
+
+    const ids = String(req.query.id || '').split(',').map(s => s.trim()).filter(Boolean);
+    if (!ids.length) return res.status(400).json({ error: 'id wajib diisi' });
+
+    await ensurePekerjaanTable();
+    const { rowCount } = await pool.query(
+      `UPDATE pekerjaan SET deleted_at = now(), updated_by = $1, updated_at = now()
+       WHERE id = ANY($2::bigint[]) AND deleted_at IS NULL`,
+      [user.username || 'admin', ids]
+    );
+    return res.status(200).json({ success: true, dibatalkan: rowCount });
+  }
+
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -216,7 +258,25 @@ module.exports = async (req, res) => {
        WHERE deleted_at IS NULL AND status = 'draft'
        ORDER BY tanggal, id`
     );
-    return res.status(200).json({ count: rows.length, rows: rows.map(toRow) });
+
+    // Usulan nomor urut berikutnya: angka terdepan tertinggi dari nomor BA
+    // tahun berjalan, ditambah satu. Sengaja cuma USULAN -- deret nomor
+    // sub divisi juga dipakai dokumen di luar sistem ini dan berlubang, jadi
+    // admin tetap yang menentukan nomor sebenarnya.
+    const tahun = new Date().getFullYear();
+    const { rows: nomor } = await pool.query(
+      `SELECT MAX((regexp_match(no_ba, '^\\s*([0-9]+)'))[1]::int) AS tertinggi
+       FROM pekerjaan
+       WHERE deleted_at IS NULL AND no_ba ~ '^\\s*[0-9]+'
+         AND EXTRACT(YEAR FROM tanggal) = $1`,
+      [tahun]
+    );
+
+    return res.status(200).json({
+      count: rows.length,
+      usulNomor: (nomor[0] && nomor[0].tertinggi ? Number(nomor[0].tertinggi) : 0) + 1,
+      rows: rows.map(r => Object.assign(toRow(r), { created_by: r.created_by, dibuat: r.dibuat }))
+    });
   }
 
   // --- Unduh CSV: admin saja ---
