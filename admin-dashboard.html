@@ -1081,6 +1081,29 @@ function doLogout(){
     });
   }
 
+  // Berita Acara yang dihapus di sini juga tercatat di Riwayat Pekerjaan SAB.
+  // Baris pekerjaannya dikembalikan jadi draft -- hilang dari rekap, lalu
+  // muncul lagi di lonceng notifikasi supaya bisa dibuatkan berita acara
+  // baru. Laporan lapangannya sendiri (foto, GPS, jam kerja) tidak dibuang,
+  // karena yang batal cuma dokumennya.
+  async function kembalikanPekerjaanJadiDraft(ids) {
+    try {
+      const res = await fetch(`${API_URL}/api/pekerjaan?history_id=${ids.join(',')}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!res.ok) return 0;
+      const d = await res.json();
+      return d.dikembalikanJadiDraft || 0;
+    } catch (err) {
+      return 0;
+    }
+  }
+
+  function pesanTambahanDraft(n) {
+    return n ? ` — ${n} laporan lapangan dikembalikan ke antrean berita acara` : '';
+  }
+
   async function deleteEntry(id) {
     if (!confirm('Yakin ingin menghapus entry ini?')) return;
 
@@ -1091,7 +1114,8 @@ function doLogout(){
       });
 
       if (response.ok) {
-        showMessage('Entry berhasil dihapus', 'success');
+        const n = await kembalikanPekerjaanJadiDraft([id]);
+        showMessage('Entry berhasil dihapus' + pesanTambahanDraft(n), 'success');
         loadHistory(historyState.page);
       } else {
         showMessage('Gagal menghapus entry', 'error');
@@ -1113,7 +1137,8 @@ function doLogout(){
       });
 
       if (response.ok) {
-        showMessage(`${ids.length} entri berhasil dihapus`, 'success');
+        const n = await kembalikanPekerjaanJadiDraft(ids);
+        showMessage(`${ids.length} entri berhasil dihapus` + pesanTambahanDraft(n), 'success');
         loadHistory(historyState.page);
       } else {
         showMessage('Gagal menghapus entri terpilih', 'error');
@@ -1549,7 +1574,7 @@ function doLogout(){
     const raw = item.details || {};
     const isNested = raw && typeof raw === 'object' && raw.state && typeof raw.state === 'object';
     const src = isNested ? raw.state : raw;
-    editingContext = { isNested, src };
+    editingContext = { isNested, src, namaAsli: item.documentName };
 
     let html = `<div class="field"><label>Nama Dokumen</label><input type="text" id="editDocumentName" value="${escapeAttr(item.documentName)}"></div>`;
     const scalarKeys = Object.keys(src || {}).filter(k => src[k] === null || typeof src[k] !== 'object');
@@ -1575,6 +1600,23 @@ function doLogout(){
     return `${s.nomorUrut || '...'}/${s.kodeTetap1 || ''}/${s.kodeTetap2 || ''}/${bulan || ''}/${tahun}-Q`;
   }
 
+  // Nama dokumen dihitung ulang dari isi surat yang sudah diedit. Berita
+  // Acara memakai pola nomor_subjudul (lihat saveHistoryEntry di
+  // apps/berita-acara.html); jenis lain memakai fungsi filename() dari
+  // builder-nya sendiri, sama dengan yang dipakai tombol "Unduh Ulang".
+  function namaDokumenDariIsi(documentType, newSrc, newDetails) {
+    try {
+      if (documentType === 'Berita Acara') {
+        return newSrc.subjudul
+          ? `${newSrc.nomorUrut}_${newSrc.subjudul}`
+          : `Berita_Acara_${newSrc.nomorUrut}_${newSrc.tanggalSurat}.pdf`;
+      }
+      const def = REGEN[documentType];
+      if (def && def.validate(newDetails)) return def.filename(newDetails);
+    } catch (err) { /* nama lama dipertahankan kalau gagal dihitung */ }
+    return null;
+  }
+
   async function sinkronkanPekerjaan(item, newState) {
     if (item.documentType !== 'Berita Acara' || !newState) return false;
     try {
@@ -1594,7 +1636,11 @@ function doLogout(){
   document.getElementById('saveEditBtn').addEventListener('click', async () => {
     if (!editingItem || !editingContext) return;
     const body = document.getElementById('editBody');
-    const documentName = body.querySelector('#editDocumentName').value.trim() || editingItem.documentName;
+    let documentName = body.querySelector('#editDocumentName').value.trim() || editingItem.documentName;
+    // Kalau kolom Nama Dokumen tidak disentuh, namanya dihitung ulang dari
+    // isi surat yang baru -- supaya mengubah nomor urut atau sub judul ikut
+    // memperbarui nama di daftar riwayat, bukan menyisakan nama lama.
+    const namaBelumDiubahManual = documentName === editingContext.namaAsli;
 
     const updatedScalars = {};
     body.querySelectorAll('[data-field]').forEach(el => {
@@ -1608,6 +1654,11 @@ function doLogout(){
     const newDetails = editingContext.isNested
       ? Object.assign({}, editingItem.details, { state: newSrc })
       : newSrc;
+
+    if (namaBelumDiubahManual) {
+      const usul = namaDokumenDariIsi(editingItem.documentType, newSrc, newDetails);
+      if (usul) documentName = usul;
+    }
 
     try {
       const response = await fetch(`${API_URL}/api/history?id=${editingItem.id}`, {

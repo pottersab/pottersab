@@ -245,6 +245,28 @@ module.exports = async (req, res) => {
     const user = adminDariRequest(req);
     if (!user) return res.status(403).json({ error: 'Khusus admin' });
 
+    // Dipanggil dari Dashboard Admin saat entri Riwayat Surat dihapus.
+    // Pekerjaannya TIDAK ikut dihapus, tapi dikembalikan jadi draft: yang
+    // batal cuma dokumennya, sedangkan laporan lapangannya (foto, GPS, jam
+    // kerja) tetap kejadian nyata. Efeknya baris itu hilang dari Riwayat
+    // Pekerjaan SAB dan kembali muncul di lonceng notifikasi supaya bisa
+    // dibuatkan berita acara baru. Untuk membuang laporannya sungguhan,
+    // pakai "Batalkan laporan terpilih" di halaman Berita Acara.
+    if (req.query.history_id) {
+      const hids = String(req.query.history_id).split(',').map(s => s.trim()).filter(Boolean);
+      if (!hids.length) return res.status(400).json({ error: 'history_id tidak valid' });
+
+      await ensurePekerjaanTable();
+      const { rowCount } = await pool.query(
+        `UPDATE pekerjaan
+         SET status = 'draft', no_ba = NULL, history_id = NULL,
+             updated_by = $1, updated_at = now()
+         WHERE history_id = ANY($2::bigint[]) AND deleted_at IS NULL`,
+        [user.username || 'admin', hids]
+      );
+      return res.status(200).json({ success: true, dikembalikanJadiDraft: rowCount });
+    }
+
     const ids = String(req.query.id || '').split(',').map(s => s.trim()).filter(Boolean);
     if (!ids.length) return res.status(400).json({ error: 'id wajib diisi' });
 
