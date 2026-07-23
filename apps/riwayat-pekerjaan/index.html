@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Riwayat Pekerjaan SAB — Sumber Air Baku</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+</head>
+<body>
+<header class="ptmb-navbar">
+  <div class="ptmb-nav-inner">
+    <a class="ptmb-brand" href="../../index.html">
+      <span class="ptmb-brand-mark">PT</span>
+      <span>PTMB<small>Portal Internal · SAB</small></span>
+    </a>
+    <nav class="ptmb-nav-links" id="navLinks">
+      <a href="../../index.html"><svg class="ptmb-nav-ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0A6A72" stroke-width="2" stroke-linecap="round"><path d="M3 12l9-9 9 9"/><path d="M5 10v10h14V10"/></svg>Beranda</a>
+      <a href="../../index.html?page=tools"><svg class="ptmb-nav-ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0E8E96" stroke-width="2" stroke-linecap="round"><path d="M14 3v5h5"/><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/></svg>Tools</a>
+      <a href="../../index.html?page=data" class="active"><svg class="ptmb-nav-ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#E8791D" stroke-width="2" stroke-linecap="round"><path d="M3 20h18"/><path d="M5 20V12M10 20V7M15 20v-9M20 20V4"/></svg>Data &amp; Visualisasi</a>
+      <a href="../../index.html?page=dev"><svg class="ptmb-nav-ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0F8E7E" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M4.9 4.9l2.8 2.8M16.3 16.3l2.8 2.8M2 12h4M18 12h4M4.9 19.1l2.8-2.8M16.3 7.7l2.8-2.8"/></svg>Development</a>
+      <a href="../../index.html?page=about"><svg class="ptmb-nav-ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#7C5CD6" stroke-width="2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"/><circle cx="10" cy="7" r="4"/></svg>About SAB</a>
+    </nav>
+    <div class="nav-right">
+      <a class="ptmb-btn-login" id="navLoginBtn" href="../../login.html" style="display:none">Login</a>
+      <div class="admin-wrap" id="adminWrap" style="display:none">
+        <button class="admin-chip" onclick="toggleAdminMenu()">
+          <span class="admin-avatar" id="adminAvatar">P</span>
+          <span class="name-block">
+            <span id="adminName">Potter</span>
+            <span class="role" id="adminRole">Admin · SAB</span>
+          </span>
+          <span class="admin-caret"></span>
+        </button>
+        <div class="admin-menu">
+          <a href="../../admin-dashboard.html">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>
+            Dashboard Admin
+          </a>
+          <button class="logout" onclick="doLogout()">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>
+            Logout
+          </button>
+        </div>
+      </div>
+    </div>
+    <button class="ptmb-nav-toggle" id="navToggle" aria-label="Buka menu">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+</header>
+<div class="ptmb-nav-backdrop" id="navBackdrop"></div>
+
+<script>
+function toggleAdminMenu(){
+  document.getElementById('adminWrap').classList.toggle('open');
+}
+document.addEventListener('click', function(e){
+  var wrap = document.getElementById('adminWrap');
+  if(wrap && !wrap.contains(e.target)) wrap.classList.remove('open');
+});
+
+(function(){
+  var toggle = document.getElementById('navToggle');
+  var navLinksEl = document.getElementById('navLinks');
+  var backdrop = document.getElementById('navBackdrop');
+  if(!toggle || !navLinksEl) return;
+  toggle.addEventListener('click', function(){
+    var willOpen = !navLinksEl.classList.contains('open');
+    toggle.classList.toggle('open', willOpen);
+    navLinksEl.classList.toggle('open', willOpen);
+    if(backdrop) backdrop.classList.toggle('open', willOpen);
+  });
+  if(backdrop) backdrop.addEventListener('click', function(){
+    toggle.classList.remove('open');
+    navLinksEl.classList.remove('open');
+    backdrop.classList.remove('open');
+  });
+})();
+
+function doLogout(){
+  if(!confirm('Keluar dari akun admin?')) return;
+  localStorage.removeItem('token');
+  localStorage.removeItem('role');
+  localStorage.removeItem('username');
+  localStorage.removeItem('displayName');
+  localStorage.removeItem('avatarInitial');
+  window.location.href = '../../login.html';
+}
+
+(function(){
+  var token = localStorage.getItem('token');
+  var role = localStorage.getItem('role');
+  var loginBtn = document.getElementById('navLoginBtn');
+  var adminWrap = document.getElementById('adminWrap');
+  if(!loginBtn || !adminWrap) return;
+  if(token && role === 'admin'){
+    var displayName = localStorage.getItem('displayName') || localStorage.getItem('username') || 'Admin';
+    var avatarInitial = localStorage.getItem('avatarInitial') || displayName.charAt(0).toUpperCase();
+    document.getElementById('adminName').textContent = displayName;
+    document.getElementById('adminAvatar').textContent = avatarInitial;
+    adminWrap.style.display = '';
+  } else {
+    loginBtn.style.display = '';
+  }
+})();
+</script>
+
+
+<div class="wrap">
+
+  <header class="top">
+    <div>
+      <div class="brand">Perumda Tirta Manuntung — Sumber Air Baku</div>
+      <h1>Riwayat Pekerjaan SAB <span class="dummy-badge" id="statusBadge">Memuat...</span></h1>
+    </div>
+    <div class="top-note">Rekapitulasi seluruh pekerjaan Sub Divisi Sumber Air Baku. Pilih bidang pekerjaan, saring menurut instalasi, tahun, jenis, atau diameter.</div>
+  </header>
+
+  <div class="lock-banner" id="lockBanner" style="display:none;">
+    <div class="lock-banner-text">
+      🔒 Yang ditampilkan sekarang adalah <b>data contoh</b>, bukan data asli — data ini vital bagi perusahaan.
+      <span id="lockStatusText"></span>
+    </div>
+    <button type="button" class="dl-btn" id="requestAccessBtn">Minta Akses</button>
+  </div>
+
+  <div class="access-modal-overlay" id="accessModalOverlay" style="display:none;">
+    <div class="access-modal">
+      <h3>Minta Akses Data Asli</h3>
+      <p class="hint">Diminta dari halaman: <b id="accessModalGroupName">Riwayat Pekerjaan SAB</b>. Isi nama kamu — admin akan menerima notifikasi lewat email dan kamu bisa chat admin lewat WhatsApp jika kebutuhan mendesak, jangan tutup jendela ini sampai akses diberikan.</p>
+      <label for="accessNamaInput">Nama</label>
+      <input type="text" id="accessNamaInput" placeholder="Nama kamu">
+      <label for="accessAlasanInput">Keperluan (opsional)</label>
+      <textarea id="accessAlasanInput" placeholder="Contoh: untuk laporan bulanan"></textarea>
+      <div class="access-modal-actions">
+        <button type="button" class="btn-ghost" id="accessModalCancel">Batal</button>
+        <button type="button" class="dl-btn" id="accessModalSubmit">Kirim Permintaan</button>
+      </div>
+      <button type="button" class="btn-whatsapp" id="accessModalWhatsapp">💬 Chat Admin via WhatsApp</button>
+      <div class="status-msg" id="accessModalStatus"></div>
+    </div>
+  </div>
+
+  <!-- Pemilih bidang pekerjaan (Ringkasan / Pipa Transmisi / Pipa Sumur /
+       Service Sumur / Pekerjaan Lainnya) -->
+  <div class="bidang-row" id="tabRow" role="tablist" aria-label="Bidang pekerjaan"></div>
+  <!-- Sub-pilihan: instalasi di dalam bidang yang aktif -->
+  <div class="sub-row" id="subRow"></div>
+
+  <div class="stats" id="stats"></div>
+  <div class="chart-grid" id="charts"></div>
+
+  <div class="panel" id="tablePanel">
+    <div class="panel-head">
+      <div>
+        <h2 id="tblTitle">Daftar Pekerjaan</h2>
+        <p class="cap" id="tblCap"></p>
+      </div>
+      <button class="dl-btn dl-btn-admin" id="downloadCsvBtn">🔒 Unduh CSV (Admin)</button>
+    </div>
+    <div class="filters" id="filters"></div>
+    <div class="tbl-wrap"><table><thead id="thead"></thead><tbody id="tbody"></tbody></table></div>
+    <div class="pager" id="pager"></div>
+  </div>
+
+  <div class="page-footer-note">
+    <a href="../../index.html">&larr; Kembali ke Beranda</a>
+  </div>
+
+</div>
+
+<script defer src="app.js"></script>
+</body>
+</html>
