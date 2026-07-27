@@ -770,7 +770,7 @@ footer{border-top:1px solid var(--mist);padding:26px 20px;text-align:center;font
 
     <div class="gallery-head">
       <h3>Galeri Kegiatan</h3>
-      <a href="about.html">Buka semua foto →</a>
+      <a href="galeri.html">Buka semua foto →</a>
     </div>
     <!-- Kotak di bawah ini cuma contoh; diganti foto asli oleh skrip di bawah
          kalau tabel `galeri` sudah ada isinya. -->
@@ -899,7 +899,7 @@ document.addEventListener('click', function(e){
       if(!foto.length) return;
       grid.innerHTML = foto.slice(0, 6).map(function(f){
         var alt = f.keterangan || 'Foto kegiatan Sumber Air Baku';
-        return '<a class="g-photo" href="about.html#gallery">'
+        return '<a class="g-photo" href="galeri.html">'
           + '<img src="' + esc(f.url) + '" alt="' + esc(alt) + '" loading="lazy">'
           + (f.keterangan ? '<span>' + esc(f.keterangan) + '</span>' : '')
           + '</a>';
