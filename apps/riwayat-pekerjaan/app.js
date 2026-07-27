@@ -365,11 +365,16 @@ function renderTable() {
   if (page > maxPage) page = maxPage;
   const slice = rows.slice((page - 1) * PER, page * PER);
 
+  // Kolom hapus cuma muncul untuk admin. Karena data ini rekap belasan tahun,
+  // tombolnya membuka konfirmasi ketik-nomor-BA (lihat bukaHapus), bukan
+  // langsung menghapus -- supaya mustahil terhapus karena salah klik.
   $('tblCap').textContent = c.caption;
-  $('thead').innerHTML = '<tr>' + c.cols.map(k => `<th>${esc(COLDEF[k].h)}</th>`).join('') + '</tr>';
+  const kolomAksi = isAdmin ? '<th></th>' : '';
+  $('thead').innerHTML = '<tr>' + c.cols.map(k => `<th>${esc(COLDEF[k].h)}</th>`).join('') + kolomAksi + '</tr>';
 
   if (!slice.length) {
-    $('tbody').innerHTML = `<tr><td class="empty-note" colspan="${c.cols.length}">Tidak ada pekerjaan yang cocok dengan filter ini.</td></tr>`;
+    const span = c.cols.length + (isAdmin ? 1 : 0);
+    $('tbody').innerHTML = `<tr><td class="empty-note" colspan="${span}">Tidak ada pekerjaan yang cocok dengan filter ini.</td></tr>`;
   } else {
     $('tbody').innerHTML = slice.map(r => '<tr>' + c.cols.map(k => {
       const d = COLDEF[k];
@@ -379,7 +384,15 @@ function renderTable() {
         return `<td><span class="badge" style="background:${warna}">${esc(val)}</span></td>`;
       }
       return `<td${d.cls ? ` class="${d.cls}"` : ''}>${val}</td>`;
-    }).join('') + '</tr>').join('');
+    }).join('')
+      + (isAdmin ? `<td><button type="button" class="hapus-btn" data-id="${r.id}" title="Hapus pekerjaan ini">Hapus</button></td>` : '')
+      + '</tr>').join('');
+
+    if (isAdmin) {
+      $('tbody').querySelectorAll('.hapus-btn').forEach(btn => {
+        btn.onclick = () => bukaHapus(Number(btn.dataset.id));
+      });
+    }
   }
 
   const dari = rows.length ? (page - 1) * PER + 1 : 0;
@@ -408,6 +421,72 @@ function jump(f) {
   renderFilters();
   renderTable();
   scrollKeTabel();
+}
+
+// ---------------------------------------------------------------------------
+// HAPUS (admin) — konfirmasi ketik ulang, bukan verifikasi email
+// ---------------------------------------------------------------------------
+// Aksi ini dijaga ketik-ulang (bukan sekadar tombol "OK") karena menyentuh
+// rekap belasan tahun -- mustahil terjadi karena salah klik. Di server
+// penghapusannya soft delete (deleted_at), jadi kalaupun keliru masih bisa
+// dipulihkan lewat database.
+let hapusTarget = null;
+
+function bukaHapus(id) {
+  const r = REC.find(x => x.id === id);
+  if (!r) return;
+  hapusTarget = r;
+  // Frasa yang harus diketik: nomor BA kalau ada, kalau tidak kata "HAPUS".
+  const frasa = (r.no_ba && r.no_ba.trim()) ? r.no_ba.trim() : 'HAPUS';
+  const judul = r.uraian || r.lokasi_teks || BIDANG_LABEL[r.bidang] || 'pekerjaan ini';
+
+  $('hapusRingkas').innerHTML =
+    `<b>${esc(judul)}</b><br>` +
+    `${esc(BIDANG_LABEL[r.bidang] || r.bidang)}${r.instalasi ? ' · ' + esc(r.instalasi) : ''} · ${esc(fmtDate(r.tanggal))}` +
+    (r.no_ba ? `<br>No. BA: <span class="mono-inline">${esc(r.no_ba)}</span>` : '');
+  $('hapusFrasa').textContent = frasa;
+  $('hapusInput').value = '';
+  $('hapusMsg').textContent = '';
+  $('hapusOk').disabled = true;
+  $('hapusModal').style.display = 'flex';
+  setTimeout(() => $('hapusInput').focus(), 50);
+}
+
+function tutupHapus() {
+  $('hapusModal').style.display = 'none';
+  hapusTarget = null;
+}
+
+function cocokFrasa() {
+  if (!hapusTarget) return false;
+  const frasa = (hapusTarget.no_ba && hapusTarget.no_ba.trim()) ? hapusTarget.no_ba.trim() : 'HAPUS';
+  return $('hapusInput').value.trim() === frasa;
+}
+
+async function jalankanHapus() {
+  if (!hapusTarget || !cocokFrasa()) return;
+  const id = hapusTarget.id;
+  const btn = $('hapusOk');
+  btn.disabled = true;
+  $('hapusMsg').textContent = 'Menghapus…';
+  $('hapusMsg').className = 'status-msg';
+  try {
+    const token = localStorage.getItem('token');
+    const res = await fetch('/api/pekerjaan?id=' + id, {
+      method: 'DELETE', headers: { Authorization: 'Bearer ' + token }
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    // Buang dari data di memori supaya tabel & grafik langsung menyesuaikan
+    // tanpa memuat ulang seluruhnya dari server.
+    REC = REC.filter(x => x.id !== id);
+    YRS = [...new Set(REC.map(x => x.tahun))].sort();
+    tutupHapus();
+    renderAll(false);
+  } catch (err) {
+    $('hapusMsg').textContent = 'Gagal menghapus: ' + err.message;
+    $('hapusMsg').className = 'status-msg error';
+    btn.disabled = false;
+  }
 }
 
 // Tampilan saat database memang belum berisi apa-apa. Dipisah dari pesan
@@ -664,6 +743,13 @@ function wireControls() {
   $('accessModalSubmit').addEventListener('click', submitAccessRequest);
   $('accessModalWhatsapp').addEventListener('click', openWhatsappChat);
   $('downloadCsvBtn').addEventListener('click', downloadCsv);
+
+  // Konfirmasi hapus: tombol OK aktif hanya kalau frasa yang diketik cocok.
+  $('hapusInput').addEventListener('input', () => { $('hapusOk').disabled = !cocokFrasa(); });
+  $('hapusInput').addEventListener('keydown', e => { if (e.key === 'Enter' && cocokFrasa()) jalankanHapus(); });
+  $('hapusOk').addEventListener('click', jalankanHapus);
+  $('hapusBatal').addEventListener('click', tutupHapus);
+  $('hapusModal').addEventListener('click', e => { if (e.target === $('hapusModal')) tutupHapus(); });
 }
 
 async function init() {

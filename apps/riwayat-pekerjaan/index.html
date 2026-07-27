@@ -172,6 +172,23 @@ function doLogout(){
 
 </div>
 
+<!-- Konfirmasi hapus (admin): harus mengetik ulang nomor BA supaya tidak
+     mungkin terhapus karena salah klik. Penghapusannya soft delete di server. -->
+<div class="hapus-modal-overlay" id="hapusModal" style="display:none;">
+  <div class="hapus-modal">
+    <h3>Hapus Pekerjaan</h3>
+    <p class="hint">Baris ini akan dihapus dari Riwayat Pekerjaan SAB. Untuk memastikan bukan salah klik, ketik ulang teks di bawah.</p>
+    <div class="hapus-ringkas" id="hapusRingkas"></div>
+    <label>Ketik <span class="hapus-frasa" id="hapusFrasa"></span> untuk mengonfirmasi</label>
+    <input type="text" id="hapusInput" autocomplete="off" spellcheck="false" placeholder="Ketik di sini…">
+    <div class="hapus-modal-actions">
+      <button type="button" class="btn-ghost" id="hapusBatal">Batal</button>
+      <button type="button" class="dl-btn hapus-ok" id="hapusOk" disabled>Hapus</button>
+    </div>
+    <div class="status-msg" id="hapusMsg"></div>
+  </div>
+</div>
+
 <script defer src="app.js"></script>
 <script defer src="../../assets/js/nav-badge.js"></script>
 </body>
