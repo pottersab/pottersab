@@ -376,7 +376,7 @@ function renderTable() {
     const span = c.cols.length + (isAdmin ? 1 : 0);
     $('tbody').innerHTML = `<tr><td class="empty-note" colspan="${span}">Tidak ada pekerjaan yang cocok dengan filter ini.</td></tr>`;
   } else {
-    $('tbody').innerHTML = slice.map(r => '<tr>' + c.cols.map(k => {
+    $('tbody').innerHTML = slice.map(r => `<tr data-id="${r.id}" class="baris-klik">` + c.cols.map(k => {
       const d = COLDEF[k];
       const val = d.v(r);
       if (d.badge) {
@@ -388,9 +388,17 @@ function renderTable() {
       + (isAdmin ? `<td><button type="button" class="hapus-btn" data-id="${r.id}" title="Hapus pekerjaan ini">Hapus</button></td>` : '')
       + '</tr>').join('');
 
+    // Klik baris -> buka detail lengkap. Klik pada tautan peta atau tombol
+    // hapus tidak ikut memicu (ditangani terpisah / dihentikan di bawah).
+    $('tbody').querySelectorAll('tr.baris-klik').forEach(tr => {
+      tr.onclick = e => {
+        if (e.target.closest('a') || e.target.closest('.hapus-btn')) return;
+        bukaDetail(Number(tr.dataset.id));
+      };
+    });
     if (isAdmin) {
       $('tbody').querySelectorAll('.hapus-btn').forEach(btn => {
-        btn.onclick = () => bukaHapus(Number(btn.dataset.id));
+        btn.onclick = e => { e.stopPropagation(); bukaHapus(Number(btn.dataset.id)); };
       });
     }
   }
@@ -422,6 +430,70 @@ function jump(f) {
   renderTable();
   scrollKeTabel();
 }
+
+// ---------------------------------------------------------------------------
+// DETAIL PEKERJAAN — pop-up saat baris tabel diklik
+// ---------------------------------------------------------------------------
+// Field seperti kontraktor, jam kerja, barang, dan foto tidak ikut di daftar
+// utama (supaya halaman ringan), jadi diambil terpisah saat baris diklik.
+function barisDetail(label, nilai) {
+  if (nilai === null || nilai === undefined || nilai === '') return '';
+  return `<div class="detail-item"><span class="k">${esc(label)}</span><span class="v">${nilai}</span></div>`;
+}
+
+async function bukaDetail(id) {
+  const overlay = $('detailModal');
+  const isi = $('detailIsi');
+  $('detailJudul').textContent = 'Detail Pekerjaan';
+  isi.innerHTML = '<div class="loading-note">Memuat detail…</div>';
+  overlay.style.display = 'flex';
+
+  try {
+    const token = currentAccessToken();
+    const res = await fetch('/api/pekerjaan?detail=' + id, {
+      headers: token ? { Authorization: 'Bearer ' + token } : {}
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const { pekerjaan: r } = await res.json();
+    renderDetail(r);
+  } catch (err) {
+    isi.innerHTML = `<div class="error-note">Gagal memuat detail: ${esc(err.message)}</div>`;
+  }
+}
+
+function renderDetail(r) {
+  const dia = r.diameter_nilai ? esc(r.diameter_nilai + ' ' + (r.diameter_satuan || '')) : null;
+  const jam = (r.jam_mulai || r.jam_selesai) ? esc((r.jam_mulai || '?') + ' – ' + (r.jam_selesai || '?')) : null;
+  const koor = (r.gps_lat !== null && r.gps_lng !== null)
+    ? `<a class="maps-link" target="_blank" rel="noopener" href="https://www.google.com/maps?q=${r.gps_lat},${r.gps_lng}">${r.gps_lat.toFixed(6)}, ${r.gps_lng.toFixed(6)} 📍</a>`
+    : null;
+  const lokasi = r.lokasi_teks ? esc(r.lokasi_teks) : koor;
+
+  const foto = (r.foto_urls || []).filter(u => typeof u === 'string' && u.startsWith('data:'));
+  const fotoHtml = foto.length
+    ? `<div class="detail-foto">${foto.map(u => `<a href="${u}" target="_blank" rel="noopener"><img src="${u}" alt="Foto pekerjaan"></a>`).join('')}</div>`
+    : '';
+
+  $('detailJudul').textContent = r.uraian || BIDANG_LABEL[r.bidang] || 'Detail Pekerjaan';
+  $('detailIsi').innerHTML =
+    barisDetail('No. Berita Acara', r.no_ba ? `<span class="mono-inline">${esc(r.no_ba)}</span>` : null) +
+    barisDetail('Tanggal', esc(fmtDate(r.tanggal))) +
+    barisDetail('Bidang', esc(BIDANG_LABEL[r.bidang] || r.bidang)) +
+    barisDetail('Jenis', r.jenis ? esc(r.jenis) : null) +
+    barisDetail('Instalasi', r.instalasi ? esc(r.instalasi) : null) +
+    barisDetail('Lokasi', lokasi) +
+    barisDetail('Diameter', dia) +
+    barisDetail('Material', r.material ? esc(r.material) : null) +
+    barisDetail('Kontraktor', r.kontraktor ? esc(r.kontraktor) : null) +
+    barisDetail('Jam Kerja', jam) +
+    barisDetail('Barang Pengadaan', r.barang_pengadaan ? esc(r.barang_pengadaan) : null) +
+    barisDetail('Barang Gudang Induk', r.barang_gudang ? esc(r.barang_gudang) : null) +
+    barisDetail('Keterangan', r.keterangan ? esc(r.keterangan) : null) +
+    barisDetail('Dilaporkan', r.created_by ? esc(r.created_by) + (r.dibuat ? ' · ' + esc(fmtDate(r.dibuat)) : '') : null) +
+    fotoHtml;
+}
+
+function tutupDetail() { $('detailModal').style.display = 'none'; }
 
 // ---------------------------------------------------------------------------
 // HAPUS (admin) — konfirmasi ketik ulang, bukan verifikasi email
@@ -750,6 +822,12 @@ function wireControls() {
   $('hapusOk').addEventListener('click', jalankanHapus);
   $('hapusBatal').addEventListener('click', tutupHapus);
   $('hapusModal').addEventListener('click', e => { if (e.target === $('hapusModal')) tutupHapus(); });
+
+  $('detailTutup').addEventListener('click', tutupDetail);
+  $('detailModal').addEventListener('click', e => { if (e.target === $('detailModal')) tutupDetail(); });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') { tutupDetail(); tutupHapus(); }
+  });
 }
 
 async function init() {

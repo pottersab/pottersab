@@ -283,6 +283,48 @@ module.exports = async (req, res) => {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  // --- Detail satu pekerjaan (dipanggil saat baris tabel diklik) ---
+  // Berisi kolom yang tidak ikut di daftar utama supaya halaman tetap ringan:
+  // kontraktor, jam kerja, barang, foto. Butuh akses yang sama dengan daftar
+  // (viewer ber-token atau admin) -- bukan cuma admin, karena detail ini bagian
+  // dari data yang memang boleh dilihat pemegang akses.
+  if (req.query.detail !== undefined) {
+    const akses = await checkVizAccess(req);
+    if (!akses.granted) return res.status(403).json({ error: 'Perlu akses data' });
+
+    const id = String(req.query.detail).trim();
+    if (!/^\d+$/.test(id)) return res.status(400).json({ error: 'id tidak valid' });
+
+    await ensurePekerjaanTable();
+    const { rows } = await pool.query(
+      `SELECT ${SELECT_COLS}, jenis, instalasi_asli, gps_akurasi, kontraktor,
+              jam_mulai::text AS jam_mulai, jam_selesai::text AS jam_selesai,
+              barang_pengadaan, barang_gudang, foto_urls, sumber, created_by,
+              to_char(created_at, 'YYYY-MM-DD') AS dibuat
+       FROM pekerjaan
+       WHERE id = $1 AND deleted_at IS NULL AND status = 'final'`,
+      [id]
+    );
+    if (!rows.length) return res.status(404).json({ error: 'Tidak ditemukan' });
+
+    const r = rows[0];
+    return res.status(200).json({
+      pekerjaan: Object.assign(toRow(r), {
+        instalasi_asli: r.instalasi_asli,
+        gps_akurasi: r.gps_akurasi !== null ? Number(r.gps_akurasi) : null,
+        kontraktor: r.kontraktor,
+        jam_mulai: r.jam_mulai ? r.jam_mulai.slice(0, 5) : null,
+        jam_selesai: r.jam_selesai ? r.jam_selesai.slice(0, 5) : null,
+        barang_pengadaan: r.barang_pengadaan,
+        barang_gudang: r.barang_gudang,
+        foto_urls: r.foto_urls || [],
+        sumber: r.sumber,
+        created_by: r.created_by,
+        dibuat: r.dibuat
+      })
+    });
+  }
+
   // --- Foto laporan lapangan, diambil terpisah ---
   // Sengaja tidak ikut di ?draft=1: daftar itu dimuat lonceng notifikasi di
   // SETIAP halaman, jadi tidak boleh menyeret gambar. Foto cuma diambil saat

@@ -171,6 +171,45 @@ tbody tr:hover td{background:var(--primary-pale);}
 .maps-link{font-family:'IBM Plex Mono',monospace;color:var(--primary);text-decoration:none;white-space:nowrap;}
 .maps-link:hover{text-decoration:underline;}
 
+tbody tr.baris-klik{cursor:pointer;}
+
+/* --- Modal detail pekerjaan --- */
+.detail-modal-overlay{
+  position:fixed;inset:0;background:rgba(14,42,50,0.45);
+  display:flex;align-items:center;justify-content:center;z-index:1000;padding:20px;
+}
+.detail-modal{
+  background:var(--surface);border-radius:14px;max-width:460px;width:100%;
+  max-height:88vh;display:flex;flex-direction:column;
+  box-shadow:0 20px 50px -20px rgba(14,42,50,0.4);
+}
+.detail-modal-head{
+  display:flex;align-items:flex-start;gap:12px;
+  padding:20px 22px 14px;border-bottom:1px solid var(--line-muted);
+}
+.detail-modal-head h3{
+  font-family:'Space Grotesk',sans-serif;font-size:16px;margin:0;color:var(--primary);flex:1;line-height:1.35;
+}
+.detail-tutup{
+  border:none;background:none;font-size:24px;line-height:1;color:var(--ink-soft);
+  cursor:pointer;padding:0 2px;flex-shrink:0;
+}
+.detail-tutup:hover{color:var(--ink);}
+.detail-modal-body{padding:8px 22px 22px;overflow-y:auto;}
+.detail-item{
+  display:flex;justify-content:space-between;gap:14px;
+  padding:10px 0;border-bottom:1px solid var(--line-muted);font-size:13.5px;
+}
+.detail-item:last-child{border-bottom:none;}
+.detail-item .k{color:var(--ink-soft);flex-shrink:0;}
+.detail-item .v{font-weight:600;text-align:right;word-break:break-word;}
+.detail-item .mono-inline{font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:500;}
+.detail-foto{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px;}
+.detail-foto img{
+  width:100%;border-radius:8px;border:1px solid var(--line-muted);display:block;
+}
+.mono-inline{font-family:'IBM Plex Mono',monospace;}
+
 .hapus-btn{
   font-family:'Space Grotesk',sans-serif;font-size:12px;font-weight:600;
   padding:5px 12px;border-radius:7px;border:1px solid var(--line-muted);

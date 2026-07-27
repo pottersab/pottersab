@@ -172,6 +172,17 @@ function doLogout(){
 
 </div>
 
+<!-- Detail satu pekerjaan, muncul saat baris tabel diklik. -->
+<div class="detail-modal-overlay" id="detailModal" style="display:none;">
+  <div class="detail-modal">
+    <div class="detail-modal-head">
+      <h3 id="detailJudul">Detail Pekerjaan</h3>
+      <button type="button" class="detail-tutup" id="detailTutup" aria-label="Tutup">&times;</button>
+    </div>
+    <div class="detail-modal-body" id="detailIsi"></div>
+  </div>
+</div>
+
 <!-- Konfirmasi hapus (admin): harus mengetik ulang nomor BA supaya tidak
      mungkin terhapus karena salah klik. Penghapusannya soft delete di server. -->
 <div class="hapus-modal-overlay" id="hapusModal" style="display:none;">
