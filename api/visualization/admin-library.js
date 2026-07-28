@@ -1,4 +1,4 @@
-const { pool, ensureVizTables, ensureSignersTable } = require('../../lib/db');
+const { pool, ensureVizTables, ensureSignersTable, ensureSpdTables } = require('../../lib/db');
 const { requireAdmin } = require('../../lib/auth');
 const { DATASETS } = require('../../lib/visualization/columns');
 const { fetchSumurWells } = require('../../lib/visualization/repo');
@@ -493,6 +493,137 @@ async function handleSigners(req, res) {
   return res.status(405).json({ error: 'Method not allowed' });
 }
 
+// --- action=spd: template & penomoran untuk apps/spd-admin.html ------------
+// Tiga hal yang dilayani di sini (semua khusus admin):
+//   GET                      -> kop, daftar template kode perk & penandatangan,
+//                               dan nomor berikutnya untuk tahun ?tahun=
+//   POST &what=template      -> upsert satu template (atau baris kop)
+//   POST &what=nomor         -> ambil nomor SPD saat surat diunduh
+//   DELETE &what=template    -> hapus satu template
+// Riwayat suratnya sendiri TIDAK di sini -- tetap lewat /api/history seperti
+// halaman surat lain, supaya ikut muncul di Dashboard Admin.
+
+// Nilai awal yang ditanam sekali saat tabel masih benar-benar kosong. Diambil
+// dari contoh yang memang sudah dipakai di apps/spd.html, jadi halaman admin
+// langsung bisa dipakai tanpa mengisi template dari nol. Karena baris 'kop'
+// ikut ditanam, tabel tidak akan pernah kosong lagi -- template yang dihapus
+// admin tidak akan muncul kembali.
+const SPD_DEFAULT_KOP = {
+  kodeUnit: '00.08.08',
+  nomorTengah: '1421002/7a-I',
+  nomorSuffix: '-O',
+  footerCode: 'PTMBPP-QR-KEU.AKTN/01-04'
+};
+const SPD_SEED = [
+  { id: 'kop', jenis: 'kop', urutan: 0, data: SPD_DEFAULT_KOP },
+  { id: 'kp-retribusi', jenis: 'kode_perk', urutan: 0,
+    data: { label: 'Retribusi Air Baku', kode: '91.01.31', uraian: 'Biaya retribusi air baku bulan berjalan' } },
+  { id: 'sg-standar', jenis: 'penandatangan', urutan: 0,
+    data: {
+      nama: 'Standar SAB',
+      manajerNama: 'DEDY HERMAWAN, S.M', manajerJabatan: 'Manajer Produksi',
+      supervisorNama: 'DARTO', supervisorJabatan: 'Supervisor Sumber Air Baku',
+      direkturNama: 'Ir. ALI RACHMAN AS, S.T., M.T.', direkturJabatan: 'Direktur Operasional'
+    } }
+];
+
+async function seedSpdIfEmpty() {
+  const { rows } = await pool.query('SELECT COUNT(*)::int AS n FROM spd_templates');
+  if (rows[0].n > 0) return;
+  for (const t of SPD_SEED) {
+    await pool.query(
+      `INSERT INTO spd_templates (id, jenis, urutan, data) VALUES ($1, $2, $3, $4)
+       ON CONFLICT (id) DO NOTHING`,
+      [t.id, t.jenis, t.urutan, JSON.stringify(t.data)]
+    );
+  }
+}
+
+function spdTahun(v) {
+  const n = parseInt(v, 10);
+  return Number.isFinite(n) && n > 1900 && n < 3000 ? n : new Date().getFullYear();
+}
+
+async function handleSpd(req, res) {
+  await ensureSpdTables();
+
+  if (req.method === 'GET') {
+    await seedSpdIfEmpty();
+    const tahun = spdTahun(req.query.tahun);
+    const [{ rows: tplRows }, { rows: cRows }] = await Promise.all([
+      pool.query('SELECT id, jenis, urutan, data FROM spd_templates ORDER BY urutan, id'),
+      pool.query('SELECT next_nomor FROM spd_counter WHERE tahun = $1', [tahun])
+    ]);
+
+    const kopRow = tplRows.find(r => r.jenis === 'kop');
+    return res.status(200).json({
+      kop: Object.assign({}, SPD_DEFAULT_KOP, kopRow ? kopRow.data : {}),
+      kodePerk: tplRows.filter(r => r.jenis === 'kode_perk').map(r => Object.assign({ id: r.id }, r.data)),
+      penandatangan: tplRows.filter(r => r.jenis === 'penandatangan').map(r => Object.assign({ id: r.id }, r.data)),
+      tahun,
+      nextNomor: cRows.length ? Number(cRows[0].next_nomor) : 1
+    });
+  }
+
+  if (req.method === 'POST' && req.query.what === 'template') {
+    const { id, jenis, urutan, data } = req.body || {};
+    if (!jenis || !['kode_perk', 'penandatangan', 'kop'].includes(jenis)) {
+      return res.status(400).json({ error: 'jenis harus kode_perk/penandatangan/kop' });
+    }
+    if (!data || typeof data !== 'object') return res.status(400).json({ error: 'data wajib diisi' });
+    const rowId = jenis === 'kop' ? 'kop' : (id || `${jenis}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`);
+    await pool.query(
+      `INSERT INTO spd_templates (id, jenis, urutan, data, updated_at) VALUES ($1, $2, $3, $4, now())
+       ON CONFLICT (id) DO UPDATE SET jenis = EXCLUDED.jenis, urutan = EXCLUDED.urutan,
+                                      data = EXCLUDED.data, updated_at = now()`,
+      [rowId, jenis, Number(urutan) || 0, JSON.stringify(data)]
+    );
+    return res.status(200).json({ success: true, id: rowId });
+  }
+
+  // Dipanggil TEPAT saat surat diunduh, bukan saat form dibuka -- nomor baru
+  // benar-benar terpakai kalau suratnya jadi diunduh.
+  //   tanpa body.nomor  -> ambil nomor berikutnya secara atomik (mode otomatis)
+  //   dengan body.nomor -> admin mengisi nomor manual; counter cuma dimajukan
+  //                        kalau nomor itu >= nomor berikutnya, jadi nomor
+  //                        susulan/mundur tidak menurunkan hitungan.
+  if (req.method === 'POST' && req.query.what === 'nomor') {
+    const tahun = spdTahun((req.body || {}).tahun);
+    const manual = (req.body || {}).nomor;
+
+    if (manual !== undefined && manual !== null && manual !== '') {
+      const n = parseInt(manual, 10);
+      if (!Number.isFinite(n) || n < 1) return res.status(400).json({ error: 'nomor tidak valid' });
+      const { rows } = await pool.query(
+        `INSERT INTO spd_counter (tahun, next_nomor) VALUES ($1, $2)
+         ON CONFLICT (tahun) DO UPDATE SET next_nomor = GREATEST(spd_counter.next_nomor, EXCLUDED.next_nomor)
+         RETURNING next_nomor`,
+        [tahun, n + 1]
+      );
+      return res.status(200).json({ success: true, tahun, nomor: n, nextNomor: Number(rows[0].next_nomor) });
+    }
+
+    const { rows } = await pool.query(
+      `INSERT INTO spd_counter (tahun, next_nomor) VALUES ($1, 2)
+       ON CONFLICT (tahun) DO UPDATE SET next_nomor = spd_counter.next_nomor + 1
+       RETURNING next_nomor`,
+      [tahun]
+    );
+    const nextNomor = Number(rows[0].next_nomor);
+    return res.status(200).json({ success: true, tahun, nomor: nextNomor - 1, nextNomor });
+  }
+
+  if (req.method === 'DELETE' && req.query.what === 'template') {
+    const { id } = req.query;
+    if (!id) return res.status(400).json({ error: 'id wajib diisi' });
+    if (id === 'kop') return res.status(400).json({ error: 'baris kop tidak bisa dihapus' });
+    await pool.query('DELETE FROM spd_templates WHERE id = $1', [id]);
+    return res.status(200).json({ success: true });
+  }
+
+  return res.status(405).json({ error: 'Method/what tidak dikenal (what=template|nomor)' });
+}
+
 module.exports = async (req, res) => {
   await ensureVizTables();
 
@@ -511,6 +642,7 @@ module.exports = async (req, res) => {
   if (action === 'sumur-history') return handleSumurHistory(req, res);
   if (action === 'wells') return handleWells(req, res);
   if (action === 'signers') return handleSigners(req, res);
+  if (action === 'spd') return handleSpd(req, res);
 
-  return res.status(400).json({ error: 'action wajib diisi (daily/daily-history/sumur/sumur-history/wells/signers/map-latest)' });
+  return res.status(400).json({ error: 'action wajib diisi (daily/daily-history/sumur/sumur-history/wells/signers/spd/map-latest)' });
 };
