@@ -47,7 +47,40 @@
     display:grid;place-items:center;color:#fff;font-size:13px;font-weight:700;
   }
   .ptmb-brand small{display:block;font-size:11px;font-weight:400;color:#3C5A6E;line-height:1.2}
-  .nav-right{display:flex;align-items:center;gap:10px;margin-left:auto}
+  .ptmb-nav-links{display:flex;gap:4px;margin-left:auto}
+  .ptmb-nav-links a{
+    padding:7px 12px;border-radius:8px;font-size:14px;color:#3C5A6E;text-decoration:none;
+    transition:background .15s,color .15s;
+  }
+  .ptmb-nav-links a:hover,.ptmb-nav-links a.active{background:#E7F1F4;color:#0A2537}
+  .ptmb-nav-toggle{display:none;flex-direction:column;align-items:center;justify-content:center;gap:5px;background:none;border:none;cursor:pointer;padding:8px;position:relative}
+  .ptmb-nav-toggle span{width:22px;height:2px;background:#0A2537;border-radius:2px;transition:transform .2s ease,opacity .2s ease}
+  .ptmb-nav-toggle.open span:nth-child(1){transform:translateY(7px) rotate(45deg)}
+  .ptmb-nav-toggle.open span:nth-child(2){opacity:0}
+  .ptmb-nav-toggle.open span:nth-child(3){transform:translateY(-7px) rotate(-45deg)}
+  .ptmb-nav-ic{display:none;flex-shrink:0}
+  .ptmb-nav-backdrop{display:none;position:fixed;inset:0;background:rgba(10,37,55,.35);z-index:40}
+  @media(max-width:820px){
+    .ptmb-nav-toggle{display:flex;order:3}
+    .ptmb-nav-backdrop.open{display:block}
+    .ptmb-nav-links{
+      display:flex;flex-direction:column;gap:2px;
+      position:absolute;top:100%;left:0;right:0;
+      background:#FFFFFF;border-bottom:1px solid #DCE9EF;
+      padding:10px 20px 14px;box-shadow:0 12px 24px -12px rgba(14,42,50,.15);
+      opacity:0;visibility:hidden;transform:translateY(-6px);
+      transition:opacity .18s ease,transform .18s ease,visibility .18s;
+    }
+    .ptmb-nav-links.open{opacity:1;visibility:visible;transform:translateY(0)}
+    .ptmb-nav-links a{display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:10px}
+    .ptmb-nav-ic{display:inline-flex}
+  }
+  .nav-right{display:flex;align-items:center;gap:10px;margin-left:12px}
+  .ptmb-btn-login{
+    padding:8px 18px;border-radius:9px;font-size:14px;font-weight:600;
+    background:#0A2537;color:#fff;text-decoration:none;transition:background .15s;
+  }
+  .ptmb-btn-login:hover{background:#0A6A72}
   .admin-chip{
     display:flex;align-items:center;gap:8px;
     padding:6px 12px 6px 6px;border-radius:99px;
@@ -283,8 +316,16 @@
     <span class="ptmb-brand-mark">PT</span>
     <span>PTMB<small>Portal Internal · SAB</small></span>
   </a>
+  <nav class="ptmb-nav-links" id="navLinks">
+    <a href="../index.html"><svg class="ptmb-nav-ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0A6A72" stroke-width="2" stroke-linecap="round"><path d="M3 12l9-9 9 9"/><path d="M5 10v10h14V10"/></svg>Beranda</a>
+    <a href="../index.html?page=tools"><svg class="ptmb-nav-ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0E8E96" stroke-width="2" stroke-linecap="round"><path d="M14 3v5h5"/><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/></svg>Tools</a>
+    <a href="../index.html?page=data"><svg class="ptmb-nav-ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#E8791D" stroke-width="2" stroke-linecap="round"><path d="M3 20h18"/><path d="M5 20V12M10 20V7M15 20v-9M20 20V4"/></svg>Data &amp; Visualisasi</a>
+    <a href="../index.html?page=dev" class="active"><svg class="ptmb-nav-ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0F8E7E" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M4.9 4.9l2.8 2.8M16.3 16.3l2.8 2.8M2 12h4M18 12h4M4.9 19.1l2.8-2.8M16.3 7.7l2.8-2.8"/></svg>Development</a>
+    <a href="../about.html"><svg class="ptmb-nav-ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#7C5CD6" stroke-width="2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"/><circle cx="10" cy="7" r="4"/></svg>About SAB</a>
+  </nav>
   <div class="nav-right">
-    <div class="admin-wrap" id="adminWrap">
+    <a class="ptmb-btn-login" id="navLoginBtn" href="../login.html" style="display:none">Login</a>
+    <div class="admin-wrap" id="adminWrap" style="display:none">
       <button class="admin-chip" type="button" id="adminChip">
         <span class="admin-avatar" id="adminAvatar">A</span>
         <span class="name-block">
@@ -309,7 +350,11 @@
       </div>
     </div>
   </div>
+  <button class="ptmb-nav-toggle" id="navToggle" aria-label="Buka menu">
+    <span></span><span></span><span></span>
+  </button>
 </header>
+<div class="ptmb-nav-backdrop" id="navBackdrop"></div>
 
 <!-- Gerbang admin: konten utama disembunyikan untuk non-admin -->
 <div class="gate" id="adminGate" style="display:none;">
@@ -427,7 +472,7 @@
           <button class="download-btn" type="button" id="btnUnduhExcel">Unduh Excel (.xlsx)</button>
           <button class="pdf-btn" type="button" id="btnUnduhPdf">Unduh PDF</button>
         </div>
-        <div class="status" id="statusMsg">Setiap unduhan tersimpan ke riwayat dan menaikkan nomor SPD.</div>
+        <div class="status" id="statusMsg">Nomor SPD mengikuti riwayat: nomor terakhir + 1.</div>
       </div>
 
     </div>
@@ -481,13 +526,15 @@
 /* =========================================================================
    Buat SPD -- halaman KHUSUS ADMIN (pasangan admin dari apps/spd.html).
    Beda dengan halaman SPD publik:
-     - nomor urut diambil dari server dan naik +1 tiap surat diunduh
+     - nomor urut mengikuti riwayat: selalu nomor terakhir di riwayat + 1
      - kode perk & penandatangan dipilih dari template bersama (Postgres)
      - kop + kode dokumen terisi otomatis dan terkunci
      - riwayat surat dibaca dari /api/history (sama dengan Dashboard Admin),
        diklik untuk melihat pratinjau surat lengkap
 
-   Template & counter: /api/visualization/admin-library?action=spd
+   Template & nomor  : /api/visualization/admin-library?action=spd -- nomor
+                       berikutnya dihitung server dari nomor terakhir di
+                       riwayat, bukan dari counter tersendiri.
    Riwayat surat     : /api/history (POST lewat saveHistoryEntry, GET/DELETE
                        langsung di sini) -- endpoint yang sama dipakai semua
                        halaman surat lain, jadi SPD dari sini ikut muncul di
@@ -669,8 +716,8 @@ function renderNomor(){
   document.getElementById('fNomor').value = state.nomorUrut ? padNomor(state.nomorUrut) : '';
   document.getElementById('nomorLengkapView').textContent = state.nomorUrut ? nomorLengkap() : '—';
   document.getElementById('nomorHint').textContent = state.nomorManual
-    ? 'Nomor diisi manual. Setelah diunduh, hitungan di server ikut maju ke nomor ini + 1.'
-    : `Diambil dari server (nomor berikutnya tahun ${tahunDari(state.tanggal)}). Nomor baru dikunci saat surat diunduh.`;
+    ? 'Nomor diisi manual. Setelah diunduh, nomor berikutnya kembali mengikuti riwayat.'
+    : `Mengikuti riwayat: nomor SPD terakhir tahun ${tahunDari(state.tanggal)} + 1. Bisa diubah manual kalau perlu.`;
 }
 
 function kodePerkOptions(selectedKode){
@@ -912,6 +959,13 @@ async function muatRiwayat(){
   }
 }
 
+// Riwayat berubah -> nomor berikutnya ikut berubah. Termasuk saat entri
+// riwayat dihapus: nomornya kembali bebas dipakai.
+async function segarkanRiwayatDanNomor(){
+  await muatRiwayat();
+  await segarkanNomor();
+}
+
 // ---------------------- detail riwayat ----------------------
 let detailId = null;
 function detailEntry(){ return riwayat.find(x=>String(x.id)===String(detailId)); }
@@ -936,19 +990,8 @@ function closeDetail(){
 function validasi(){
   if(!state.tanggal){ setStatus('Isi dulu tanggal pembuatannya.', 'err'); return false; }
   if(!state.items.some(it=>it.uraian || it.harga)){ setStatus('Isi minimal satu item (uraian & harga).', 'err'); return false; }
-  if(state.nomorManual && !state.nomorUrut){ setStatus('Nomor urut masih kosong.', 'err'); return false; }
+  if(!state.nomorUrut){ setStatus('Nomor urut masih kosong.', 'err'); return false; }
   return true;
-}
-
-// Nomor dikunci di server TEPAT saat unduh: mode otomatis mengambil nomor
-// berikutnya secara atomik (dua admin tidak bisa dapat nomor sama), mode
-// manual cuma memajukan hitungan kalau nomornya lebih besar. Kalau server
-// tidak bisa dihubungi, unduhan dibatalkan -- lebih baik gagal daripada
-// menerbitkan SPD dengan nomor yang bisa dobel.
-async function kunciNomor(){
-  const body = { tahun: tahunDari(state.tanggal) };
-  if(state.nomorManual) body.nomor = parseInt(state.nomorUrut, 10);
-  return apiJson(API_SPD + '&what=nomor', { method:'POST', body: JSON.stringify(body) });
 }
 
 function unduhXlsx(d, fname){
@@ -969,33 +1012,32 @@ function cetak(html){
   document.title = prev;
 }
 
+// Nomor tidak pernah "dipesan" ke server -- yang dipakai adalah angka yang
+// tampil di formulir. Sesudah suratnya tercatat di riwayat, nomor berikutnya
+// diambil ulang dari riwayat (nomor terakhir + 1), jadi form dan riwayat
+// tidak mungkin melenceng satu sama lain.
 async function prosesUnduh(format){
   if(!validasi()) return;
   const btn = document.getElementById(format === 'pdf' ? 'btnUnduhPdf' : 'btnUnduhExcel');
   btn.disabled = true;
-  setStatus('Mengunci nomor SPD di server…');
+  const nomorDipakai = state.nomorUrut;
   try{
-    const hasil = await kunciNomor();
-    state.nomorUrut = hasil.nomor;
-    renderAll();
-
     const d = currentDoc();
-    const fname = `SPD_${padNomor(hasil.nomor)}_${state.tanggal}.${format === 'pdf' ? 'pdf' : 'xlsx'}`;
+    const fname = `SPD_${padNomor(nomorDipakai)}_${state.tanggal}.${format === 'pdf' ? 'pdf' : 'xlsx'}`;
     if(format === 'pdf') cetak(docHtml(d));
     else unduhXlsx(d, fname);
 
+    setStatus('Mencatat ke riwayat…');
     await saveHistoryEntry('SPD', fname, d);
     await muatRiwayat();
 
     // siap untuk SPD berikutnya -- isi surat dibiarkan supaya admin bisa
-    // lanjut kalau memang mirip, hanya nomornya yang maju.
-    state.nomorUrut = hasil.nextNomor;
+    // lanjut kalau memang mirip, hanya nomornya yang maju mengikuti riwayat.
     state.nomorManual = false;
-    saveDraft();
     document.getElementById('fNomor').readOnly = true;
     document.getElementById('btnEditNomor').textContent = 'Ubah';
-    renderAll();
-    setStatus(`SPD ${padNomor(hasil.nomor)} tercatat di riwayat. Nomor berikutnya: ${padNomor(hasil.nextNomor)}.`, 'ok');
+    await segarkanNomor();
+    setStatus(`SPD ${padNomor(nomorDipakai)} tercatat di riwayat. Nomor berikutnya: ${padNomor(state.nomorUrut)}.`, 'ok');
   }catch(err){
     setStatus('Gagal: ' + err.message, 'err');
   }
@@ -1009,7 +1051,7 @@ function setStatus(msg, cls){
   el.className = 'status ' + (cls||'');
   clearTimeout(statusTimer);
   statusTimer = setTimeout(()=>{
-    el.textContent = 'Setiap unduhan tersimpan ke riwayat dan menaikkan nomor SPD.';
+    el.textContent = 'Nomor SPD mengikuti riwayat: nomor terakhir + 1.';
     el.className = 'status';
   }, 8000);
 }
@@ -1052,8 +1094,11 @@ function applySignerTplTanpaRender(t){
   state.direkturNama = t.direkturNama || ''; state.direkturJabatan = t.direkturJabatan || '';
 }
 
-// Ganti tahun tanggal -> ambil nomor berikutnya milik tahun itu.
-async function syncNomorTahun(){
+// Ambil ulang nomor berikutnya (nomor terakhir di riwayat tahun tanggal
+// surat + 1). Dipanggil saat halaman dibuka, saat tahun tanggal berubah,
+// dan sesudah surat tercatat di riwayat. Nomor yang sedang diisi manual
+// tidak pernah ditimpa.
+async function segarkanNomor(){
   if(state.nomorManual) return;
   try{
     const data = await apiJson(API_SPD + '&tahun=' + tahunDari(state.tanggal));
@@ -1070,7 +1115,7 @@ function wire(){
     inp.readOnly = !inp.readOnly;
     document.getElementById('btnEditNomor').textContent = inp.readOnly ? 'Ubah' : 'Kunci';
     if(!inp.readOnly) inp.focus();
-    else if(!state.nomorManual) syncNomorTahun();
+    else if(!state.nomorManual) segarkanNomor();
   });
   document.getElementById('fNomor').addEventListener('input', e=>{
     state.nomorUrut = e.target.value.replace(/\D/g,'');
@@ -1086,7 +1131,7 @@ function wire(){
     saveDraft(); renderAll();
     if(state.tanggal && tahunDari(state.tanggal) !== tahunLama){
       clearTimeout(tglTimer);
-      tglTimer = setTimeout(syncNomorTahun, 400);
+      tglTimer = setTimeout(segarkanNomor, 400);
     }
   });
   document.getElementById('fKeterangan').addEventListener('input', e=>{
@@ -1154,7 +1199,7 @@ function wire(){
 
   document.getElementById('btnUnduhExcel').addEventListener('click', ()=>prosesUnduh('xlsx'));
   document.getElementById('btnUnduhPdf').addEventListener('click', ()=>prosesUnduh('pdf'));
-  document.getElementById('btnRefreshHist').addEventListener('click', muatRiwayat);
+  document.getElementById('btnRefreshHist').addEventListener('click', segarkanRiwayatDanNomor);
 
   // modal detail
   document.getElementById('detailClose').addEventListener('click', closeDetail);
@@ -1179,7 +1224,7 @@ function wire(){
     saveDraft();
     fillFormDariState();
     closeDetail();
-    syncNomorTahun();
+    segarkanNomor();
     setStatus('Isi SPD dimuat ke form. Nomor tetap memakai nomor berikutnya.', 'ok');
     window.scrollTo({top:0, behavior:'smooth'});
   });
@@ -1197,11 +1242,11 @@ function wire(){
   document.getElementById('detailDelete').addEventListener('click', async ()=>{
     const h = detailEntry();
     if(!h) return;
-    if(!confirm('Hapus SPD ini dari riwayat? Nomor yang sudah terpakai tidak dikembalikan.')) return;
+    if(!confirm('Hapus SPD ini dari riwayat? Nomornya akan bisa dipakai lagi.')) return;
     try{
       await apiJson('/api/history?id=' + encodeURIComponent(h.id), { method:'DELETE' });
       closeDetail();
-      await muatRiwayat();
+      await segarkanRiwayatDanNomor();
     }catch(err){ alert('Gagal menghapus: ' + err.message); }
   });
 
@@ -1236,9 +1281,30 @@ function isAdmin(){
   return !!(localStorage.getItem('token') && localStorage.getItem('role') === 'admin');
 }
 
+// Menu mobile navbar: dipasang untuk semua pengunjung, termasuk yang belum
+// login (gerbang admin), supaya navigasi ke halaman lain tetap jalan.
+(function(){
+  const toggle = document.getElementById('navToggle');
+  const links = document.getElementById('navLinks');
+  const backdrop = document.getElementById('navBackdrop');
+  if(!toggle || !links) return;
+  function tutup(){
+    toggle.classList.remove('open'); links.classList.remove('open');
+    if(backdrop) backdrop.classList.remove('open');
+  }
+  toggle.addEventListener('click', ()=>{
+    const buka = !links.classList.contains('open');
+    toggle.classList.toggle('open', buka);
+    links.classList.toggle('open', buka);
+    if(backdrop) backdrop.classList.toggle('open', buka);
+  });
+  if(backdrop) backdrop.addEventListener('click', tutup);
+})();
+
 async function startApp(){
   document.getElementById('adminGate').style.display = 'none';
   document.getElementById('appRoot').style.display = '';
+  document.getElementById('adminWrap').style.display = '';
   const nama = localStorage.getItem('displayName') || localStorage.getItem('username') || 'Admin';
   document.getElementById('adminName').textContent = nama;
   document.getElementById('adminAvatar').textContent =
@@ -1259,7 +1325,9 @@ if(isAdmin()){
   startApp();
 } else {
   document.getElementById('adminGate').style.display = '';
+  document.getElementById('navLoginBtn').style.display = '';
 }
 </script>
+<script defer src="../assets/js/nav-badge.js"></script>
 </body>
 </html>

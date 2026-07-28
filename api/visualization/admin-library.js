@@ -1,4 +1,4 @@
-const { pool, ensureVizTables, ensureSignersTable, ensureSpdTables } = require('../../lib/db');
+const { pool, ensureVizTables, ensureSignersTable, ensureSpdTables, ensureTable: ensureHistoryTable } = require('../../lib/db');
 const { requireAdmin } = require('../../lib/auth');
 const { DATASETS } = require('../../lib/visualization/columns');
 const { fetchSumurWells } = require('../../lib/visualization/repo');
@@ -493,12 +493,11 @@ async function handleSigners(req, res) {
   return res.status(405).json({ error: 'Method not allowed' });
 }
 
-// --- action=spd: template & penomoran untuk apps/spd-admin.html ------------
-// Tiga hal yang dilayani di sini (semua khusus admin):
+// --- action=spd: template & nomor berikutnya untuk apps/spd-admin.html -----
+// Yang dilayani di sini (semua khusus admin):
 //   GET                      -> kop, daftar template kode perk & penandatangan,
 //                               dan nomor berikutnya untuk tahun ?tahun=
 //   POST &what=template      -> upsert satu template (atau baris kop)
-//   POST &what=nomor         -> ambil nomor SPD saat surat diunduh
 //   DELETE &what=template    -> hapus satu template
 // Riwayat suratnya sendiri TIDAK di sini -- tetap lewat /api/history seperti
 // halaman surat lain, supaya ikut muncul di Dashboard Admin.
@@ -544,15 +543,39 @@ function spdTahun(v) {
   return Number.isFinite(n) && n > 1900 && n < 3000 ? n : new Date().getFullYear();
 }
 
+// Nomor berikutnya = nomor SPD TERBESAR yang sudah ada di riwayat tahun itu,
+// ditambah satu. Tidak ada counter terpisah, jadi angkanya selalu sinkron
+// dengan yang benar-benar tercatat: menghapus entri riwayat otomatis
+// membebaskan nomornya lagi, dan SPD yang batal diunduh tidak menyisakan
+// lubang nomor.
+//
+// details->>'nomorUrut' disaring dengan regex angka dulu sebelum di-cast:
+// tabel history dipakai bersama semua jenis surat (dan entri "halaman
+// dibuka" yang detailsnya cuma { accessedAt }), jadi tidak semua baris
+// punya nomorUrut yang bisa dijadikan angka. Nomor tersimpan ter-zero-pad
+// ('01'), dan '01'::int tetap 1 -- aman.
+async function spdNomorBerikutnya(tahun) {
+  await ensureHistoryTable();
+  const { rows } = await pool.query(
+    `SELECT COALESCE(MAX((details->>'nomorUrut')::int), 0) AS maks
+       FROM history
+      WHERE document_type = 'SPD'
+        AND details->>'nomorUrut' ~ '^[0-9]+$'
+        AND details->>'tanggal' LIKE $1`,
+    [`${tahun}-%`]
+  );
+  return Number(rows[0].maks) + 1;
+}
+
 async function handleSpd(req, res) {
   await ensureSpdTables();
 
   if (req.method === 'GET') {
     await seedSpdIfEmpty();
     const tahun = spdTahun(req.query.tahun);
-    const [{ rows: tplRows }, { rows: cRows }] = await Promise.all([
+    const [{ rows: tplRows }, nextNomor] = await Promise.all([
       pool.query('SELECT id, jenis, urutan, data FROM spd_templates ORDER BY urutan, id'),
-      pool.query('SELECT next_nomor FROM spd_counter WHERE tahun = $1', [tahun])
+      spdNomorBerikutnya(tahun)
     ]);
 
     const kopRow = tplRows.find(r => r.jenis === 'kop');
@@ -561,7 +584,7 @@ async function handleSpd(req, res) {
       kodePerk: tplRows.filter(r => r.jenis === 'kode_perk').map(r => Object.assign({ id: r.id }, r.data)),
       penandatangan: tplRows.filter(r => r.jenis === 'penandatangan').map(r => Object.assign({ id: r.id }, r.data)),
       tahun,
-      nextNomor: cRows.length ? Number(cRows[0].next_nomor) : 1
+      nextNomor
     });
   }
 
@@ -581,38 +604,6 @@ async function handleSpd(req, res) {
     return res.status(200).json({ success: true, id: rowId });
   }
 
-  // Dipanggil TEPAT saat surat diunduh, bukan saat form dibuka -- nomor baru
-  // benar-benar terpakai kalau suratnya jadi diunduh.
-  //   tanpa body.nomor  -> ambil nomor berikutnya secara atomik (mode otomatis)
-  //   dengan body.nomor -> admin mengisi nomor manual; counter cuma dimajukan
-  //                        kalau nomor itu >= nomor berikutnya, jadi nomor
-  //                        susulan/mundur tidak menurunkan hitungan.
-  if (req.method === 'POST' && req.query.what === 'nomor') {
-    const tahun = spdTahun((req.body || {}).tahun);
-    const manual = (req.body || {}).nomor;
-
-    if (manual !== undefined && manual !== null && manual !== '') {
-      const n = parseInt(manual, 10);
-      if (!Number.isFinite(n) || n < 1) return res.status(400).json({ error: 'nomor tidak valid' });
-      const { rows } = await pool.query(
-        `INSERT INTO spd_counter (tahun, next_nomor) VALUES ($1, $2)
-         ON CONFLICT (tahun) DO UPDATE SET next_nomor = GREATEST(spd_counter.next_nomor, EXCLUDED.next_nomor)
-         RETURNING next_nomor`,
-        [tahun, n + 1]
-      );
-      return res.status(200).json({ success: true, tahun, nomor: n, nextNomor: Number(rows[0].next_nomor) });
-    }
-
-    const { rows } = await pool.query(
-      `INSERT INTO spd_counter (tahun, next_nomor) VALUES ($1, 2)
-       ON CONFLICT (tahun) DO UPDATE SET next_nomor = spd_counter.next_nomor + 1
-       RETURNING next_nomor`,
-      [tahun]
-    );
-    const nextNomor = Number(rows[0].next_nomor);
-    return res.status(200).json({ success: true, tahun, nomor: nextNomor - 1, nextNomor });
-  }
-
   if (req.method === 'DELETE' && req.query.what === 'template') {
     const { id } = req.query;
     if (!id) return res.status(400).json({ error: 'id wajib diisi' });
@@ -621,7 +612,7 @@ async function handleSpd(req, res) {
     return res.status(200).json({ success: true });
   }
 
-  return res.status(405).json({ error: 'Method/what tidak dikenal (what=template|nomor)' });
+  return res.status(405).json({ error: 'Method/what tidak dikenal (what=template)' });
 }
 
 module.exports = async (req, res) => {
