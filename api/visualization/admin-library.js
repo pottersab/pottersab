@@ -493,7 +493,7 @@ async function handleSigners(req, res) {
   return res.status(405).json({ error: 'Method not allowed' });
 }
 
-// --- action=spd: template & nomor berikutnya untuk apps/spd-admin.html -----
+// --- action=spd: template & nomor berikutnya untuk mode admin di apps/spd.html
 // Yang dilayani di sini (semua khusus admin):
 //   GET                      -> kop, daftar template kode perk & penandatangan,
 //                               dan nomor berikutnya untuk tahun ?tahun=
