@@ -359,7 +359,10 @@ const filterState = { cari: '', tahun: '', kat: '', dia: '' };
 
 function renderFilters() {
   const rs = pool(), c = cfg();
-  const years = [...new Set(rs.map(r => r.tahun))].sort();
+  // Menurun: tahun terbaru di urutan teratas, karena itu yang paling sering
+  // dicari. Daftar tabel juga sudah diurutkan dari yang terbaru. Urutan tahun
+  // di grafik tren TIDAK ikut dibalik -- di sana yang benar tetap kronologis.
+  const years = [...new Set(rs.map(r => r.tahun))].sort((a, b) => b - a);
   const kats = topN(cnt(rs, r => c.katOf(r)), 99).map(e => e[0]);
   const dias = [...new Set(rs.map(r => r.diameter_nilai).filter(Boolean))].sort((a, b) => a - b);
 
