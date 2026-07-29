@@ -106,6 +106,29 @@ function lokasiCell(r) {
   return '—';
 }
 
+// Sebagian pekerjaan -- terutama pipa transmisi -- memang tidak menyimpan
+// uraian, jadi selnya dulu cuma bertuliskan "—" dan barisnya jadi sulit
+// dikenali. Sebagai gantinya dipakai keterangan yang masih bisa disusun dari
+// data yang ada: bidang + diameter, mis. "Pipa Transmisi 500 mm". Ditulis
+// miring supaya tetap jelas ini keterangan bentukan, bukan uraian yang
+// benar-benar dicatat petugas.
+// Dipakai dua-duanya oleh tampilan tabel DAN oleh kotak cari di filtered(),
+// supaya apa yang terbaca di kolom judul persis itu yang bisa diketik untuk
+// menemukannya. Kalau keduanya jalan sendiri-sendiri, barisnya kelihatan tapi
+// tidak pernah ketemu waktu dicari.
+function uraianTeks(r) {
+  if (r.uraian) return r.uraian;
+  const bidang = BIDANG_LABEL[r.bidang] || r.bidang || '';
+  const dia = r.diameter_nilai ? r.diameter_nilai + ' ' + (r.diameter_satuan || '') : '';
+  return (bidang + ' ' + dia).trim();
+}
+
+function uraianCell(r) {
+  const teks = uraianTeks(r);
+  if (!teks) return '—';
+  return r.uraian ? esc(teks) : `<i class="uraian-ganti">${esc(teks)}</i>`;
+}
+
 const COLDEF = {
   tahun: { h: 'Tahun', cls: 'mono', v: r => r.tahun },
   tanggal: { h: 'Tanggal', v: r => fmtDate(r.tanggal) },
@@ -115,7 +138,7 @@ const COLDEF = {
   lokasi: { h: 'Lokasi', v: lokasiCell },
   dia: { h: 'Ø', cls: 'mono', v: r => r.diameter_nilai ? esc(r.diameter_nilai + ' ' + (r.diameter_satuan || '')) : '—' },
   kat: { h: 'Jenis', badge: true, v: r => cfg().katOf(r) },
-  uraian: { h: 'Uraian Pekerjaan', cls: 'wide', v: r => esc(r.uraian || '—') },
+  uraian: { h: 'Uraian Pekerjaan', cls: 'wide', v: uraianCell },
   keterangan: { h: 'Keterangan / Penyebab', cls: 'wide', v: r => esc(r.keterangan || '—') }
 };
 
@@ -355,7 +378,7 @@ function filtered() {
     if (filterState.kat && c.katOf(r) !== filterState.kat) return false;
     if (filterState.dia && String(r.diameter_nilai) !== String(filterState.dia)) return false;
     if (q) {
-      const hay = [r.lokasi_teks, r.no_ba, r.uraian, r.keterangan, r.instalasi].filter(Boolean).join(' ').toLowerCase();
+      const hay = [r.lokasi_teks, r.no_ba, uraianTeks(r), r.keterangan, r.instalasi].filter(Boolean).join(' ').toLowerCase();
       if (!hay.includes(q)) return false;
     }
     return true;

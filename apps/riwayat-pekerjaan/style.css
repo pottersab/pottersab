@@ -162,6 +162,10 @@ thead th{
 tbody td{padding:9px 12px;border-bottom:1px solid var(--line-muted);vertical-align:top;}
 tbody td.mono{font-family:'IBM Plex Mono',monospace;white-space:nowrap;}
 tbody td.wide{min-width:230px;font-size:12.5px;color:var(--ink-soft);}
+/* Keterangan bentukan (bidang + diameter) untuk pekerjaan yang tidak
+   menyimpan uraian -- lihat uraianCell() di app.js. Sengaja dibedakan supaya
+   tidak terbaca sebagai uraian yang benar-benar dicatat petugas. */
+tbody td.wide .uraian-ganti{opacity:.72;}
 tbody tr:last-child td{border-bottom:none;}
 tbody tr:hover td{background:var(--primary-pale);}
 .badge{
