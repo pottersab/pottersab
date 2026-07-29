@@ -34,10 +34,38 @@ function pickYear(years, requestedYear) {
   return (requestedYear && years.includes(String(requestedYear))) ? String(requestedYear) : years[years.length - 1];
 }
 
+// Grafiknya digambar Chart.js di browser, jadi tidak ada gunanya server
+// menggambar ulang -- client tinggal mengirim hasil canvas-nya sebagai PNG.
+// GET tetap dilayani supaya tautan lama (dan unduhan tanpa grafik) tidak
+// rusak; POST dipakai kalau ada gambar yang ikut dikirim.
+//
+// Batasnya 3 MB: grafik biasa cuma puluhan KB, jadi apa pun yang jauh lebih
+// besar dari itu lebih mungkin salah kirim daripada grafik sungguhan. Body
+// request di Vercel sendiri dibatasi 4,5 MB.
+const CHART_PNG_MAX_BYTES = 3 * 1024 * 1024;
+
+function bacaChartPng(req) {
+  if (req.method !== 'POST') return null;
+  const v = req.body && req.body.chartPng;
+  if (typeof v !== 'string') return null;
+  if (!v.startsWith('data:image/png;base64,')) return null;
+  if (v.length > CHART_PNG_MAX_BYTES) return null;
+  return v;
+}
+
 module.exports = async (req, res) => {
-  if (req.method !== 'GET') {
+  if (req.method !== 'GET' && req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
+
+  const chartPng = bacaChartPng(req);
+
+  // Grafik selalu menempel di section pertama -- section berikutnya (mis.
+  // Statis/Dinamis pada level sumur) tetap tabel polos.
+  const bikinPdf = (opts) => {
+    if (chartPng && opts.sections && opts.sections[0]) opts.sections[0].chartPng = chartPng;
+    return buildTablePdf(opts);
+  };
 
   await ensureVizTables();
 
@@ -65,7 +93,7 @@ module.exports = async (req, res) => {
       if (!col) return res.status(400).json({ error: 'well tidak dikenal' });
       const rows = filterByYear(allRows, year, 'Bulan');
       const tableRows = rows.map(r => [monthLabel(r.Bulan), fmtNum(r[col.csv])]);
-      pdfBytes = await buildTablePdf({
+      pdfBytes = await bikinPdf({
         sections: [{
           title: 'Data Historis Pengambilan Air Baku',
           subtitle: `Perumda Tirta Manuntung — Sumber Air Baku  |  Debit ${source.label} — ${col.label}  |  ${year ? `Tahun ${year}` : 'Semua Data'}  (m³)`,
@@ -82,7 +110,7 @@ module.exports = async (req, res) => {
         const sum = source.columns.reduce((s, c) => s + (r[c.csv] || 0), 0);
         return [monthLabel(r.Bulan), fmtNum(sum)];
       });
-      pdfBytes = await buildTablePdf({
+      pdfBytes = await bikinPdf({
         sections: [{
           title: 'Data Historis Pengambilan Air Baku',
           subtitle: `Perumda Tirta Manuntung — Sumber Air Baku  |  Jumlah — ${source.label}  |  ${year ? `Tahun ${year}` : 'Semua Data'}  (m³)`,
@@ -112,7 +140,7 @@ module.exports = async (req, res) => {
       });
       const totalRow = monthTotals.map((t, i) => fmtNum(monthHas[i] ? t : null));
       tableRows.push(['Jumlah', ...totalRow]);
-      pdfBytes = await buildTablePdf({
+      pdfBytes = await bikinPdf({
         landscape: true,
         sections: [{
           title: 'Data Historis Pengambilan Air Baku — Rekapitulasi',
@@ -129,7 +157,7 @@ module.exports = async (req, res) => {
     const rows = filterByYear(allRows, year, dateKey);
     const labelFn = dateKey === 'Tanggal' ? dailyLabel : monthLabel;
     const tableRows = rows.map(r => [labelFn(r[dateKey]), fmtNum(r[source.csvCol])]);
-    pdfBytes = await buildTablePdf({
+    pdfBytes = await bikinPdf({
       sections: [{
         title: 'Data Waduk dan Sumur',
         subtitle: `Perumda Tirta Manuntung — Sumber Air Baku  |  ${source.label}  |  ${year ? `Tahun ${year}` : 'Semua Data'}  (${source.unit})`,
@@ -158,7 +186,7 @@ module.exports = async (req, res) => {
     });
     const totalRow = monthTotals.map((t, i) => fmtNum(monthHas[i] ? t : null));
     tableRows.push(['Jumlah', ...totalRow]);
-    pdfBytes = await buildTablePdf({
+    pdfBytes = await bikinPdf({
       landscape: true,
       sections: [{
         title: 'Data Waduk dan Sumur — Rekapitulasi',
@@ -194,7 +222,7 @@ module.exports = async (req, res) => {
       };
     }
 
-    pdfBytes = await buildTablePdf({
+    pdfBytes = await bikinPdf({
       landscape: true,
       sections: [buildVariantSection('Statis'), buildVariantSection('Dinamis')]
     });

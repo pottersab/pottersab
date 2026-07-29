@@ -658,12 +658,41 @@ function downloadRekapExcel() {
 }
 
 // ---------------------------------------------------------------------------
-// UNDUH PDF — sekarang digenerate di SERVER (pdf-lib) dari data asli, hanya
-// kalau ada akses valid (JWT admin situs, atau token viz-access). Browser
-// cuma diarahkan ke endpoint export-pdf; tidak ada lagi generate PDF di
-// client dari data yang sudah dimuat.
+// UNDUH PDF — digenerate di SERVER (pdf-lib) dari data asli, hanya kalau ada
+// akses valid (JWT admin situs, atau token viz-access).
+//
+// Grafiknya ikut: Chart.js sudah menggambarnya di canvas halaman ini, jadi
+// hasil canvas itu yang dikirim ke server sebagai PNG untuk disisipkan di
+// atas tabel -- server tidak perlu menggambar ulang. Karena gambarnya harus
+// ikut terkirim, unduhannya lewat POST + blob, bukan lagi mengarahkan alamat
+// browser seperti dulu.
 // ---------------------------------------------------------------------------
-function downloadPdf() {
+function grafikPng() {
+  // Tampilan Rekapitulasi tidak punya grafik, cuma tabel pivot.
+  if (isRekapActive() || !chart) return null;
+  try {
+    // Jangan langsung toBase64Image(). Chart.js menggambar lewat animation
+    // frame, jadi isi canvas bisa belum ada (PNG putih polos) atau masih di
+    // tengah animasi (garis datanya rata di nol) waktu tombol ditekan.
+    //   update('none') -> tetapkan geometri elemen ke nilai akhir, tanpa animasi
+    //   draw()         -> lukis nilai itu SEKARANG, tidak menunggu frame
+    // Dua-duanya sinkron dan tidak mengubah data yang ditampilkan.
+    chart.update('none');
+    chart.draw();
+    return chart.toBase64Image('image/png', 1);
+  } catch (err) {
+    console.error('Grafik gagal diambil, PDF diunduh tanpa grafik', err);
+    return null;
+  }
+}
+
+function namaFileDariHeader(res, cadangan) {
+  const cd = res.headers.get('content-disposition') || '';
+  const m = cd.match(/filename=([^;]+)/i);
+  return m ? m[1].trim().replace(/^"|"$/g, '') : cadangan;
+}
+
+async function downloadPdf() {
   const token = currentAccessToken();
   if (!token) {
     alert('Unduh PDF perlu akses data asli dulu. Klik "Minta Akses" di atas untuk meminta persetujuan admin.');
@@ -687,7 +716,35 @@ function downloadPdf() {
     if (filterMode === 'year' && selectedYear) params.set('year', selectedYear);
   }
 
-  window.location.href = `/api/visualization/export-pdf?${params.toString()}`;
+  const btn = document.getElementById('downloadPdfBtn');
+  const labelAsli = btn ? btn.textContent : '';
+  if (btn) { btn.disabled = true; btn.textContent = 'Menyiapkan PDF...'; }
+
+  try {
+    const png = grafikPng();
+    const res = await fetch(`/api/visualization/export-pdf?${params.toString()}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(png ? { chartPng: png } : {})
+    });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      throw new Error(d.error || `HTTP ${res.status}`);
+    }
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = namaFileDariHeader(res, `${currentKey}.pdf`);
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  } catch (err) {
+    alert('Gagal menyiapkan PDF: ' + err.message);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = labelAsli; }
+  }
 }
 
 // ---------------------------------------------------------------------------
