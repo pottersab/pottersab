@@ -66,9 +66,28 @@ const DUMMY_INSTALASI = ['Kampung Damai', 'Batu Ampar', 'Gunung Sari', 'Teritip'
 const DUMMY_MATERIAL = ['Steel', 'Ductile', 'HDPE', 'PVC'];
 const ROMAWI = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII'];
 
+// Dua hal yang gampang salah di sini, dua-duanya pernah terjadi:
+//
+// 1. seed * 1103515245 menghasilkan angka ~2,2e18 -- jauh melewati
+//    Number.MAX_SAFE_INTEGER (9,007e15), jadi bit-bit rendahnya hilang karena
+//    presisi float dan seed selalu jadi kelipatan 4. Akibatnya next(max)
+//    untuk max kelipatan 4 nyaris selalu memberi nilai sama: SEMUA pipa
+//    transmisi berdiameter 400, materialnya hampir selalu Steel, dan
+//    bulannya cuma Januari/Mei/September. Math.imul mengerjakan perkalian
+//    32-bit tanpa melewati batas presisi.
+//
+// 2. Bit RENDAH LCG bermodulus pangkat dua punya periode sangat pendek --
+//    bit ke-k berulang tiap 2^k. Kalau hasilnya diambil dari seed % max,
+//    next(4) keluar sebagai daur sempurna 0,1,2,3,0,1,2,3... sehingga
+//    diameternya berbaris rapi 400,500,600,700 berulang. Makanya yang
+//    dipakai bit atas (seed >>> 16), yang sebarannya tidak berpola.
+//
+// Tetap deterministik: seed-nya tetap, jadi isi data contoh tidak
+// berubah-ubah tiap halaman dimuat ulang (lihat alasannya di komentar
+// DATA CONTOH di atas).
 function buildDummyRows() {
   let seed = 20260723;
-  const next = (max) => { seed = (seed * 1103515245 + 12345) % 2147483648; return seed % max; };
+  const next = (max) => { seed = (Math.imul(seed, 1103515245) + 12345) >>> 0; return (seed >>> 16) % max; };
   const rows = [];
   let id = 1;
   DUMMY_BIDANG.forEach(def => {
