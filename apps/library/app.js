@@ -130,10 +130,13 @@ function monthLabelLong(d) {
   return d.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
 }
 
-// "1 Januari 2025" -- dipakai di berkas yang dibawa keluar (Excel, dan PDF
-// lewat dailyLabel di api/visualization/export-pdf.js). Tampilan di layar
-// tetap DD/MM/YYYY: sumbu grafik memuat ribuan titik harian, nama bulan
-// panjang membuat labelnya tumpang tindih.
+// "1 Januari 2025" -- dipakai di tabel bawah, Excel, dan PDF (lewat
+// dailyLabel di api/visualization/export-pdf.js).
+//
+// Sumbu grafik SENGAJA tetap memakai dateStrDisplay yang pendek. Sudah dicoba
+// dipanjangkan juga, tapi Chart.js tetap menampilkan 10 label pada sumbu
+// selebar ~790px: "1 Januari 2014" saja perlu 84px, dan 4 pasang label jadi
+// saling menindih (celah terkecil -11px).
 function tanggalPanjang(d) {
   return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
 }
@@ -657,7 +660,7 @@ function render() {
   head.innerHTML = `<th>Tanggal</th><th>${ds.label} (${ds.unit})</th>`;
   body.innerHTML = rows.slice(-60).reverse().map(r => {
     const v = r.value;
-    return `<tr><td>${dateStrDisplay(r.date)}</td><td>${v !== null && v !== undefined ? v.toFixed(2) : '-'}</td></tr>`;
+    return `<tr><td>${tanggalPanjang(r.date)}</td><td>${v !== null && v !== undefined ? v.toFixed(2) : '-'}</td></tr>`;
   }).join('');
 }
 
