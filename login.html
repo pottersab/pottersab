@@ -2,6 +2,7 @@
 <html lang="id">
 <head>
 <meta charset="UTF-8">
+<script src="assets/js/sesi.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Login Admin — PTMB Portal Internal</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -414,6 +415,13 @@ function doLogout(){
   function showError(message) {
     errorMsg.textContent = message;
     errorMsg.classList.add('show');
+  }
+
+  // Dilempar ke sini oleh assets/js/sesi.js waktu token 24 jam sudah habis.
+  // Tanpa keterangan ini, pemakainya cuma melihat halaman login muncul
+  // tiba-tiba tanpa tahu kenapa.
+  if (new URLSearchParams(window.location.search).get('sesi') === 'habis') {
+    showError('Sesi kamu sudah berakhir. Silakan masuk lagi.');
   }
 </script>
 
