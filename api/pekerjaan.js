@@ -104,16 +104,28 @@ function buildDummyRows() {
 // requireAdmin di lib/auth.js cuma membaca header, makanya di sini dipakai
 // pemeriksaan sendiri yang menerima keduanya. Pola query param yang sama sudah
 // dipakai tombol Unduh PDF di apps/riwayat-air-baku (lihat viz-auth.js).
-function adminDariRequest(req) {
+//
+// Kembaliannya sengaja membedakan dua penolakan yang selama ini disamakan:
+//   401 -- token tidak ada / sudah mati. Sesinya yang habis, perlu login lagi.
+//   403 -- tokennya sah, orangnya cuma bukan admin.
+// Bedanya penting buat assets/js/sesi.js di sisi klien: cuma 401 yang boleh
+// mengakhiri sesi dan melempar ke halaman login. Kalau semua kegagalan dibalas
+// 403 seperti sebelumnya, token yang kedaluwarsa lewat begitu saja dan
+// halamannya diam -- persis keluhan "kelihatan login tapi tidak jalan".
+function periksaAdmin(req) {
   const authHeader = req.headers['authorization'] || '';
   const token = authHeader.split(' ')[1] || (req.query && req.query.token) || null;
-  if (!token) return null;
+  if (!token) return { status: 401, error: 'Token tidak valid atau tidak ada' };
+
+  let payload;
   try {
-    const payload = jwt.verify(token, SECRET_KEY);
-    return payload.role === 'admin' ? payload : null;
+    payload = jwt.verify(token, SECRET_KEY);
   } catch (err) {
-    return null;
+    return { status: 401, error: 'Token tidak valid atau tidak ada' };
   }
+
+  if (payload.role !== 'admin') return { status: 403, error: 'Khusus admin' };
+  return { user: payload };
 }
 
 function csvEscape(v) {
@@ -154,8 +166,9 @@ function jamAtauNull(v) {
 module.exports = async (req, res) => {
   // --- Simpan laporan lapangan sebagai draft ---
   if (req.method === 'POST') {
-    const user = adminDariRequest(req);
-    if (!user) return res.status(403).json({ error: 'Khusus admin' });
+    const cek = periksaAdmin(req);
+    if (!cek.user) return res.status(cek.status).json({ error: cek.error });
+    const user = cek.user;
 
     const b = req.body || {};
     if (!BIDANG_VALID.includes(b.bidang)) {
@@ -202,8 +215,9 @@ module.exports = async (req, res) => {
   // Satu berita acara bisa mencakup beberapa titik pekerjaan sekaligus,
   // makanya id-nya berupa daftar.
   if (req.method === 'PUT') {
-    const user = adminDariRequest(req);
-    if (!user) return res.status(403).json({ error: 'Khusus admin' });
+    const cek = periksaAdmin(req);
+    if (!cek.user) return res.status(cek.status).json({ error: cek.error });
+    const user = cek.user;
 
     const b = req.body || {};
     const noBa = teksAtauNull(b.no_ba, 120);
@@ -242,8 +256,9 @@ module.exports = async (req, res) => {
   // Jalan keluar untuk laporan yang salah kirim -- tanpa ini antrean draft
   // tidak akan pernah bisa dikosongkan. Datanya tidak benar-benar dihapus.
   if (req.method === 'DELETE') {
-    const user = adminDariRequest(req);
-    if (!user) return res.status(403).json({ error: 'Khusus admin' });
+    const cek = periksaAdmin(req);
+    if (!cek.user) return res.status(cek.status).json({ error: cek.error });
+    const user = cek.user;
 
     // Dipanggil dari Dashboard Admin saat entri Riwayat Surat dihapus.
     // Pekerjaannya TIDAK ikut dihapus, tapi dikembalikan jadi draft: yang
@@ -330,8 +345,9 @@ module.exports = async (req, res) => {
   // SETIAP halaman, jadi tidak boleh menyeret gambar. Foto cuma diambil saat
   // admin benar-benar memakai laporannya untuk berita acara.
   if (req.query.foto !== undefined) {
-    const user = adminDariRequest(req);
-    if (!user) return res.status(403).json({ error: 'Khusus admin' });
+    const cek = periksaAdmin(req);
+    if (!cek.user) return res.status(cek.status).json({ error: cek.error });
+    const user = cek.user;
 
     const ids = String(req.query.foto || '').split(',').map(s => s.trim()).filter(Boolean);
     if (!ids.length) return res.status(400).json({ error: 'id wajib diisi' });
@@ -351,8 +367,9 @@ module.exports = async (req, res) => {
   // Dipakai lonceng notifikasi di navbar (assets/js/nav-badge.js) dan nanti
   // oleh panel antrean di halaman Berita Acara.
   if (req.query.draft !== undefined) {
-    const user = adminDariRequest(req);
-    if (!user) return res.status(403).json({ error: 'Khusus admin' });
+    const cek = periksaAdmin(req);
+    if (!cek.user) return res.status(cek.status).json({ error: cek.error });
+    const user = cek.user;
 
     await ensurePekerjaanTable();
     const { rows } = await pool.query(
@@ -384,8 +401,9 @@ module.exports = async (req, res) => {
 
   // --- Unduh CSV: admin saja ---
   if (req.query.export === 'csv') {
-    if (!adminDariRequest(req)) {
-      return res.status(403).json({ error: 'Khusus admin' });
+    const cekCsv = periksaAdmin(req);
+    if (!cekCsv.user) {
+      return res.status(cekCsv.status).json({ error: cekCsv.error });
     }
 
     await ensurePekerjaanTable();
