@@ -115,8 +115,23 @@ function lokasiCell(r) {
 // supaya apa yang terbaca di kolom judul persis itu yang bisa diketik untuk
 // menemukannya. Kalau keduanya jalan sendiri-sendiri, barisnya kelihatan tapi
 // tidak pernah ketemu waktu dicari.
+// Hampir semua laporan lama diawali "PEMERIKSAAN LAPANGAN", kadang dengan
+// sisanya dikurung: "PEMERIKSAAN LAPANGAN (SUMUR NO 3 KAMPUNG DAMAI)".
+// Awalan itu sama untuk setiap baris di halaman ini, jadi tidak membedakan
+// apa-apa -- yang justru terpotong di kolom sempit malah keterangan yang
+// membedakan barisnya. Dibuang saat ditampilkan saja; isi kolom uraian di
+// basis data tidak disentuh.
+function rapikanUraian(s) {
+  let t = String(s).replace(/^\s*pemeriksaan\s+lapangan\b[\s:.\-]*/i, '').trim();
+  const kurung = t.match(/^\((.*)\)$/);
+  if (kurung && !kurung[1].includes(')')) t = kurung[1].trim();
+  // Kalau ternyata uraiannya cuma berisi frasa itu, lebih baik tetap
+  // ditampilkan apa adanya daripada selnya jadi kosong.
+  return t || String(s).trim();
+}
+
 function uraianTeks(r) {
-  if (r.uraian) return r.uraian;
+  if (r.uraian) return rapikanUraian(r.uraian);
   const bidang = BIDANG_LABEL[r.bidang] || r.bidang || '';
   const dia = r.diameter_nilai ? r.diameter_nilai + ' ' + (r.diameter_satuan || '') : '';
   return (bidang + ' ' + dia).trim();
