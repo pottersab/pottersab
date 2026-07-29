@@ -53,7 +53,11 @@ const BID = {
     katLabel: 'Bidang', katOf: r => BIDANG_LABEL[r.bidang] || r.bidang,
     diaLabel: null, du: null,
     stats: ['total', 'tahun', 'kat', 'lok'],
-    cols: ['tahun', 'tanggal', 'no_ba', 'bidang', 'lokasi', 'kat'],
+    // Kolom 'bidang' sengaja tidak dipakai di sini: katOf di atas sudah
+    // memakai nilai yang sama persis, jadi dulu bidangnya tampil dua kali.
+    // Tempatnya diberikan ke uraian -- judul pekerjaan yang dicari orang lewat
+    // kotak cari, tapi sebelumnya tidak kelihatan sama sekali di tab ini.
+    cols: ['tahun', 'tanggal', 'no_ba', 'uraian', 'lokasi', 'kat'],
     caption: 'Seluruh pekerjaan dari empat bidang dalam satu daftar.'
   },
   transmisi: {
