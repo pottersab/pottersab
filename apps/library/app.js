@@ -705,7 +705,42 @@ function downloadExcel() {
 
   const rangePart = filterMode === 'all' ? 'semua-data' : (filterMode === 'month' ? `${selectedYear}-${String(selectedMonth).padStart(2,'0')}` : `${selectedYear}`);
   const fname = `${currentKey}_${rangePart}.xlsx`;
-  XLSX.writeFile(wb, fname);
+
+  // Cuma bentuk dua kolom (Tanggal | Nilai) yang bisa langsung digrafikkan
+  // sebagai satu seri. Sheet Sumur Dalam berbentuk panjang -- satu baris per
+  // sumur per bulan -- jadi dilewati, sama seperti di PDF.
+  if (currentGroup === 'sumur') {
+    XLSX.writeFile(wb, fname);
+    return;
+  }
+  tulisExcelBergrafik(wb, fname, {
+    namaSheet: sheetName,
+    judul: `${ds.label} (${ds.unit})`,
+    jumlahBaris: body.length
+  });
+}
+
+// Kalau perakitan grafiknya gagal -- JSZip tidak termuat, datanya cuma satu
+// baris, dsb -- berkasnya tetap diunduh apa adanya lewat SheetJS. Data lebih
+// penting daripada grafik.
+function tulisExcelBergrafik(wb, namaBerkas, opsiGrafik) {
+  if (!window.XlsxGrafik || typeof JSZip === 'undefined') {
+    XLSX.writeFile(wb, namaBerkas);
+    return;
+  }
+  let buf;
+  try {
+    buf = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+  } catch (err) {
+    XLSX.writeFile(wb, namaBerkas);
+    return;
+  }
+  XlsxGrafik.tempelGrafikGaris(buf, opsiGrafik)
+    .then(blob => XlsxGrafik.unduhBlob(blob, namaBerkas))
+    .catch(err => {
+      console.error('Grafik gagal dirakit, Excel diunduh tanpa grafik', err);
+      XLSX.writeFile(wb, namaBerkas);
+    });
 }
 
 // ---------------------------------------------------------------------------

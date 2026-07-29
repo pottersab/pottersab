@@ -631,10 +631,41 @@ function downloadExcel() {
   const ws = XLSX.utils.aoa_to_sheet([header, ...body]);
   ws['!cols'] = header.map((h, i) => ({ wch: Math.max(14, h.length + 2, i === 0 ? 18 : 10) }));
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, ds.label.substring(0, 31));
+  const namaSheet = ds.label.substring(0, 31);
+  XLSX.utils.book_append_sheet(wb, ws, namaSheet);
 
   const rangePart = filterMode === 'all' ? 'semua-data' : `${selectedYear}`;
-  XLSX.writeFile(wb, `${currentKey}_${rangePart}.xlsx`);
+  const namaBerkas = `${currentKey}_${rangePart}.xlsx`;
+
+  // Sheet ini dua kolom (label di A, nilai di B), jadi bisa langsung
+  // digrafikkan sebagai satu seri garis. Kalau perakitan grafiknya gagal --
+  // JSZip tidak termuat, datanya cuma satu baris, dsb -- berkasnya tetap
+  // diunduh apa adanya lewat SheetJS. Data lebih penting daripada grafik.
+  tulisExcelBergrafik(wb, namaBerkas, {
+    namaSheet,
+    judul: `${ds.label} (${ds.unit})`,
+    jumlahBaris: body.length
+  });
+}
+
+function tulisExcelBergrafik(wb, namaBerkas, opsiGrafik) {
+  if (!window.XlsxGrafik || typeof JSZip === 'undefined') {
+    XLSX.writeFile(wb, namaBerkas);
+    return;
+  }
+  let buf;
+  try {
+    buf = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+  } catch (err) {
+    XLSX.writeFile(wb, namaBerkas);
+    return;
+  }
+  XlsxGrafik.tempelGrafikGaris(buf, opsiGrafik)
+    .then(blob => XlsxGrafik.unduhBlob(blob, namaBerkas))
+    .catch(err => {
+      console.error('Grafik gagal dirakit, Excel diunduh tanpa grafik', err);
+      XLSX.writeFile(wb, namaBerkas);
+    });
 }
 
 function downloadRekapExcel() {
