@@ -7,6 +7,11 @@ const { logViewerAction } = require('../../lib/visualization/access-log');
 
 const MONTHS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
 
+// Ditulis eksplisit, bukan lewat toLocaleDateString('id-ID'), supaya hasilnya
+// tidak bergantung pada data lokal yang tersedia di runtime server.
+const MONTHS_LONG = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+  'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+
 function fmtNum(v) {
   return v !== null && v !== undefined ? Math.round(v).toLocaleString('id-ID') : '-';
 }
@@ -16,9 +21,11 @@ function monthLabel(bulanStr) {
   return `${MONTHS_SHORT[m - 1]} ${y}`;
 }
 
+// "2025-01-01" -> "1 Januari 2025". Angka harinya tanpa nol di depan, seperti
+// cara orang menulis tanggal, bukan seperti kunci basis data.
 function dailyLabel(dateStr) {
-  const [y, m, d] = dateStr.split('-');
-  return `${d}/${m}/${y}`;
+  const [y, m, d] = dateStr.split('-').map(Number);
+  return `${d} ${MONTHS_LONG[m - 1]} ${y}`;
 }
 
 function filterByYear(rows, year, dateField) {

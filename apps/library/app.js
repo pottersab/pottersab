@@ -130,6 +130,14 @@ function monthLabelLong(d) {
   return d.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
 }
 
+// "1 Januari 2025" -- dipakai di berkas yang dibawa keluar (Excel, dan PDF
+// lewat dailyLabel di api/visualization/export-pdf.js). Tampilan di layar
+// tetap DD/MM/YYYY: sumbu grafik memuat ribuan titik harian, nama bulan
+// panjang membuat labelnya tumpang tindih.
+function tanggalPanjang(d) {
+  return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+}
+
 // ---------------------------------------------------------------------------
 // AKSES — site-wide: token yang dipakai untuk minta data asli ke API adalah
 // JWT admin situs (localStorage 'token', dari login.html -- selalu lolos)
@@ -683,7 +691,7 @@ function buildExportSheet() {
     }
   } else {
     header = ['Tanggal', `${ds.label} (${ds.unit})`];
-    body = rows.map(r => [dateStrDisplay(r.date), r.value ?? '']);
+    body = rows.map(r => [tanggalPanjang(r.date), r.value ?? '']);
   }
 
   return { header, body };
@@ -697,7 +705,9 @@ function downloadExcel() {
   }
   const { header, body } = buildExportSheet();
   const ws = XLSX.utils.aoa_to_sheet([header, ...body]);
-  ws['!cols'] = header.map((h, i) => ({ wch: Math.max(14, h.length + 2, i === 0 ? 16 : 10) }));
+  // Kolom tanggal dilebarkan: "1 September 2025" perlu tempat lebih daripada
+  // "01/09/2025" yang dipakai sebelumnya.
+  ws['!cols'] = header.map((h, i) => ({ wch: Math.max(14, h.length + 2, i === 0 ? 18 : 10) }));
   const wb = XLSX.utils.book_new();
   const ds = currentDataset();
   const sheetName = ds.label.substring(0, 31);
