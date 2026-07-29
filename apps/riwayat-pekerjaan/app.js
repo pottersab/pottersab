@@ -109,9 +109,8 @@ function lokasiCell(r) {
 // Sebagian pekerjaan -- terutama pipa transmisi -- memang tidak menyimpan
 // uraian, jadi selnya dulu cuma bertuliskan "—" dan barisnya jadi sulit
 // dikenali. Sebagai gantinya dipakai keterangan yang masih bisa disusun dari
-// data yang ada: bidang + diameter, mis. "Pipa Transmisi 500 mm". Ditulis
-// miring supaya tetap jelas ini keterangan bentukan, bukan uraian yang
-// benar-benar dicatat petugas.
+// data yang ada: bidang + diameter, mis. "Pipa Transmisi 500 mm".
+//
 // Dipakai dua-duanya oleh tampilan tabel DAN oleh kotak cari di filtered(),
 // supaya apa yang terbaca di kolom judul persis itu yang bisa diketik untuk
 // menemukannya. Kalau keduanya jalan sendiri-sendiri, barisnya kelihatan tapi
@@ -125,8 +124,7 @@ function uraianTeks(r) {
 
 function uraianCell(r) {
   const teks = uraianTeks(r);
-  if (!teks) return '—';
-  return r.uraian ? esc(teks) : `<i class="uraian-ganti">${esc(teks)}</i>`;
+  return teks ? esc(teks) : '—';
 }
 
 const COLDEF = {
