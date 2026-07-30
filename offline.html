@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tidak Ada Koneksi — Portal SAB</title>
+<meta name="theme-color" content="#0E8E96">
+<!-- Halaman ini disajikan dari cache saat offline: tanpa sesi.js, tanpa font CDN. -->
+<style>
+  :root{
+    --ink:#0A2537;
+    --ink-soft:#3C5A6E;
+    --paper:#F4F8FA;
+    --card:#FFFFFF;
+    --mist:#DCE9EF;
+    --teal:#0E8E96;
+    --teal-deep:#0A6A72;
+    --radius:14px;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:24px;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'Segoe UI',system-ui,-apple-system,sans-serif;
+  }
+  .kartu{
+    width:100%;
+    max-width:380px;
+    background:var(--card);
+    border:1px solid var(--mist);
+    border-radius:var(--radius);
+    padding:32px 26px;
+    text-align:center;
+  }
+  .lambang{
+    width:72px;
+    height:72px;
+    margin:0 auto 20px;
+    border-radius:18px;
+    background:linear-gradient(180deg,var(--teal),var(--teal-deep));
+    color:#fff;
+    font-size:24px;
+    font-weight:700;
+    letter-spacing:.5px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+  h1{font-size:19px;font-weight:700;margin-bottom:10px}
+  p{font-size:14px;line-height:1.6;color:var(--ink-soft)}
+  button{
+    margin-top:22px;
+    width:100%;
+    padding:12px 18px;
+    border:0;
+    border-radius:10px;
+    background:var(--teal);
+    color:#fff;
+    font-size:14px;
+    font-weight:600;
+    font-family:inherit;
+    cursor:pointer;
+  }
+  button:active{background:var(--teal-deep)}
+</style>
+</head>
+<body>
+  <main class="kartu">
+    <div class="lambang">SAB</div>
+    <h1>Tidak ada koneksi</h1>
+    <p>Portal SAB butuh sinyal untuk memuat halaman. Periksa koneksi internet, lalu coba lagi.</p>
+    <button type="button" onclick="location.reload()">Coba lagi</button>
+  </main>
+</body>
+</html>

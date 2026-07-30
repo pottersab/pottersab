@@ -1,0 +1,25 @@
+{
+  "name": "PTMB — Portal Internal Sumber Air Baku",
+  "short_name": "SAB",
+  "description": "Portal aplikasi kerja Sub Divisi Sumber Air Baku",
+  "lang": "id",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#F4F8FA",
+  "theme_color": "#0E8E96",
+  "icons": [
+    {
+      "src": "/assets/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/assets/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
