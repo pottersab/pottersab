@@ -162,7 +162,9 @@ header{
   font-size:10px;font-weight:600;color:#fff;
 }
 .peta-badge svg{width:10px;height:10px}
-#heroPetaMap{height:140px;background:var(--mist)}
+/* position+z-index bikin stacking context sendiri, supaya pane Leaflet
+   (z-index internal 400+) tidak menembus navbar sticky saat halaman discroll */
+#heroPetaMap{height:140px;background:var(--mist);position:relative;z-index:0}
 .peta-card-footer{padding:10px 14px;display:flex;align-items:center;gap:10px}
 .peta-card-footer-text{display:none}
 .peta-card-cta{
