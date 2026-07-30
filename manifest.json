@@ -1,6 +1,6 @@
 {
-  "name": "PTMB — Portal Internal Sumber Air Baku",
-  "short_name": "SAB",
+  "name": "Portal SAB — PTMB",
+  "short_name": "Portal SAB",
   "description": "Portal aplikasi kerja Sub Divisi Sumber Air Baku",
   "lang": "id",
   "start_url": "/",
