@@ -1,0 +1,48 @@
+/* ===========================================================================
+   LEBAR CONTAINER — SATU SUMBER KEBENARAN
+   ---------------------------------------------------------------------------
+   Setiap halaman punya blok <style> sendiri dan tidak ada CSS bersama, jadi
+   dulu mengubah lebar berarti menyunting 17 berkas. Nilainya sekarang tinggal
+   di sini; halaman memakainya lewat var(). Ubah di berkas ini, seluruh situs
+   ikut.
+
+   Pemakaian di halaman selalu menyertakan nilai cadangan:
+
+       max-width: var(--w-page, 1280px);
+
+   Cadangan itu bukan hiasan. Kalau berkas ini gagal dimuat, var() tanpa
+   cadangan membuat deklarasinya batal dan max-width jatuh ke `none` — semua
+   container jadi selebar layar. Dengan cadangan, kegagalan muat cuma berarti
+   lebarnya kembali ke nilai sekarang.
+
+   Berkas ini SENGAJA tidak diberi header cache panjang di vercel.json.
+   Aset yang di-cache lama akan menunda perubahan lebar sampai cache habis,
+   yang justru menghapus manfaat memusatkannya di sini.
+   =========================================================================== */
+
+:root{
+  /* Navbar dan container konten. Dipakai 17 halaman. */
+  --w-page: 1280px;
+
+  /* Blok dalam beranda: .hero-top, .stat-grid, .stack.
+     Lebih sempit dari --w-page supaya kartu ringkasan tidak melebar
+     sampai tepi container. */
+  --w-inner: 1180px;
+
+  /* apps/ceklist-apd.html — format ceklist kantor, layout dua kolom
+     yang memang butuh lebih lebar dari --w-page. */
+  --w-wide: 1520px;
+}
+
+/* ---------------------------------------------------------------------------
+   Yang SENGAJA tidak memakai variabel di atas — jangan "dirapikan":
+
+     apps/formulir-sab.html    .wrap  560px   form input satu kolom
+     apps/input-air-baku.html  .wrap  640px   form entri data satu kolom
+     index.html                .hero 1100px   nilai dasar untuk layar sempit;
+                                              di >=1024px hero jadi band
+                                              full-bleed (max-width:none)
+
+   Ketiganya lebar per-halaman, bukan lebar situs. Menariknya ke variabel
+   bersama akan menyiratkan mereka seharusnya seragam — padahal tidak.
+   --------------------------------------------------------------------------- */

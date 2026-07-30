@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <script src="assets/js/sesi.js"></script>
+<link rel="stylesheet" href="/assets/css/layout.css">
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#0E8E96">
 <meta name="mobile-web-app-capable" content="yes">
@@ -64,7 +65,7 @@
     border-bottom:1px solid var(--mist);
   }
   .nav{
-    max-width:1280px;margin:0 auto;padding:14px 20px;
+    max-width:var(--w-page,1280px);margin:0 auto;padding:14px 20px;
     display:flex;align-items:center;gap:20px;
   }
   .brand{display:flex;align-items:center;gap:10px;font-weight:600}
@@ -154,7 +155,7 @@
 
   /* ===== BACK LINK ===== */
   .back-link{
-    max-width:1280px; margin:20px auto 0; padding:0 6vw;
+    max-width:var(--w-page,1280px); margin:20px auto 0; padding:0 6vw;
   }
   .back-link a{
     display:inline-flex; align-items:center; gap:6px;
@@ -165,7 +166,7 @@
 
   /* ===== HERO / PROFILE ===== */
   .profile-hero{
-    max-width:1280px; margin:0 auto;
+    max-width:var(--w-page,1280px); margin:0 auto;
     padding:30px 6vw 20px;
     display:flex; align-items:center; gap:44px;
   }
@@ -209,7 +210,7 @@
   .contact-btn.li:hover{ background:var(--primary-light); transform:translateY(-2px); }
 
   /* ===== SECTIONS ===== */
-  .section{ max-width:1280px; margin:0 auto; padding:36px 6vw; }
+  .section{ max-width:var(--w-page,1280px); margin:0 auto; padding:36px 6vw; }
   .section-head{ margin-bottom:22px; }
   .section-head .tag{
     font-family:'Space Grotesk',sans-serif; font-size:12px; letter-spacing:.1em;
