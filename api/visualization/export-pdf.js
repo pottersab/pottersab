@@ -18,11 +18,12 @@ function fmtNum(v) {
   return v !== null && v !== undefined ? Math.round(v).toLocaleString('id-ID') : '-';
 }
 
-// Untuk pembacaan harian Waduk Manggar & Teritip -- level, kekeruhan, pH,
-// curah hujan. Di sini pecahannya justru inti datanya: level 6,42 m tidak
-// sama dengan 6 m, dan pH 7,15 tidak sama dengan 7. Dulu semuanya lewat
-// fmtNum dan dibulatkan jadi bilangan bulat, jadi angka di belakang koma
-// hilang dari PDF padahal ada di layar.
+// Untuk semua PEMBACAAN ALAT: level/kekeruhan/pH/curah hujan Manggar &
+// Teritip, dan debit maupun level statis-dinamis Sumur Dalam. Di sini
+// pecahannya justru inti datanya -- level 6,42 m tidak sama dengan 6 m, dan
+// pH 7,15 tidak sama dengan 7. Dulu semuanya lewat fmtNum dan dibulatkan jadi
+// bilangan bulat, jadi angka di belakang koma hilang dari PDF padahal ada di
+// layar. Kolom-kolomnya di basis data memang NUMERIC, bukan INTEGER.
 //
 // Dua angka di belakang koma, sama dengan tabel di layar. Pemisah desimalnya
 // koma karena seluruh angka di PDF ini memang sudah berformat Indonesia
@@ -204,11 +205,11 @@ module.exports = async (req, res) => {
         const r = byMonth[i + 1];
         const v = r ? r[w] : null;
         if (v !== null && v !== undefined) { monthTotals[i] += v; monthHas[i] = true; }
-        return fmtNum(v);
+        return fmtDesimal(v);
       });
       return [w.replace(/_/g, ' '), ...values];
     });
-    const totalRow = monthTotals.map((t, i) => fmtNum(monthHas[i] ? t : null));
+    const totalRow = monthTotals.map((t, i) => fmtDesimal(monthHas[i] ? t : null));
     tableRows.push(['Jumlah', ...totalRow]);
     pdfBytes = await bikinPdf({
       landscape: true,
@@ -234,7 +235,7 @@ module.exports = async (req, res) => {
         const values = MONTHS_SHORT.map((_, i) => {
           const r = byMonth[i + 1];
           const v = r ? r[w + '_' + variant] : null;
-          return fmtNum(v);
+          return fmtDesimal(v);
         });
         return [w.replace(/_/g, ' '), ...values];
       });
