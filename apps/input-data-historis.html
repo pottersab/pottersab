@@ -521,6 +521,19 @@ function fmtTanggalID(iso) {
   const [y, m, d] = iso.split('-');
   return `${parseInt(d,10)} ${MONTHS[parseInt(m,10)-1]} ${y}`;
 }
+// Maju/mundur tanggal & bulan. Dipakai supaya setelah simpan, kolom tanggal
+// (harian) / bulan (sumur) otomatis loncat ke periode berikutnya. Sengaja
+// pakai Date lokal (bukan UTC) biar tidak geser sehari di zona WITA.
+function addDaysStr(iso, n) {
+  const [y, m, d] = iso.split('-').map(Number);
+  const dt = new Date(y, m - 1, d + n);
+  return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
+}
+function addMonthsStr(ym, n) {
+  const [y, m] = ym.split('-').map(Number);
+  const dt = new Date(y, m - 1 + n, 1);
+  return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}`;
+}
 
 // =============================================================================
 // STATE
@@ -582,7 +595,7 @@ function renderDailyPanel() {
 
   panel.innerHTML = `
     <h2>Input Data Harian — ${label}</h2>
-    <p class="sub">Pilih tanggal, klik "Muat data tanggal ini" untuk mengedit data yang sudah ada, atau langsung isi untuk tanggal baru.</p>
+    <p class="sub">Pilih tanggal, klik "Muat data tanggal ini" untuk mengedit data yang sudah ada, atau langsung isi untuk tanggal baru. Setelah disimpan, tanggal otomatis maju satu hari.</p>
 
     <div class="load-row">
       <div class="field">
@@ -670,8 +683,13 @@ function renderDailyPanel() {
       });
       const data = await res.json();
       if (!res.ok || !data.success) throw new Error(data.error || 'Gagal menyimpan.');
-      setStatus('dailyStatus', 'Tersimpan. Langsung tampil di halaman "Data Waduk dan Sumur".', false);
+      // Tanggal otomatis maju sehari, form dikosongkan lewat loadDaily() supaya
+      // admin bisa langsung lanjut input tanggal berikutnya.
+      const nextTanggal = addDaysStr(tanggal, 1);
+      document.getElementById('f_tanggal').value = nextTanggal;
+      setStatus('dailyStatus', `Tersimpan. Lanjut ke ${fmtTanggalID(nextTanggal)}.`, false);
       fetchDailyHistory();
+      loadDaily();
     } catch (err) {
       setStatus('dailyStatus', 'Gagal: ' + err.message, true);
     }
@@ -840,7 +858,7 @@ async function renderSumurPanel() {
 
   panel.innerHTML = `
     <h2>Input ${catLabel} Sumur — ${loc.label}</h2>
-    <p class="sub">Pilih bulan, klik "Muat data bulan ini" untuk mengedit data yang sudah ada, atau langsung isi untuk bulan baru.</p>
+    <p class="sub">Pilih bulan, klik "Muat data bulan ini" untuk mengedit data yang sudah ada, atau langsung isi untuk bulan baru. Setelah disimpan, bulan otomatis maju satu bulan.</p>
 
     <div class="well-manager">
       <div class="wm-title">Kelola daftar sumur — ${loc.label} (${catLabel})</div>
@@ -1046,8 +1064,12 @@ async function renderSumurPanel() {
         });
         const data = await res.json();
         if (!res.ok || !data.success) throw new Error(data.error || 'Gagal menyimpan.');
-        setStatus('sumurStatus', 'Tersimpan. Langsung tampil di halaman "Data Waduk dan Sumur".', false);
+        // Data sumur bulanan, jadi yang maju kolom bulan (bukan tanggal).
+        const nextBulan = addMonthsStr(bulan, 1);
+        document.getElementById('f_bulan').value = nextBulan;
+        setStatus('sumurStatus', `Tersimpan. Lanjut ke ${fmtBulanTahunID(nextBulan)}.`, false);
         fetchSumurHistory();
+        loadSumur();
       } catch (err) {
         setStatus('sumurStatus', 'Gagal: ' + err.message, true);
       }
