@@ -700,6 +700,25 @@ function buildExportSheet() {
   return { header, body };
 }
 
+// Menyamakan tampilan Excel dengan PDF & layar: dua angka di belakang koma.
+//
+// Yang disetel cuma FORMAT TAMPILAN selnya (z = '0.00'), bukan isinya. Nilai
+// yang tersimpan tetap angka asli dengan presisi penuh, jadi masih bisa
+// dijumlahkan, dirata-rata, dan dipakai rumus. Kalau angkanya dipotong jadi
+// teks dua desimal, semua itu hilang dan Excel-nya berubah jadi sekadar
+// gambar tabel -- justru kebalikan dari gunanya mengunduh Excel.
+//
+// Baris pertama dilewati karena itu header.
+function formatDuaDesimal(ws) {
+  const jangkauan = XLSX.utils.decode_range(ws['!ref']);
+  for (let r = jangkauan.s.r + 1; r <= jangkauan.e.r; r++) {
+    for (let c = jangkauan.s.c; c <= jangkauan.e.c; c++) {
+      const sel = ws[XLSX.utils.encode_cell({ r, c })];
+      if (sel && sel.t === 'n') sel.z = '0.00';
+    }
+  }
+}
+
 function downloadExcel() {
   if (!isAdmin) {
     alert('Unduh Excel khusus admin. Silakan login admin terlebih dahulu.');
@@ -711,6 +730,7 @@ function downloadExcel() {
   // Kolom tanggal dilebarkan: "1 September 2025" perlu tempat lebih daripada
   // "01/09/2025" yang dipakai sebelumnya.
   ws['!cols'] = header.map((h, i) => ({ wch: Math.max(14, h.length + 2, i === 0 ? 18 : 10) }));
+  formatDuaDesimal(ws);
   const wb = XLSX.utils.book_new();
   const ds = currentDataset();
   const sheetName = ds.label.substring(0, 31);
