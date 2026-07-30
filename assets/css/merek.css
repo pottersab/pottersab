@@ -1,0 +1,27 @@
+/* ===========================================================================
+   LAMBANG NAVBAR — SATU SUMBER KEBENARAN
+   ---------------------------------------------------------------------------
+   Lambang di navbar dulu berupa kotak gradien berisi teks "PT", dideklarasikan
+   terpisah di 20 halaman (17 di blok <style> masing-masing, 3 di style.css
+   milik apps/library, apps/riwayat-air-baku, dan apps/riwayat-pekerjaan).
+   Sekarang logonya gambar, dan aturannya tinggal di berkas ini — ganti logo
+   cukup menimpa satu berkas gambar.
+
+   Selectornya sengaja dua tingkat (.brand .brand-mark, bukan .brand-mark).
+   Aturan asli di tiap halaman berkekuatan 0,1,0 dan dimuat SETELAH berkas ini,
+   jadi kalau kekuatannya sama ia yang menang. Dua tingkat (0,2,0) membuat
+   aturan di sini menang tanpa perlu !important.
+
+   Teks "PT" masih ada di markup 20 halaman dan disembunyikan lewat font-size:0.
+   Itu bukan kehilangan informasi: nama "PTMB" sudah ada sebagai teks pada
+   elemen bersebelahan di dalam tautan yang sama, jadi lambangnya murni hiasan.
+
+   border-radius, lebar, dan tinggi tetap diatur halaman masing-masing (34px,
+   radius 9px) — yang dipusatkan di sini hanya gambarnya.
+   =========================================================================== */
+
+.brand .brand-mark,
+.ptmb-brand .ptmb-brand-mark{
+  background: url("/assets/icons/logo-sab-64.png") center / cover no-repeat;
+  font-size: 0;
+}
