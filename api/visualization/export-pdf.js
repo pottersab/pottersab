@@ -12,8 +12,25 @@ const MONTHS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'S
 const MONTHS_LONG = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
   'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
 
+// Untuk angka besar yang pecahannya tidak berarti apa-apa: volume air dalam m³
+// dan rekapitulasi bulanan. Dibulatkan supaya tabelnya tidak penuh nol.
 function fmtNum(v) {
   return v !== null && v !== undefined ? Math.round(v).toLocaleString('id-ID') : '-';
+}
+
+// Untuk pembacaan harian Waduk Manggar & Teritip -- level, kekeruhan, pH,
+// curah hujan. Di sini pecahannya justru inti datanya: level 6,42 m tidak
+// sama dengan 6 m, dan pH 7,15 tidak sama dengan 7. Dulu semuanya lewat
+// fmtNum dan dibulatkan jadi bilangan bulat, jadi angka di belakang koma
+// hilang dari PDF padahal ada di layar.
+//
+// Dua angka di belakang koma, sama dengan tabel di layar. Pemisah desimalnya
+// koma karena seluruh angka di PDF ini memang sudah berformat Indonesia
+// (fmtNum menulis 121.896, bukan 121,896).
+function fmtDesimal(v) {
+  return v !== null && v !== undefined
+    ? Number(v).toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    : '-';
 }
 
 function monthLabel(bulanStr) {
@@ -163,7 +180,7 @@ module.exports = async (req, res) => {
     const { dateKey, rows: allRows } = await fetchWideSingleRows(source);
     const rows = filterByYear(allRows, year, dateKey);
     const labelFn = dateKey === 'Tanggal' ? dailyLabel : monthLabel;
-    const tableRows = rows.map(r => [labelFn(r[dateKey]), fmtNum(r[source.csvCol])]);
+    const tableRows = rows.map(r => [labelFn(r[dateKey]), fmtDesimal(r[source.csvCol])]);
     pdfBytes = await bikinPdf({
       sections: [{
         title: 'Data Waduk dan Sumur',
