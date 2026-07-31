@@ -171,6 +171,12 @@ tbody tr:hover td{background:var(--primary-pale);}
 .maps-link{font-family:'IBM Plex Mono',monospace;color:var(--primary);text-decoration:none;white-space:nowrap;}
 .maps-link:hover{text-decoration:underline;}
 
+/* Akurasi GPS saat laporan dikirim. Yang kasar ditandai supaya titik yang
+   diambil dari dalam ruangan (WiFi/menara seluler, bukan kunci satelit)
+   tidak terbaca sama meyakinkannya dengan titik yang diambil di lokasi. */
+.akurasi{font-size:11.5px;color:var(--muted,#4C6870);white-space:nowrap;}
+.akurasi.kasar{color:#B5502E;font-weight:600;}
+
 tbody tr.baris-klik{cursor:pointer;}
 
 /* --- Modal detail pekerjaan --- */

@@ -507,8 +507,18 @@ async function bukaDetail(id) {
 function renderDetail(r) {
   const dia = r.diameter_nilai ? esc(r.diameter_nilai + ' ' + (r.diameter_satuan || '')) : null;
   const jam = (r.jam_mulai || r.jam_selesai) ? esc((r.jam_mulai || '?') + ' – ' + (r.jam_selesai || '?')) : null;
+  // Akurasi saat laporan dikirim ikut ditampilkan: Formulir SAB memang
+  // memperingatkan pengisinya kalau titiknya kasar, tapi laporannya tetap
+  // boleh dikirim -- jadi di arsip pun angkanya perlu kelihatan supaya titik
+  // yang meragukan bisa dikenali belakangan. Ambangnya sama dengan yang di
+  // apps/formulir-sab.html.
+  const AMBANG_AKURASI_M = 100;
+  const akurasi = typeof r.gps_akurasi === 'number'
+    ? `<span class="akurasi${r.gps_akurasi > AMBANG_AKURASI_M ? ' kasar' : ''}">±${Math.round(r.gps_akurasi)} m</span>`
+    : '';
   const koor = (r.gps_lat !== null && r.gps_lng !== null)
-    ? `<a class="maps-link" target="_blank" rel="noopener" href="https://www.google.com/maps?q=${r.gps_lat},${r.gps_lng}">${r.gps_lat.toFixed(6)}, ${r.gps_lng.toFixed(6)} 📍</a>`
+    ? `<a class="maps-link" target="_blank" rel="noopener" href="https://www.google.com/maps?q=${r.gps_lat},${r.gps_lng}">${r.gps_lat.toFixed(6)}, ${r.gps_lng.toFixed(6)} 📍</a>` +
+      (akurasi ? ' ' + akurasi : '')
     : null;
   const lokasi = r.lokasi_teks ? esc(r.lokasi_teks) : koor;
 
@@ -525,6 +535,9 @@ function renderDetail(r) {
     barisDetail('Jenis', r.jenis ? esc(r.jenis) : null) +
     barisDetail('Instalasi', r.instalasi ? esc(r.instalasi) : null) +
     barisDetail('Lokasi', lokasi) +
+    // Baris koordinat cuma muncul kalau baris Lokasi sudah terpakai teks --
+    // kalau tidak, koordinatnya sudah tampil di sana dan tidak perlu dua kali.
+    barisDetail('Koordinat', r.lokasi_teks ? koor : null) +
     barisDetail('Diameter', dia) +
     barisDetail('Material', r.material ? esc(r.material) : null) +
     barisDetail('Kontraktor', r.kontraktor ? esc(r.kontraktor) : null) +

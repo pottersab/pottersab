@@ -75,8 +75,10 @@
     border-radius:8px;padding:12px 14px;font-size:13px;margin-top:6px;
   }
   .gps-box.ok{border-color:var(--ok);background:var(--ok-soft);}
+  .gps-box.kasar{border-color:var(--danger);background:#FAEDEA;}
   .gps-box .coord{font-family:"Times New Roman",Times,serif;font-size:14px;font-weight:700;color:var(--navy-dark);}
   .gps-box .status{color:var(--muted);margin-top:2px;}
+  .gps-box .peringatan{color:var(--danger);font-weight:600;margin-top:6px;line-height:1.45;}
   .gps-retry{
     margin-top:8px;background:none;border:1px solid var(--navy);color:var(--navy);
     padding:6px 10px;border-radius:6px;font-size:12.5px;cursor:pointer;
@@ -648,7 +650,10 @@ function renderStep(id){
         ${reviewRow('Barang Gudang Induk', state.adaGudangInduk==='Ya' ? state.barangGudangInduk : 'Tidak ada')}
         ${reviewRow('Jam Kerja', (state.jamMulai||'-')+' – '+(state.jamSelesai||'-'))}
         ${reviewRow('Foto', state.fotoName || 'Belum ada')}
-        ${reviewRow('GPS', state.gpsLat ? state.gpsLat.toFixed(6)+', '+state.gpsLng.toFixed(6) : 'Belum ada')}
+        ${reviewRow('GPS', state.gpsLat
+          ? state.gpsLat.toFixed(6)+', '+state.gpsLng.toFixed(6) +
+            (state.gpsAccuracy ? ' (±'+Math.round(state.gpsAccuracy)+' m)' : '')
+          : 'Belum ada')}
       </div>`;
   }
 }
@@ -721,10 +726,20 @@ async function handlePhoto(e){
   }
 }
 
+// Di atas ambang ini, koordinatnya hampir pasti bukan hasil kunci satelit
+// melainkan tebakan dari WiFi/menara seluler -- yang persis terjadi kalau
+// formulirnya diisi di dalam ruangan, bukan di titik pekerjaan. Laporannya
+// TETAP boleh dikirim: di lapangan, terhimpit pipa dan beton, akurasi kadang
+// memang jelek walau orangnya benar-benar berdiri di lokasi, dan menolak
+// kiriman yang sah lebih merugikan daripada menerima titik yang kasar.
+// Angkanya ikut tersimpan (gps_akurasi), jadi yang meragukan tetap bisa
+// ditelusuri belakangan lewat detail Riwayat Pekerjaan SAB.
+const AMBANG_AKURASI_M = 100;
+
 function requestGps(){
   const box = document.getElementById('gpsBox');
   if(!box) return;
-  box.classList.remove('ok');
+  box.classList.remove('ok', 'kasar');
   box.innerHTML = `<div class="status">Mengambil lokasi...</div>`;
   if(!navigator.geolocation){
     box.innerHTML = `<div class="status">Perangkat tidak mendukung GPS. Isi manual jika perlu.</div>`;
@@ -734,9 +749,15 @@ function requestGps(){
     state.gpsLat = pos.coords.latitude;
     state.gpsLng = pos.coords.longitude;
     state.gpsAccuracy = pos.coords.accuracy;
-    box.classList.add('ok');
+    const kasar = state.gpsAccuracy > AMBANG_AKURASI_M;
+    box.classList.add(kasar ? 'kasar' : 'ok');
     box.innerHTML = `<div class="coord">${state.gpsLat.toFixed(6)}, ${state.gpsLng.toFixed(6)}</div>
-      <div class="status">Akurasi ±${Math.round(state.gpsAccuracy)} meter</div>`;
+      <div class="status">Akurasi ±${Math.round(state.gpsAccuracy)} meter</div>` +
+      (kasar
+        ? `<div class="peringatan">Titik ini masih kasar — bisa meleset sampai ${Math.round(state.gpsAccuracy)} meter dari posisimu.
+           Kalau kamu memang sedang di lokasi pekerjaan, tunggu sebentar di tempat terbuka lalu tekan
+           &ldquo;Ambil ulang lokasi&rdquo;. Laporan tetap bisa dikirim dengan titik ini.</div>`
+        : '');
   }, err=>{
     box.innerHTML = `<div class="status">Gagal mengambil lokasi (${err.message}). Coba lagi atau periksa izin lokasi browser.</div>`;
   }, { enableHighAccuracy:true, timeout:15000 });
