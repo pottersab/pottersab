@@ -369,8 +369,27 @@ function doLogout(){
 <script>
   const API_URL = '';
 
+  // Halaman yang tadi ditinggalkan, dibaca dari referrer. Dipakai cuma kalau
+  // ?redirect= tidak ada -- mis. login.html dibuka dari tautan yang belum
+  // sempat ditandai assets/js/sesi.js. Lintas-situs dan halaman login sendiri
+  // tidak dihitung: yang pertama bukan tempat kita memulangkan siapa pun, yang
+  // kedua cuma bikin berputar di tempat.
+  function dariReferrer() {
+    if (!document.referrer) return null;
+    try {
+      const u = new URL(document.referrer);
+      if (u.origin !== window.location.origin) return null;
+      if (/login\.html$/.test(u.pathname)) return null;
+      return (u.pathname + u.search).replace(/^\/+/, '') || 'index.html';
+    } catch (e) {
+      return null;
+    }
+  }
+
+  // Dashboard Admin tetap jadi tujuan terakhir kalau memang tidak ada jejak
+  // halaman asal sama sekali (mis. alamat login diketik langsung).
   function getSafeRedirect() {
-    const raw = new URLSearchParams(window.location.search).get('redirect');
+    const raw = new URLSearchParams(window.location.search).get('redirect') || dariReferrer();
     if (!raw) return 'admin-dashboard.html';
     if (/^https?:\/\//i.test(raw) || raw.startsWith('//') || raw.startsWith('../') || raw.includes('\\')) {
       return 'admin-dashboard.html';

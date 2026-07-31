@@ -64,8 +64,13 @@
 
   // Alamat halaman sekarang, relatif terhadap root situs. Bentuk ini yang
   // diterima getSafeRedirect() di login.html (yang menolak '../' dan URL penuh).
+  //
+  // Beranda dilayani di '/' (tanpa nama berkas), yang kalau garis miringnya
+  // dibuang menyisakan string kosong -- dan alamat kosong dianggap "tidak ada
+  // tujuan" oleh login.html, jadi orangnya mendarat di Dashboard Admin. Karena
+  // itu dinamai eksplisit.
   function alamatSekarang() {
-    return (location.pathname + location.search).replace(/^\/+/, '');
+    return (location.pathname + location.search).replace(/^\/+/, '') || 'index.html';
   }
 
   var sedangKeluar = false;
@@ -108,6 +113,54 @@
     var t = localStorage.getItem('token');
     if (t && sudahLewat(t)) akhiri('habis');
   });
+
+  // --- Tombol "Login" di navbar dibawa pulang ---------------------------
+  // Tombolnya cuma menunjuk login.html polos, jadi siapa pun yang masuk lewat
+  // situ selalu mendarat di Dashboard Admin -- bukan kembali ke halaman yang
+  // tadi sedang dibuka. Alamat halaman sekarang disisipkan sebagai ?redirect=
+  // supaya login.html memulangkannya ke tempat semula.
+  //
+  // Dikerjakan di sini, bukan disunting satu per satu di 20 halaman, karena
+  // berkas ini memang sudah dimuat semuanya dan sudah menghitung alamat dalam
+  // bentuk yang diterima getSafeRedirect(). Jalur yang sudah membawa tujuan
+  // sendiri -- sesi habis lewat akhiri(), atau gerbang admin di halaman form --
+  // tidak disentuh.
+  var hrefAsli = null;
+
+  function pasangAlamatPulang() {
+    if (diHalamanLogin) return;
+    var tombol = document.getElementById('navLoginBtn');
+    if (!tombol) return;
+
+    if (hrefAsli === null) {
+      hrefAsli = tombol.getAttribute('href') || '';
+      // Bukan tautan ke login.html, atau sudah membawa tujuannya sendiri:
+      // jangan diutak-atik.
+      if (!/login\.html$/.test(hrefAsli.split('?')[0]) || hrefAsli.indexOf('redirect=') !== -1) {
+        hrefAsli = false;
+      }
+    }
+    if (hrefAsli === false) return;
+
+    tombol.setAttribute('href', hrefAsli + '?redirect=' + encodeURIComponent(alamatSekarang()));
+  }
+
+  // sesi.js dimuat sinkron di <head>, jadi tombolnya belum ada saat ini.
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', pasangAlamatPulang);
+  } else {
+    pasangAlamatPulang();
+  }
+
+  // Dihitung ulang tiap kali tombolnya ditekan, bukan sekali saat halaman
+  // dimuat: beranda menukar empat halaman (Tools/Data/Development) di satu
+  // berkas dan menulis ulang alamatnya lewat history.pushState, jadi alamat
+  // saat DOM siap sudah basi begitu pemakainya pindah hub. pointerdown dipilih
+  // karena jalan lebih dulu daripada click, dan ikut menangkap klik tengah
+  // atau "salin alamat tautan" -- dua-duanya melewatkan event click.
+  document.addEventListener('pointerdown', function (e) {
+    if (e.target && e.target.closest && e.target.closest('#navLoginBtn')) pasangAlamatPulang();
+  }, true);
 
   window.Sesi = {
     token: function () { return localStorage.getItem('token'); },
