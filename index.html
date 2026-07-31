@@ -929,10 +929,15 @@ document.addEventListener('click', function(e){
 // ---------- Ringkasan data hero (dari /api/home-summary) ----------
 (function(){
   function fmtNumber(n, opts){ return n.toLocaleString('id-ID', opts || {}); }
+  // Tanggal bisa null kalau tabelnya belum ada isinya sama sekali (MAX(bulan)
+  // dari nol baris = NULL). Tanpa penjaga ini, new Date('nullT00:00:00')
+  // menghasilkan Invalid Date dan tulisan itu yang mendarat di kartu.
   function fmtDateShort(iso){
+    if(!iso) return 'Belum ada data';
     return new Date(iso + 'T00:00:00').toLocaleDateString('id-ID', { day:'2-digit', month:'short', year:'numeric' });
   }
   function fmtMonthYear(iso){
+    if(!iso) return 'Belum ada data';
     return new Date(iso + 'T00:00:00').toLocaleDateString('id-ID', { month:'long', year:'numeric' });
   }
 

@@ -195,15 +195,24 @@ module.exports = async (req, res) => {
       ORDER BY ap.bulan DESC LIMIT 1
     `),
     // Sumur dianggap aktif kalau ADA data debit (bukan null) yang diinput
-    // SELAMA TAHUN BERJALAN -- bukan lagi cuma "ikut bulan terakhir yang
-    // ada datanya" (sumur yang tidak dilaporkan sejak tahun lalu jadi tidak
-    // terhitung aktif walau dulu pernah ada datanya). Sama dengan logika di
-    // apps/peta-ipa-sumur/app.js (statusFromDebit).
+    // dalam 12 BULAN TERAKHIR -- sumur yang sudah lama tidak dilaporkan jadi
+    // tidak terhitung aktif walau dulu pernah ada datanya.
+    //
+    // Jendelanya sengaja berjalan (12 bulan ke belakang dari bulan ini), bukan
+    // "sejak awal tahun": data debit diinput bulanan dan baru masuk setelah
+    // bulannya lewat, jadi patokan awal tahun bikin angkanya jatuh ke 0 setiap
+    // 1 Januari sampai data Januari diinput -- beranda menampilkan "0 titik"
+    // selama sebulan penuh tiap tahun padahal sumurnya jalan semua.
+    //
+    // Jendela yang sama dipakai query debit di api/visualization/admin-library.js
+    // (action=map-latest); dua angka ini harus selalu cocok karena keduanya
+    // sama-sama tampil sebagai "sumur aktif".
     pool.query(`
       SELECT COUNT(DISTINCT (installation, well_name)) as jumlah,
         to_char(MAX(bulan), 'YYYY-MM-DD') as bulan
       FROM sumur_debit_readings
-      WHERE value IS NOT NULL AND bulan >= date_trunc('year', CURRENT_DATE)
+      WHERE value IS NOT NULL
+        AND bulan >= date_trunc('month', CURRENT_DATE) - INTERVAL '11 months'
     `)
   ]);
 
