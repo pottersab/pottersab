@@ -28,10 +28,16 @@ module.exports = async (req, res) => {
 
   const approveSecret = crypto.randomBytes(24).toString('hex');
 
+  // Kunci untuk memantau status permintaan ini. Id-nya berurutan dan gampang
+  // ditebak, jadi tanpa kunci ini siapa pun bisa menghitung 1,2,3... di
+  // /api/visualization/status dan memungut token akses milik orang lain
+  // selama masa berlakunya. Cuma dikirim ke browser yang mengirim permintaan.
+  const pollSecret = crypto.randomBytes(24).toString('hex');
+
   const { rows } = await pool.query(
-    `INSERT INTO access_requests (requested_by, data_type, reason, status, approve_secret)
-     VALUES ($1, $2, $3, 'pending', $4) RETURNING id`,
-    [String(requestedBy).trim(), dataType, reason || null, approveSecret]
+    `INSERT INTO access_requests (requested_by, data_type, reason, status, approve_secret, poll_secret)
+     VALUES ($1, $2, $3, 'pending', $4, $5) RETURNING id`,
+    [String(requestedBy).trim(), dataType, reason || null, approveSecret, pollSecret]
   );
   const requestId = rows[0].id;
 
@@ -69,7 +75,7 @@ module.exports = async (req, res) => {
     return res.status(500).json({ error: 'Permintaan tersimpan tapi gagal mengirim notifikasi email ke admin. Coba lagi nanti.' });
   }
 
-  return res.status(200).json({ success: true, requestId });
+  return res.status(200).json({ success: true, requestId, pollSecret });
 };
 
 function escapeHtml(s) {

@@ -889,6 +889,7 @@ function updateAdminButton() {
 let vizToken = null;
 let vizTokenExpiresAt = null;
 let vizRequestId = null;
+let vizRequestSecret = null;
 let pollTimer = null;
 let expiryTimer = null;
 let modalGroup = null; // cuma label konteks buat modal & field dataType yang dikirim ke admin
@@ -987,7 +988,8 @@ async function submitAccessRequest() {
     if (!res.ok || !data.success) throw new Error(data.error || 'Gagal mengirim permintaan.');
 
     vizRequestId = data.requestId;
-    try { localStorage.setItem('vizRequestId', String(vizRequestId)); } catch (e) {}
+    vizRequestSecret = data.pollSecret;
+    try { localStorage.setItem('vizRequestId', String(vizRequestId)); localStorage.setItem('vizRequestSecret', String(vizRequestSecret || '')); } catch (e) {}
 
     setAccessModalStatus('Permintaan terkirim. Menunggu admin menyetujui lewat email — halaman ini akan otomatis update.', 'pending');
     startPolling();
@@ -1005,9 +1007,9 @@ function startPolling() {
 }
 
 async function checkAccessStatus() {
-  if (!vizRequestId) return;
+  if (!vizRequestId || !vizRequestSecret) return;
   try {
-    const res = await fetch(`/api/visualization/status?id=${vizRequestId}`);
+    const res = await fetch(`/api/visualization/status?id=${vizRequestId}&secret=${encodeURIComponent(vizRequestSecret || '')}`);
     const data = await res.json();
 
     if (data.status === 'approved') {
@@ -1018,7 +1020,7 @@ async function checkAccessStatus() {
       try {
         localStorage.setItem('vizAccessToken', vizToken);
         localStorage.setItem('vizAccessExpiresAt', vizTokenExpiresAt);
-        localStorage.removeItem('vizRequestId');
+        localStorage.removeItem('vizRequestId'); localStorage.removeItem('vizRequestSecret');
       } catch (e) {}
       scheduleTokenExpiry();
       setAccessModalStatus('Akses disetujui! Memuat data asli...', 'ok');
@@ -1027,8 +1029,8 @@ async function checkAccessStatus() {
     } else if (data.status === 'expired' || data.status === 'not_found') {
       clearInterval(pollTimer);
       pollTimer = null;
-      vizRequestId = null;
-      try { localStorage.removeItem('vizRequestId'); } catch (e) {}
+      vizRequestId = null; vizRequestSecret = null;
+      try { localStorage.removeItem('vizRequestId'); localStorage.removeItem('vizRequestSecret'); } catch (e) {}
       updateLockBanner();
     }
   } catch (err) {
@@ -1065,8 +1067,9 @@ function restoreVizSession() {
       return;
     }
     const pendingId = localStorage.getItem('vizRequestId');
-    if (pendingId) {
-      vizRequestId = pendingId;
+    const pendingSecret = localStorage.getItem('vizRequestSecret');
+    if (pendingId && pendingSecret) {
+      vizRequestId = pendingId; vizRequestSecret = pendingSecret;
       startPolling();
     }
   } catch (e) {}

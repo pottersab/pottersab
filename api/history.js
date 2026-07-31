@@ -5,6 +5,17 @@ const { getUserFromRequest, requireAdmin } = require('../lib/auth');
 // (CSV) supaya jumlah file di api/ tetap di bawah batas 12 Serverless
 // Functions di Vercel Hobby plan. DELETE pakai ?id=, export CSV pakai
 // ?export=1 -- logic masing-masing tidak berubah dari file aslinya.
+
+// Nama dokumen diketik bebas oleh admin dan di lingkungan ini sering memuat
+// tanda kutip (diameter pipa ditulis 6", 12"). Kalau nilainya cuma dibungkus
+// kutip tanpa digandakan, kutip di dalamnya menutup kolom lebih awal dan
+// seluruh baris melenceng ke kolom sebelah waktu dibuka di Excel. Sama persis
+// dengan csvEscape di api/pekerjaan.js.
+function csvEscape(v) {
+  if (v === null || v === undefined) return '';
+  const s = String(v);
+  return /[",\r\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+}
 module.exports = async (req, res) => {
   await ensureTable();
 
@@ -15,15 +26,18 @@ module.exports = async (req, res) => {
     if (req.query.export !== undefined) {
       const { rows } = await pool.query('SELECT * FROM history ORDER BY created_at DESC');
 
-      let csv = 'ID,Tipe Dokumen,Nama Dokumen,Pembuat,Role,Tanggal\n';
+      const baris = [['ID', 'Tipe Dokumen', 'Nama Dokumen', 'Pembuat', 'Role', 'Tanggal'].join(',')];
       rows.forEach(r => {
         const tanggal = new Date(r.created_at).toLocaleString('id-ID');
-        csv += `${r.id},"${r.document_type}","${r.document_name}","${r.created_by}","${r.role}","${tanggal}"\n`;
+        baris.push([r.id, r.document_type, r.document_name, r.created_by, r.role, tanggal]
+          .map(csvEscape).join(','));
       });
 
-      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
       res.setHeader('Content-Disposition', 'attachment; filename=history.csv');
-      return res.status(200).send(csv);
+      // BOM di depan supaya Excel membaca UTF-8 dengan benar, sama seperti
+      // ekspor CSV di api/pekerjaan.js.
+      return res.status(200).send('\ufeff' + baris.join('\r\n'));
     }
 
     const { type, startDate, endDate } = req.query;

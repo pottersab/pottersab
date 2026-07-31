@@ -1539,6 +1539,7 @@ const ACCESS_DATATYPE = 'spd';
 const ACCESS_DATATYPE_LABEL = 'Generator Surat Penyediaan Dana (SPD)';
 const ADMIN_WHATSAPP_NUMBER = '6281381146320';
 let vizRequestId = null;
+let vizRequestSecret = null;
 let pollTimer = null;
 let expiryTimer = null;
 
@@ -1589,7 +1590,8 @@ async function submitAccessRequest(){
     const data = await res.json();
     if(!res.ok || !data.success) throw new Error(data.error || 'Gagal mengirim permintaan.');
     vizRequestId = data.requestId;
-    try{ localStorage.setItem('vizRequestId', String(vizRequestId)); }catch(e){}
+    vizRequestSecret = data.pollSecret;
+    try{ localStorage.setItem('vizRequestId', String(vizRequestId)); localStorage.setItem('vizRequestSecret', String(vizRequestSecret || '')); }catch(e){}
     setAccessStatus('Permintaan terkirim. Menunggu admin menyetujui lewat email — halaman ini otomatis update.', '');
     startPolling();
   }catch(err){ setAccessStatus(err.message, 'error'); }
@@ -1602,23 +1604,23 @@ function startPolling(){
   checkAccessStatus();
 }
 async function checkAccessStatus(){
-  if(!vizRequestId) return;
+  if(!vizRequestId || !vizRequestSecret) return;
   try{
-    const res = await fetch(`/api/visualization/status?id=${vizRequestId}`);
+    const res = await fetch(`/api/visualization/status?id=${vizRequestId}&secret=${encodeURIComponent(vizRequestSecret || '')}`);
     const data = await res.json();
     if(data.status === 'approved'){
       clearInterval(pollTimer); pollTimer = null;
       try{
         localStorage.setItem('vizAccessToken', data.token);
         localStorage.setItem('vizAccessExpiresAt', data.expiresAt);
-        localStorage.removeItem('vizRequestId');
+        localStorage.removeItem('vizRequestId'); localStorage.removeItem('vizRequestSecret');
       }catch(e){}
       scheduleTokenExpiry(data.expiresAt);
       setAccessStatus('Akses disetujui! Memuat contoh isi surat…', 'ok');
       updateAccessBanner(); renderAll(); closeAccessModal();
     } else if(data.status === 'expired' || data.status === 'not_found'){
-      clearInterval(pollTimer); pollTimer = null; vizRequestId = null;
-      try{ localStorage.removeItem('vizRequestId'); }catch(e){}
+      clearInterval(pollTimer); pollTimer = null; vizRequestId = null; vizRequestSecret = null;
+      try{ localStorage.removeItem('vizRequestId'); localStorage.removeItem('vizRequestSecret'); }catch(e){}
       updateAccessBanner();
     }
   }catch(err){ console.warn('Gagal cek status akses:', err); }
@@ -1646,7 +1648,8 @@ function restoreVizSession(){
       return;
     }
     const pendingId = localStorage.getItem('vizRequestId');
-    if(pendingId){ vizRequestId = pendingId; startPolling(); }
+    const pendingSecret = localStorage.getItem('vizRequestSecret');
+    if(pendingId && pendingSecret){ vizRequestId = pendingId; vizRequestSecret = pendingSecret; startPolling(); }
   }catch(e){}
 }
 function wireAccessControls(){

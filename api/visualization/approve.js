@@ -6,6 +6,18 @@ const { ACCESS_GROUP_LABELS } = require('../../lib/visualization/columns');
 
 const ONE_HOUR_MS = 60 * 60 * 1000;
 
+// Nama peminta datang dari formulir publik di halaman data -- siapa pun bisa
+// mengisinya dengan apa saja. Halaman ini dibuka admin dari tautan email dan
+// berjalan di origin pottersab.com, jadi kalau nilainya ditempel mentah ke
+// HTML, isian seperti <img onerror=...> ikut jalan di browser admin. Sisi
+// email di api/visualization/request.js sudah menyaringnya sejak awal; di
+// sini dulu terlewat.
+function escapeHtml(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
 function page(title, message, ok) {
   return `<!DOCTYPE html>
 <html lang="id"><head><meta charset="UTF-8"><title>${title}</title>
@@ -49,7 +61,7 @@ module.exports = async (req, res) => {
     return res.status(403).send(page('Tautan tidak valid', 'Kode approve tidak cocok.', false));
   }
   if (request.status === 'approved') {
-    return res.status(200).send(page('Sudah disetujui', `Permintaan dari ${request.requested_by} sudah disetujui sebelumnya.`, true));
+    return res.status(200).send(page('Sudah disetujui', `Permintaan dari ${escapeHtml(request.requested_by)} sudah disetujui sebelumnya.`, true));
   }
 
   const token = jwt.sign({ requestId: Number(id), scope: 'viz-access' }, SECRET_KEY, { expiresIn: '1h' });
@@ -63,7 +75,7 @@ module.exports = async (req, res) => {
   const groupLabel = ACCESS_GROUP_LABELS[request.data_type] || request.data_type;
   return res.status(200).send(page(
     'Akses disetujui',
-    `Permintaan dari <b>${request.requested_by}</b> (diminta dari halaman <b>${groupLabel}</b>) sudah disetujui. Akses ini berlaku selama 1 jam untuk SEMUA data &amp; contoh isi surat di seluruh portal (Data Pengambilan Air Baku, Data Waduk dan Sumur, Generator SPD, Berita Acara, dan Surat Permohonan), tidak cuma yang diminta. Halaman yang tadi dibuka peminta akan otomatis ter-update.`,
+    `Permintaan dari <b>${escapeHtml(request.requested_by)}</b> (diminta dari halaman <b>${escapeHtml(groupLabel)}</b>) sudah disetujui. Akses ini berlaku selama 1 jam untuk SEMUA data &amp; contoh isi surat di seluruh portal (Data Pengambilan Air Baku, Data Waduk dan Sumur, Generator SPD, Berita Acara, dan Surat Permohonan), tidak cuma yang diminta. Halaman yang tadi dibuka peminta akan otomatis ter-update.`,
     true
   ));
 };
