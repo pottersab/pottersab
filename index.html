@@ -833,13 +833,44 @@ footer{border-top:1px solid var(--mist);padding:26px 20px;text-align:center;font
 <footer>© 2026 Potter — Sumber Air Baku · Perumda Tirta Manuntung Balikpapan</footer>
 
 <script>
-function go(id){
+// Beranda ini satu berkas berisi empat halaman (home/tools/data/dev) yang
+// ditukar lewat go(). Dulu alamat di bilah URL tidak ikut berubah, jadi begitu
+// masuk lewat ?page=dev (dari navbar halaman lain), alamatnya tetap ?page=dev
+// walau sudah pindah ke Tools atau Beranda -- muat ulang, tombol Back, dan
+// tautan yang dibagikan semuanya balik lagi ke Development. Karena itu setiap
+// perpindahan sekarang menulis alamatnya sendiri lewat history.pushState.
+function tampilkanHalaman(id){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('show'));
   document.getElementById('page-'+id).classList.add('show');
   document.querySelectorAll('[data-nav]').forEach(b=>b.classList.toggle('active',b.dataset.nav===id));
   window.scrollTo({top:0,behavior:'smooth'});
   closeMobileNav();
 }
+
+function tulisAlamat(id, ganti){
+  // Dibuka lewat file:// (uji coba lokal) pushState bisa dilempar SecurityError.
+  // Kalau gagal, cukup halaman yang berpindah -- jangan sampai navigasi mati.
+  try{
+    const url = new URL(window.location.href);
+    if(id === 'home') url.searchParams.delete('page');
+    else url.searchParams.set('page', id);
+    const alamat = url.pathname + url.search + url.hash;
+    history[ganti ? 'replaceState' : 'pushState']({ page:id }, '', alamat);
+  }catch(e){ /* biarkan */ }
+}
+
+function go(id){
+  if(!document.getElementById('page-'+id)) return;
+  tampilkanHalaman(id);
+  tulisAlamat(id);
+}
+
+// Tombol Back/Forward: ikuti ?page= di alamat, jangan menulis riwayat baru.
+window.addEventListener('popstate', function(){
+  let id = new URLSearchParams(window.location.search).get('page') || 'home';
+  if(!document.getElementById('page-'+id)) id = 'home';
+  tampilkanHalaman(id);
+});
 
 function closeMobileNav(){
   var toggle = document.getElementById('navToggle');
@@ -885,8 +916,11 @@ document.addEventListener('click', function(e){
     window.location.replace('about.html');
     return;
   }
+  // Dipakai replaceState (bukan go/pushState) supaya tidak ada entri riwayat
+  // kembar: alamatnya memang sudah ?page=... sejak halaman dimuat.
   if(page && document.getElementById('page-' + page)){
-    go(page);
+    tampilkanHalaman(page);
+    tulisAlamat(page, true);
   }
 })();
 </script>
