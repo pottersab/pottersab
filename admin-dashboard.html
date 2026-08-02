@@ -719,6 +719,7 @@ function doLogout(){
         <select id="filterType">
           <option value="">Semua</option>
           <option value="SPD">SPD</option>
+          <option value="LPJ">LPJ</option>
           <option value="Berita Acara">Berita Acara</option>
           <option value="Formulir SAB">Formulir SAB</option>
           <option value="Surat Permohonan">Surat Permohonan</option>
@@ -817,6 +818,7 @@ function doLogout(){
      strukturnya dengan file yang pertama kali diunduh admin. -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
 <script src="apps/builders/spd-builder.js"></script>
+<script src="apps/builders/lpj-builder.js"></script>
 <script src="apps/builders/berita-acara-builder.js"></script>
 <script src="apps/builders/surat-permohonan-builder.js"></script>
 <script src="apps/builders/laporan-p2k3-builder.js"></script>
@@ -840,7 +842,7 @@ function doLogout(){
   // yang belum pernah dibuka tidak fetch apa pun -- baru fetch pertama
   // kali diaktifkan (lihat `loaded`).
   const HISTORY_PAGE_SIZE = 10;
-  const DOC_TYPES = ['SPD', 'Berita Acara', 'Formulir SAB', 'Surat Permohonan', 'Laporan P2K3', 'Ceklist APD'];
+  const DOC_TYPES = ['SPD', 'LPJ', 'Berita Acara', 'Formulir SAB', 'Surat Permohonan', 'Laporan P2K3', 'Ceklist APD'];
   const historyState = { page: 1, rows: [], total: 0, byType: {}, loaded: false, filters: {}, activeChip: '' };
   const accessState = { offset: 0, rows: [], hasMore: true, loaded: false };
 
@@ -1427,6 +1429,7 @@ function doLogout(){
   // masing-masing), jenis lain menyimpan objek data langsung.
   const DOC_TITLE = {
     'SPD': 'SURAT PENYEDIAAN DANA (SPD)',
+    'LPJ': 'LAPORAN PERTANGGUNG JAWABAN BIAYA OPERASIONAL',
     'Berita Acara': 'BERITA ACARA',
     'Formulir SAB': 'FORMULIR SAB',
     'Surat Permohonan': 'SURAT PERMOHONAN',
@@ -1443,6 +1446,12 @@ function doLogout(){
       validate: (d) => !!d && Array.isArray(d.items),
       generate: (d) => window.SpdBuilder.generateBytes(d),
       filename: (d) => window.SpdBuilder.filename(d),
+      mime: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    },
+    'LPJ': {
+      validate: (d) => !!d && Array.isArray(d.items),
+      generate: (d) => window.LpjBuilder.generateBytes(d),
+      filename: (d) => window.LpjBuilder.filename(d),
       mime: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     },
     'Berita Acara': {

@@ -621,6 +621,75 @@ async function handleSpd(req, res) {
   return res.status(405).json({ error: 'Method/what tidak dikenal (what=template)' });
 }
 
+// --- action=lpj: template penandatangan bersama untuk apps/lpj.html --------
+// LPJ tidak punya nomor urut (nomor voucher diketik manual dari buku kas),
+// jadi yang perlu dibagi antar admin cuma daftar penandatangannya. Riwayat
+// suratnya tetap lewat /api/history seperti jenis surat lain.
+//
+// Tabelnya menumpang spd_templates -- bentuknya memang generik (id/jenis/
+// urutan/data) dan jenis 'lpj_*' tidak pernah dibaca handleSpd (yang selalu
+// memfilter 'kop'/'kode_perk'/'penandatangan'), jadi tidak perlu tabel baru.
+const LPJ_SIGNER_DEFAULT = {
+  nama: 'Standar SAB',
+  pemeriksaNama: 'DEDY HERMAWAN, S.M', pemeriksaJabatan: 'Manajer Produksi',
+  pembuatNama: 'DARTO', pembuatJabatan: 'Supervisor Sumber Air Baku',
+  penyetujuNama: 'Ir. ALI RACHMAN AS, S.T., M.T.', penyetujuJabatan: 'Direktur Operasional'
+};
+
+// Baris penanda 'lpj-seed' sengaja ikut ditanam: tanpa itu, admin yang
+// menghapus semua template penandatangan akan melihat template bawaan muncul
+// lagi setiap halaman dibuka.
+async function seedLpjIfNeeded() {
+  const { rows } = await pool.query(
+    "SELECT COUNT(*)::int AS n FROM spd_templates WHERE id = 'lpj-seed'"
+  );
+  if (rows[0].n > 0) return;
+  await pool.query(
+    `INSERT INTO spd_templates (id, jenis, urutan, data) VALUES
+       ('lpj-seed', 'lpj_meta', 0, $1),
+       ('lpj-sg-standar', 'lpj_penandatangan', 0, $2)
+     ON CONFLICT (id) DO NOTHING`,
+    [JSON.stringify({ seeded: true }), JSON.stringify(LPJ_SIGNER_DEFAULT)]
+  );
+}
+
+async function handleLpj(req, res) {
+  await ensureSpdTables();
+
+  if (req.method === 'GET') {
+    await seedLpjIfNeeded();
+    const { rows } = await pool.query(
+      "SELECT id, urutan, data FROM spd_templates WHERE jenis = 'lpj_penandatangan' ORDER BY urutan, id"
+    );
+    return res.status(200).json({
+      penandatangan: rows.map(r => Object.assign({ id: r.id }, r.data))
+    });
+  }
+
+  if (req.method === 'POST' && req.query.what === 'template') {
+    const { id, urutan, data } = req.body || {};
+    if (!data || typeof data !== 'object') return res.status(400).json({ error: 'data wajib diisi' });
+    const rowId = id || `lpj-sg-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+    await pool.query(
+      `INSERT INTO spd_templates (id, jenis, urutan, data, updated_at)
+       VALUES ($1, 'lpj_penandatangan', $2, $3, now())
+       ON CONFLICT (id) DO UPDATE SET jenis = 'lpj_penandatangan', urutan = EXCLUDED.urutan,
+                                      data = EXCLUDED.data, updated_at = now()`,
+      [rowId, Number(urutan) || 0, JSON.stringify(data)]
+    );
+    return res.status(200).json({ success: true, id: rowId });
+  }
+
+  if (req.method === 'DELETE' && req.query.what === 'template') {
+    const { id } = req.query;
+    if (!id) return res.status(400).json({ error: 'id wajib diisi' });
+    await pool.query("DELETE FROM spd_templates WHERE id = $1 AND jenis = 'lpj_penandatangan'", [id]);
+    return res.status(200).json({ success: true });
+  }
+
+  return res.status(405).json({ error: 'Method/what tidak dikenal (what=template)' });
+}
+
 module.exports = async (req, res) => {
   await ensureVizTables();
 
@@ -640,6 +709,7 @@ module.exports = async (req, res) => {
   if (action === 'wells') return handleWells(req, res);
   if (action === 'signers') return handleSigners(req, res);
   if (action === 'spd') return handleSpd(req, res);
+  if (action === 'lpj') return handleLpj(req, res);
 
-  return res.status(400).json({ error: 'action wajib diisi (daily/daily-history/sumur/sumur-history/wells/signers/spd/map-latest)' });
+  return res.status(400).json({ error: 'action wajib diisi (daily/daily-history/sumur/sumur-history/wells/signers/spd/lpj/map-latest)' });
 };

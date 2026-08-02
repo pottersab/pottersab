@@ -1,0 +1,1338 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<script src="../assets/js/sesi.js"></script>
+<link rel="stylesheet" href="/assets/css/merek.css">
+<link rel="stylesheet" href="/assets/css/layout.css">
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#0E8E96">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png">
+<script defer src="/assets/js/pwa.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Generator LPJ Biaya Operasional</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0E2A32;
+    --navy:#0B5566;
+    --navy-dark:#083f4d;
+    --paper:#EFF5F6;
+    --card:#FFFFFF;
+    --line:#C7DADD;
+    --muted:#4C6870;
+    --accent:#D98F3E;
+    --accent-soft:#FBEBD8;
+    --danger:#C6553D;
+    --ok:#1d7a5f;
+    --radius:10px;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;background:var(--paper);color:var(--ink);
+    font-family:'Inter',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  h1,h2,h3{font-family:'Space Grotesk',sans-serif;}
+
+  /* ---------- header (sama dengan halaman tools lain) ---------- */
+  .ptmb-navbar{
+    position:sticky;top:0;z-index:50;
+    background:rgba(244,248,250,.9);backdrop-filter:blur(10px);
+    border-bottom:1px solid #DCE9EF;
+    max-width:var(--w-page,1280px);margin:0 auto;padding:14px 20px;
+    display:flex;align-items:center;gap:20px;
+  }
+  .ptmb-brand{display:flex;align-items:center;gap:10px;font-weight:600;color:#0A2537;text-decoration:none}
+  .ptmb-brand-mark{
+    width:34px;height:34px;border-radius:9px;
+    background:linear-gradient(160deg,#0E8E96 0%,#0A2537 100%);
+    display:grid;place-items:center;color:#fff;font-size:13px;font-weight:700;
+  }
+  .ptmb-brand small{display:block;font-size:11px;font-weight:400;color:#3C5A6E;line-height:1.2}
+  .ptmb-nav-links{display:flex;gap:4px;margin-left:auto}
+  .ptmb-nav-links a{
+    padding:7px 12px;border-radius:8px;font-size:14px;color:#3C5A6E;text-decoration:none;
+    transition:background .15s,color .15s;
+  }
+  .ptmb-nav-links a:hover,.ptmb-nav-links a.active{background:#E7F1F4;color:#0A2537}
+  .ptmb-nav-toggle{display:none;flex-direction:column;align-items:center;justify-content:center;gap:5px;background:none;border:none;cursor:pointer;padding:8px;position:relative}
+  .ptmb-nav-toggle span{width:22px;height:2px;background:#0A2537;border-radius:2px;transition:transform .2s ease,opacity .2s ease}
+  .ptmb-nav-toggle.open span:nth-child(1){transform:translateY(7px) rotate(45deg)}
+  .ptmb-nav-toggle.open span:nth-child(2){opacity:0}
+  .ptmb-nav-toggle.open span:nth-child(3){transform:translateY(-7px) rotate(-45deg)}
+  .ptmb-nav-ic{display:none;flex-shrink:0}
+  .ptmb-nav-backdrop{display:none;position:fixed;inset:0;background:rgba(10,37,55,.35);z-index:40}
+  @media(max-width:820px){
+    .ptmb-nav-toggle{display:flex;order:3}
+    .ptmb-nav-backdrop.open{display:block}
+    .ptmb-nav-links{
+      display:flex;flex-direction:column;gap:2px;
+      position:absolute;top:100%;left:0;right:0;
+      background:#FFFFFF;border-bottom:1px solid #DCE9EF;
+      padding:10px 20px 14px;box-shadow:0 12px 24px -12px rgba(14,42,50,.15);
+      opacity:0;visibility:hidden;transform:translateY(-6px);
+      transition:opacity .18s ease,transform .18s ease,visibility .18s;
+    }
+    .ptmb-nav-links.open{opacity:1;visibility:visible;transform:translateY(0)}
+    .ptmb-nav-links a{display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:10px}
+    .ptmb-nav-ic{display:inline-flex}
+  }
+  .nav-right{display:flex;align-items:center;gap:10px;margin-left:12px}
+  .ptmb-btn-login{
+    padding:8px 18px;border-radius:9px;font-size:14px;font-weight:600;
+    background:#0A2537;color:#fff;text-decoration:none;transition:background .15s;
+  }
+  .ptmb-btn-login:hover{background:#0A6A72}
+  .admin-chip{
+    display:flex;align-items:center;gap:8px;padding:6px 12px 6px 6px;border-radius:99px;
+    border:1px solid #DCE9EF;background:#FFF;font-size:13px;font-weight:600;color:#0A2537;cursor:pointer;
+  }
+  .admin-avatar{
+    width:26px;height:26px;border-radius:50%;display:grid;place-items:center;
+    color:#fff;font-size:11.5px;font-weight:700;
+    background:linear-gradient(150deg,#0E8E96 0%,#0A2537 100%);
+  }
+  .admin-chip .role{font-size:10.5px;font-weight:500;color:#3C5A6E;display:block;margin-top:-1px}
+  .admin-chip .name-block{text-align:left;line-height:1.15}
+  .admin-wrap{position:relative}
+  .admin-caret{
+    width:7px;height:7px;border-right:1.6px solid #3C5A6E;border-bottom:1.6px solid #3C5A6E;
+    transform:rotate(45deg);transition:transform .15s;margin-left:2px;
+  }
+  .admin-wrap.open .admin-caret{transform:rotate(-135deg);margin-top:3px}
+  .admin-menu{
+    position:absolute;top:calc(100% + 8px);right:0;min-width:160px;
+    background:#fff;border:1px solid #DCE9EF;border-radius:12px;padding:6px;
+    box-shadow:0 18px 36px rgba(10,37,55,.14);
+    opacity:0;visibility:hidden;transform:translateY(-4px);
+    transition:opacity .15s,transform .15s,visibility .15s;z-index:60;
+  }
+  .admin-wrap.open .admin-menu{opacity:1;visibility:visible;transform:translateY(0)}
+  .admin-menu a,.admin-menu .logout{
+    width:100%;display:flex;align-items:center;gap:8px;padding:9px 11px;border-radius:9px;
+    font-size:13.5px;font-weight:600;text-align:left;text-decoration:none;
+    background:none;border:none;cursor:pointer;font-family:inherit;
+  }
+  .admin-menu a{color:#0A2537}
+  .admin-menu a:hover{background:#F4F8FA}
+  .admin-menu .logout{color:#B97709}
+  .admin-menu .logout:hover{background:#FBF1DE}
+
+  .topbar{
+    background:var(--navy);color:#fff;padding:16px 24px;
+    display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;
+  }
+  .topbar h1{font-size:18px;margin:0;font-weight:700;letter-spacing:.2px;}
+  .topbar span{font-size:12.5px;color:#cdd8e6;}
+  .badge-admin{
+    background:#0E8E96;color:#fff;font-size:11px;font-weight:700;
+    padding:3px 9px;border-radius:99px;letter-spacing:.03em;
+  }
+
+  .wrap{
+    max-width:var(--w-page,1280px);margin:0 auto;padding:20px;
+    display:grid;grid-template-columns:minmax(320px,500px) 1fr;gap:20px;align-items:start;
+  }
+  @media (max-width:980px){ .wrap{grid-template-columns:1fr;} }
+
+  .card{
+    background:var(--card);border:1px solid var(--line);
+    border-radius:var(--radius);padding:18px 20px;margin-bottom:16px;
+  }
+  .card > h2{
+    font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--navy);
+    margin:0 0 14px 0;padding-bottom:8px;border-bottom:1px solid var(--line);
+    display:flex;align-items:center;justify-content:space-between;gap:8px;
+  }
+  label{display:block;font-size:12.5px;color:var(--muted);margin:10px 0 4px;}
+  input[type=text],input[type=number],input[type=date],textarea,select{
+    width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:7px;
+    font-size:14px;font-family:inherit;background:#fff;color:var(--ink);
+  }
+  input:focus,textarea:focus,select:focus{outline:2px solid var(--navy);outline-offset:1px;}
+  input[readonly]{background:#F1F5F6;color:var(--muted);}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .hint{font-size:11.5px;color:var(--muted);margin-top:5px;line-height:1.5;}
+
+  .nomor-box{
+    margin-top:12px;background:var(--accent-soft);border:1px dashed var(--accent);
+    border-radius:8px;padding:10px 12px;
+  }
+  .nomor-box .lbl{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#8a5a12;}
+  .nomor-box .val{font-family:"Times New Roman",Times,serif;font-size:15px;color:var(--navy-dark);margin-top:3px;}
+  .lock-line{display:flex;align-items:center;gap:8px;}
+  .lock-line input{flex:1;}
+  .mini-btn{
+    background:#fff;border:1px solid var(--line);border-radius:7px;
+    padding:8px 11px;font-size:12px;font-weight:600;color:var(--navy);cursor:pointer;white-space:nowrap;
+  }
+  .mini-btn:hover{background:#EDF4F5;}
+  .mini-btn.danger{color:var(--danger);}
+  .mini-btn.danger:hover{background:#FBEFEC;}
+
+  /* ---------- daftar item ---------- */
+  .item{
+    border:1px solid var(--line);border-radius:9px;padding:10px 12px 12px;
+    margin-bottom:10px;background:#FBFDFD;
+  }
+  .item-head{
+    display:flex;justify-content:space-between;align-items:center;
+    font-size:11.5px;font-weight:700;color:var(--navy);margin-bottom:4px;
+  }
+  .item label{margin:8px 0 3px;font-size:11.5px;}
+  .item input,.item select{padding:7px 9px;font-size:13.5px;}
+  .item-foot{display:flex;align-items:flex-end;gap:8px;}
+  .item-foot > div{flex:1;}
+  .remove-btn{background:none;border:none;color:var(--danger);font-size:11.5px;cursor:pointer;padding:2px 6px;}
+  .add-btn{
+    width:100%;padding:10px;border:1.5px dashed var(--navy);background:transparent;
+    color:var(--navy);border-radius:8px;font-size:13.5px;font-weight:600;cursor:pointer;
+  }
+  .add-btn:hover{background:#EDF4F5;}
+  .jenis-chip{
+    display:inline-block;font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:99px;
+    background:#E7F1F4;color:#0A6A72;
+  }
+  .jenis-chip.bbm{background:#FBEBD8;color:#8a5a12;}
+  .jenis-chip.material{background:#E4EFE7;color:#245c40;}
+
+  .rekap{margin-top:6px;border-top:1px solid var(--line);padding-top:8px;}
+  .rekap .line{display:flex;justify-content:space-between;font-size:13px;padding:4px 2px;color:var(--muted);}
+  .rekap .line b{color:var(--ink);font-weight:600;}
+  .rekap .line.total{font-size:14px;font-weight:700;color:var(--navy-dark);padding-top:8px;border-top:1px solid var(--line);margin-top:4px;}
+  .rekap .line.total b{color:var(--navy-dark);}
+  .rekap .line.sisa b{color:var(--ok);}
+  .rekap .line.sisa.minus b{color:var(--danger);}
+
+  details summary{cursor:pointer;font-size:13px;color:var(--navy);font-weight:600;padding:2px 0;}
+  details[open] summary{margin-bottom:10px;}
+
+  .btn-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .download-btn{
+    width:100%;padding:14px;background:var(--navy);color:#fff;border:none;border-radius:9px;
+    font-size:15px;font-weight:700;cursor:pointer;
+  }
+  .download-btn:hover{background:var(--navy-dark);}
+  .pdf-btn{
+    width:100%;padding:14px;background:#fff;color:var(--navy);border:1.5px solid var(--navy);
+    border-radius:9px;font-size:15px;font-weight:700;cursor:pointer;
+  }
+  .pdf-btn:hover{background:#EDF4F5;}
+  .status{font-size:12.5px;text-align:center;margin-top:10px;color:var(--muted);min-height:16px;}
+  .status.ok{color:var(--ok);}
+  .status.err{color:var(--danger);}
+
+  /* ---------- dokumen ---------- */
+  .doc-outer{position:sticky;top:78px;}
+  .doc{
+    background:#fff;border:1px solid var(--line);border-radius:var(--radius);
+    padding:28px 34px;font-family:"Times New Roman",Times,serif;color:#000;font-size:13.5px;
+    box-shadow:0 1px 3px rgba(0,0,0,.06);
+  }
+  .doc-title{text-align:center;font-size:15px;font-weight:700;line-height:1.35;}
+  .doc-voucher{text-align:center;font-weight:700;margin:2px 0 14px;}
+  /* Garis tabel menirukan file kantor: baris item cuma bergaris kiri-kanan
+     (tanpa garis melintang), yang berkotak penuh hanya baris judul kolom dan
+     baris jumlah di bawah. */
+  table.doc-table{width:100%;border-collapse:collapse;margin-bottom:6px;}
+  table.doc-table th,table.doc-table td{
+    border-left:1px solid #000;border-right:1px solid #000;
+    padding:3px 6px;font-size:12.5px;vertical-align:middle;
+  }
+  table.doc-table th{border:1px solid #000;text-align:center;font-weight:700;}
+  table.doc-table td.center{text-align:center;}
+  /* Kolom Tanggal di .xlsx selalu selebar isinya, jadi di pratinjau pun
+     tanggalnya tidak boleh patah dua baris walau kartunya lagi sempit. */
+  table.doc-table td.tgl{text-align:center;white-space:nowrap;}
+  table.doc-table td.money{text-align:right;white-space:nowrap;}
+  table.doc-table tr.sect td{font-weight:700;}
+  table.doc-table tr.total td{border:1px solid #000;font-weight:700;text-align:center;}
+  table.doc-table tr.total td.money{text-align:right;}
+  .doc-empty{text-align:center;color:#888;font-style:italic;padding:14px 0;}
+  .doc-sign-date{text-align:right;margin:18px 0 8px;}
+  .doc-sign{display:grid;grid-template-columns:1fr 1fr;gap:8px;text-align:center;}
+  .doc-sign .space,.doc-approve .space{height:52px;}
+  .doc-sign .nama,.doc-approve .nama{font-weight:700;text-decoration:underline;}
+  .doc-sign .lbl,.doc-approve .lbl{font-weight:700;}
+  .doc-approve{text-align:center;margin-top:14px;}
+
+  /* ---------- template penandatangan (admin) ---------- */
+  .signer-tpl{
+    border:1px solid var(--line);border-radius:9px;padding:10px 12px;margin-bottom:10px;background:#FBFDFD;
+  }
+  .signer-tpl .th{display:flex;justify-content:space-between;align-items:center;gap:8px;}
+  .signer-tpl .nm{font-size:13px;font-weight:700;color:var(--navy);}
+  .signer-tpl .desc{font-size:11.5px;color:var(--muted);margin-top:3px;line-height:1.5;}
+  .signer-tpl.active{border-color:var(--navy);background:#EDF6F7;}
+
+  /* ---------- riwayat ---------- */
+  .hist-count{font-size:12px;color:var(--muted);margin-bottom:10px;}
+  .hist-table{width:100%;border-collapse:collapse;font-size:12.5px;}
+  .hist-table th{
+    text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.04em;
+    color:var(--muted);padding:0 8px 6px;border-bottom:1px solid var(--line);font-weight:600;
+  }
+  .hist-table tbody tr{cursor:pointer;}
+  .hist-table tbody tr:hover{background:#EDF6F7;}
+  .hist-table td{padding:9px 8px;border-bottom:1px solid #F0EEE7;vertical-align:middle;}
+  .hist-table td.numcol{font-family:"Times New Roman",Times,serif;color:var(--navy-dark);white-space:nowrap;}
+  .hist-table td.right{text-align:right;white-space:nowrap;}
+  .hist-empty{
+    text-align:center;color:var(--muted);font-size:12.5px;padding:20px 0;
+    border:1px dashed var(--line);border-radius:8px;
+  }
+  .chip{
+    display:inline-block;font-size:10.5px;font-weight:600;padding:2px 8px;border-radius:99px;
+    background:#E7F1F4;color:#0A6A72;
+  }
+
+  /* ---------- modal ---------- */
+  .overlay{
+    display:none;position:fixed;inset:0;background:rgba(14,42,50,.55);
+    align-items:flex-start;justify-content:center;z-index:1000;padding:24px;overflow:auto;
+  }
+  .overlay.open{display:flex;}
+  .modal{background:#fff;border-radius:12px;width:100%;max-width:780px;overflow:hidden;}
+  .modal-head{
+    padding:16px 20px;border-bottom:1px solid var(--line);
+    display:flex;justify-content:space-between;align-items:flex-start;gap:12px;
+  }
+  .modal-head h3{margin:0 0 4px;font-size:16px;color:var(--navy-dark);}
+  .modal-head .meta{font-size:12px;color:var(--muted);line-height:1.6;}
+  .modal-body{padding:18px 20px;background:#F5F9FA;max-height:60vh;overflow:auto;}
+  .modal-foot{padding:14px 20px;border-top:1px solid var(--line);display:flex;gap:10px;flex-wrap:wrap;}
+  .modal-foot .grow{flex:1;}
+  .close-x{background:none;border:none;font-size:22px;line-height:1;color:var(--muted);cursor:pointer;}
+
+  footer.note{
+    max-width:var(--w-page,1280px);margin:0 auto 30px;padding:0 20px;
+    font-size:12px;color:var(--muted);text-align:center;
+  }
+
+  /* ---------- cetak ---------- */
+  #printHost{display:none;}
+  @media print{
+    body{background:#fff;}
+    body > *{display:none !important;}
+    #printHost{display:block !important;border:none;box-shadow:none;border-radius:0;padding:0;margin:0;}
+    @page{margin:12mm 14mm;}
+  }
+</style>
+</head>
+<body>
+
+<header class="ptmb-navbar">
+  <a class="ptmb-brand" href="../index.html">
+    <span class="ptmb-brand-mark">PT</span>
+    <span>PTMB<small>Portal Internal · SAB</small></span>
+  </a>
+  <nav class="ptmb-nav-links" id="navLinks">
+    <a href="../index.html"><svg class="ptmb-nav-ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0A6A72" stroke-width="2" stroke-linecap="round"><path d="M3 12l9-9 9 9"/><path d="M5 10v10h14V10"/></svg>Beranda</a>
+    <a href="../index.html?page=tools" class="active"><svg class="ptmb-nav-ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0E8E96" stroke-width="2" stroke-linecap="round"><path d="M14 3v5h5"/><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/></svg>Tools</a>
+    <a href="../index.html?page=data"><svg class="ptmb-nav-ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#E8791D" stroke-width="2" stroke-linecap="round"><path d="M3 20h18"/><path d="M5 20V12M10 20V7M15 20v-9M20 20V4"/></svg>Data &amp; Visualisasi</a>
+    <a href="../index.html?page=dev"><svg class="ptmb-nav-ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0F8E7E" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M4.9 4.9l2.8 2.8M16.3 16.3l2.8 2.8M2 12h4M18 12h4M4.9 19.1l2.8-2.8M16.3 7.7l2.8-2.8"/></svg>Development</a>
+    <a href="../about.html"><svg class="ptmb-nav-ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#7C5CD6" stroke-width="2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"/><circle cx="10" cy="7" r="4"/></svg>About SAB</a>
+  </nav>
+  <div class="nav-right">
+    <a class="ptmb-btn-login" id="navLoginBtn" href="../login.html" style="display:none">Login</a>
+    <div class="admin-wrap" id="adminWrap" style="display:none">
+      <button class="admin-chip" type="button" id="adminChip">
+        <span class="admin-avatar" id="adminAvatar">A</span>
+        <span class="name-block">
+          <span id="adminName">Admin</span>
+          <span class="role">Admin · SAB</span>
+        </span>
+        <span class="admin-caret"></span>
+      </button>
+      <div class="admin-menu">
+        <a href="../admin-dashboard.html">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>
+          Dashboard Admin
+        </a>
+        <button class="logout" type="button" id="btnLogout">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>
+          Logout
+        </button>
+      </div>
+    </div>
+  </div>
+  <button class="ptmb-nav-toggle" id="navToggle" aria-label="Buka menu">
+    <span></span><span></span><span></span>
+  </button>
+</header>
+<div class="ptmb-nav-backdrop" id="navBackdrop"></div>
+
+<div class="topbar">
+  <h1>Generator LPJ</h1>
+  <span class="badge-admin" id="badgeAdmin" style="display:none;">MODE ADMIN</span>
+  <span>Laporan Pertanggung Jawaban Biaya Operasional &mdash; isi sekali, unduh sebagai Excel (.xlsx) atau PDF</span>
+</div>
+
+<div class="wrap">
+
+  <!-- ============ KOLOM FORM ============ -->
+  <div>
+
+    <div class="card">
+      <h2>Voucher &amp; Periode
+        <button type="button" class="mini-btn" id="btnContoh">Isi contoh</button>
+      </h2>
+      <div class="row2">
+        <div>
+          <label for="fVoucher">Atas Voucher No.</label>
+          <input type="text" id="fVoucher" placeholder="diisi manual, contoh: 1421/VII/2025">
+        </div>
+        <div>
+          <label for="fTanggalSurat">Tanggal Surat</label>
+          <input type="date" id="fTanggalSurat">
+        </div>
+      </div>
+
+      <label for="fPeriode">Periode (judul baris ke-3)</label>
+      <div class="lock-line">
+        <input type="text" id="fPeriode" readonly placeholder="otomatis dari tanggal item">
+        <button type="button" class="mini-btn" id="btnEditPeriode">Ubah</button>
+      </div>
+      <div class="hint" id="periodeHint">Terisi otomatis dari tanggal item paling awal sampai paling akhir.</div>
+
+      <div class="nomor-box">
+        <div class="lbl">Judul surat</div>
+        <div class="val" id="judulView">—</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Rincian Biaya</h2>
+      <p class="hint" style="margin-top:0;">
+        Klasifikasi menentukan surat ini masuk bagian <b>I Biaya Konsumsi</b>, <b>II Biaya BBM</b>, atau <b>III Biaya Material</b>.
+        Urutan pengisian bebas &mdash; di surat, item otomatis dikelompokkan per klasifikasi dan diurutkan per tanggal.
+      </p>
+      <div id="itemsContainer"></div>
+      <button class="add-btn" type="button" id="btnAddItem">+ Tambah Item</button>
+
+      <div class="rekap" id="rekapBox"></div>
+    </div>
+
+    <div class="card">
+      <h2>Dana</h2>
+      <label for="fPermintaan">Jumlah Permintaan Dana</label>
+      <input type="number" id="fPermintaan" placeholder="0" inputmode="numeric">
+      <div class="hint">Diisi manual. Sisa Dana dihitung otomatis: Permintaan Dana &minus; Jumlah Biaya Operasional.</div>
+    </div>
+
+    <div class="card">
+      <h2>Penandatangan</h2>
+      <p class="hint" id="signerHint" style="margin-top:0;"></p>
+
+      <div id="signerTplPicker" style="display:none;">
+        <label for="fSignerTpl" style="margin-top:0;">Template penandatangan</label>
+        <select id="fSignerTpl"></select>
+        <div class="hint">Memilih template mengisi ketiga penandatangan sekaligus. Isian di bawah tetap bisa diubah manual untuk surat ini saja.</div>
+      </div>
+
+      <div class="row2" style="margin-top:12px;">
+        <div><label for="fPemeriksaNama">Nama (Diperiksa Oleh)</label><input type="text" id="fPemeriksaNama"></div>
+        <div><label for="fPemeriksaJabatan">Jabatan</label><input type="text" id="fPemeriksaJabatan"></div>
+      </div>
+      <div class="row2">
+        <div><label for="fPembuatNama">Nama (Dibuat Oleh)</label><input type="text" id="fPembuatNama"></div>
+        <div><label for="fPembuatJabatan">Jabatan</label><input type="text" id="fPembuatJabatan"></div>
+      </div>
+      <div class="row2">
+        <div><label for="fPenyetujuNama">Nama (Disetujui Oleh)</label><input type="text" id="fPenyetujuNama"></div>
+        <div><label for="fPenyetujuJabatan">Jabatan</label><input type="text" id="fPenyetujuJabatan"></div>
+      </div>
+
+      <details id="signerAdminBox" style="display:none;margin-top:14px;">
+        <summary>⚙ Kelola template penandatangan (Admin)</summary>
+        <p class="hint" style="margin-top:0;">Template tersimpan di database, jadi sama untuk semua admin.</p>
+        <div id="signerTplList"></div>
+        <div class="btn-row" style="margin-top:10px;">
+          <button type="button" class="mini-btn" id="btnSaveAsSignerTpl">Simpan isian ini jadi template</button>
+          <button type="button" class="mini-btn" id="btnAddSignerTpl">+ Template kosong</button>
+        </div>
+      </details>
+    </div>
+
+    <div class="card">
+      <div class="btn-row">
+        <button class="download-btn" type="button" id="btnUnduhExcel">Unduh Excel (.xlsx)</button>
+        <button class="pdf-btn" type="button" id="btnUnduhPdf">Unduh PDF</button>
+      </div>
+      <div class="status" id="statusMsg">Isian tersimpan otomatis di perangkat ini.</div>
+    </div>
+
+  </div>
+
+  <!-- ============ KOLOM PRATINJAU ============ -->
+  <div class="doc-outer">
+    <div class="card" style="padding:14px 18px;margin-bottom:12px;">
+      <h2 style="margin-bottom:0;border-bottom:none;">Pratinjau</h2>
+    </div>
+    <div class="doc" id="docPreview"></div>
+
+    <div class="card" style="margin-top:16px;">
+      <h2>Riwayat LPJ <button type="button" class="mini-btn" id="btnRefreshHist" style="display:none;font-weight:600;">Muat ulang</button></h2>
+      <div class="hint" id="histHint" style="margin-top:0;margin-bottom:10px;"></div>
+      <div class="hist-count" id="histCount"></div>
+      <div id="histContainer"></div>
+    </div>
+  </div>
+</div>
+
+<footer class="note" id="footerNote"></footer>
+
+<!-- Modal detail riwayat -->
+<div class="overlay" id="detailOverlay">
+  <div class="modal">
+    <div class="modal-head">
+      <div>
+        <h3 id="detailTitle">Detail LPJ</h3>
+        <div class="meta" id="detailMeta"></div>
+      </div>
+      <button type="button" class="close-x" id="detailClose">&times;</button>
+    </div>
+    <div class="modal-body"><div class="doc" id="detailDoc"></div></div>
+    <div class="modal-foot">
+      <button type="button" class="mini-btn" id="detailLoad">Muat ke form</button>
+      <button type="button" class="mini-btn" id="detailXlsx">Unduh ulang (.xlsx)</button>
+      <button type="button" class="mini-btn" id="detailPdf">Cetak / PDF</button>
+      <span class="grow"></span>
+      <button type="button" class="mini-btn danger" id="detailDelete">Hapus</button>
+    </div>
+  </div>
+</div>
+
+<div class="doc" id="printHost"></div>
+
+<script src="../assets/js/history-save.js"></script>
+<script src="builders/lpj-builder.js"></script>
+<script>
+/* =========================================================================
+   Generator LPJ Biaya Operasional -- pola akses yang sama dengan apps/spd.html:
+
+   1. PUBLIK -- siapa saja: isi form, pratinjau, unduh .xlsx/PDF. Nama pejabat
+                sengaja dikosongkan, dan riwayatnya tersimpan di perangkat
+                sendiri (localStorage).
+   2. ADMIN  -- login admin: template penandatangan bersama dari database, dan
+                riwayat surat dari server yang bisa dibuka detailnya, dimuat
+                ulang ke form, atau diunduh ulang.
+
+   Beda dengan SPD: LPJ tidak punya nomor urut otomatis -- nomor vouchernya
+   diambil dari buku kas dan diketik manual, jadi tidak ada yang perlu
+   dihitung server.
+
+   Template   : /api/visualization/admin-library?action=lpj
+   Riwayat    : /api/history (POST lewat saveHistoryEntry, GET/DELETE di sini)
+                -- endpoint yang sama dipakai halaman surat lain, jadi LPJ ikut
+                muncul di Dashboard Admin lengkap dengan "Unduh Ulang".
+   Pengelompokan & pembuatan .xlsx ada di builders/lpj-builder.js, dipakai
+   bersama admin-dashboard.html supaya file hasil unduh ulang identik.
+   ========================================================================= */
+
+const API_LPJ = '/api/visualization/admin-library?action=lpj';
+const DRAFT_KEY = 'lpj_draft_v1';
+const HISTORY_KEY = 'lpj_history_v1';
+const BULAN_ID = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+
+// Penandatangan baku kantor. Dipakai sebagai isian awal untuk admin (dan
+// sebagai cadangan kalau server belum punya template sama sekali) -- untuk
+// publik kolomnya dibiarkan kosong supaya nama pejabat tidak ikut tersebar.
+const SIGNER_DEFAULT = {
+  pemeriksaNama:'DEDY HERMAWAN, S.M',        pemeriksaJabatan:'Manajer Produksi',
+  pembuatNama:'DARTO',                       pembuatJabatan:'Supervisor Sumber Air Baku',
+  penyetujuNama:'Ir. ALI RACHMAN AS, S.T., M.T.', penyetujuJabatan:'Direktur Operasional',
+};
+const SIGNER_FIELDS = ['pemeriksaNama','pemeriksaJabatan','pembuatNama','pembuatJabatan','penyetujuNama','penyetujuJabatan'];
+
+// ---------------------- util ----------------------
+function todayStr(){
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function formatTanggalIndo(s){
+  if(!s) return '';
+  const [y,m,d] = String(s).split('-').map(Number);
+  if(!y || !m || !d) return '';
+  return `${d} ${BULAN_ID[m-1]} ${y}`;
+}
+function formatWaktuIndo(iso){
+  const d = new Date(iso);
+  if(isNaN(d.getTime())) return '';
+  return `${d.getDate()} ${BULAN_ID[d.getMonth()]} ${d.getFullYear()}, ${String(d.getHours()).padStart(2,'0')}.${String(d.getMinutes()).padStart(2,'0')}`;
+}
+function fmtRupiah(n){ return 'Rp ' + Math.round(n||0).toLocaleString('id-ID'); }
+function fmtAngka(n){ return Math.round(n||0).toLocaleString('id-ID'); }
+function esc(s){
+  return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function angka(v){ const n = parseFloat(v); return isNaN(n) ? 0 : n; }
+
+function isAdmin(){
+  return !!(localStorage.getItem('token') && localStorage.getItem('role') === 'admin');
+}
+// Dihitung sekali saat halaman dibuka supaya tidak ada bagian UI yang
+// setengah-setengah kalau token berubah di tengah jalan (logout tetap memuat
+// ulang halaman).
+const ADMIN = isAdmin();
+
+function authHeaders(){
+  return { 'Content-Type':'application/json', 'Authorization':'Bearer ' + (localStorage.getItem('token')||'') };
+}
+async function apiJson(url, options){
+  const res = await fetch(url, Object.assign({ headers: authHeaders() }, options||{}));
+  if(res.status === 401 || res.status === 403){
+    throw new Error('Sesi admin habis atau tidak berwenang. Silakan login ulang.');
+  }
+  const data = await res.json().catch(()=>({}));
+  if(!res.ok) throw new Error(data.error || `Gagal menghubungi server (${res.status}).`);
+  return data;
+}
+// Id template dibuat di sini, bukan menunggu balasan server: template baru
+// biasanya langsung diketik isinya, dan kalau id-nya belum ada saat simpanan
+// kedua terkirim, server akan menganggapnya baris baru lagi (template dobel).
+function uid(prefix){
+  return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,6)}`;
+}
+
+// ---------------------- state ----------------------
+let cfg = { penandatangan: [] };
+let riwayat = [];
+let state = loadDraft() || blankState();
+
+function itemKosong(jenis){
+  return { tanggal:'', kegiatan:'', jenis: jenis || 'Konsumsi', jumlah:'' };
+}
+function blankState(){
+  const s = {
+    voucherNo:'', tanggalSurat: todayStr(),
+    periode:'', periodeManual:false,
+    items:[itemKosong()],
+    permintaanDana:'',
+    signerTplId:'',
+    pemeriksaNama:'', pemeriksaJabatan:'',
+    pembuatNama:'', pembuatJabatan:'',
+    penyetujuNama:'', penyetujuJabatan:'',
+  };
+  if(ADMIN) Object.assign(s, SIGNER_DEFAULT);
+  return s;
+}
+function loadDraft(){
+  try{
+    const raw = localStorage.getItem(DRAFT_KEY);
+    if(raw){
+      const d = Object.assign(blankState(), JSON.parse(raw));
+      if(!d.items || !d.items.length) d.items = [itemKosong()];
+      return d;
+    }
+  }catch(e){}
+  return null;
+}
+function saveDraft(){
+  try{ localStorage.setItem(DRAFT_KEY, JSON.stringify(state)); }catch(e){}
+}
+
+// Isi contoh: angka & kegiatan diambil dari LPJ Juni-Juli 2025 supaya format
+// pratinjau bisa dibandingkan langsung dengan file Excel yang sekarang dipakai.
+const CONTOH_ITEMS = [
+  {tanggal:'2025-06-03', kegiatan:'Kunjungan di Kilometer 12',                 jenis:'Konsumsi', jumlah:365000},
+  {tanggal:'2025-06-03', kegiatan:'BBM Speedboat',                             jenis:'BBM',      jumlah:310000},
+  {tanggal:'2025-06-16', kegiatan:'BBM Speedboat',                             jenis:'Konsumsi', jumlah:310000},
+  {tanggal:'2025-06-17', kegiatan:'Perbaikan pipa di Kilometer 12',            jenis:'Konsumsi', jumlah:165000},
+  {tanggal:'2025-06-23', kegiatan:'Survey pipa transmisi di Kp Damai',         jenis:'Konsumsi', jumlah:180000},
+  {tanggal:'2025-06-24', kegiatan:'BBM Speedboat',                             jenis:'BBM',      jumlah:260000},
+  {tanggal:'2025-06-30', kegiatan:'Perbaikan pipa di Jalan Agung Tunggal',     jenis:'Konsumsi', jumlah:103000},
+  {tanggal:'2025-07-09', kegiatan:'BBM Speedboat',                             jenis:'BBM',      jumlah:310000},
+  {tanggal:'2025-07-13', kegiatan:'Perbaikan pipa di Balikpapan baru',         jenis:'Konsumsi', jumlah:200000},
+  {tanggal:'2025-07-17', kegiatan:'Perbaikan pipa Sumur Gunung Sari',          jenis:'Konsumsi', jumlah:240000},
+  {tanggal:'2025-07-20', kegiatan:'BBM Speedboat',                             jenis:'BBM',      jumlah:195000},
+  {tanggal:'2025-07-21', kegiatan:'Perbaikan pipa MT Haryono',                 jenis:'Konsumsi', jumlah:132000},
+  {tanggal:'2025-07-21', kegiatan:'BBM Speedboat',                             jenis:'BBM',      jumlah:245000},
+  {tanggal:'2025-07-31', kegiatan:'Perbaikan pipa Sumur Gunung Sari',          jenis:'Konsumsi', jumlah:200000},
+  {tanggal:'2025-07-31', kegiatan:'Perbaikan pipa Sumur Gunung Sari',          jenis:'Konsumsi', jumlah:65000},
+  {tanggal:'2025-06-24', kegiatan:'Perbaikan sekat kayapo & Perl. Kantor SAB', jenis:'Material', jumlah:1720000},
+];
+
+// ---------------------- hitung ----------------------
+function groups(){ return window.LpjBuilder.groupItems(state.items); }
+function totalOperasional(){ return groups().reduce((s,g)=>s+g.subtotal,0); }
+function periodeAktif(){
+  return state.periodeManual
+    ? state.periode
+    : window.LpjBuilder.periodeOtomatis(state.items);
+}
+
+function currentDoc(){
+  return {
+    voucherNo: state.voucherNo,
+    tanggalSurat: state.tanggalSurat,
+    periode: periodeAktif(),
+    items: JSON.parse(JSON.stringify(state.items)),
+    permintaanDana: angka(state.permintaanDana),
+    pemeriksaNama: state.pemeriksaNama, pemeriksaJabatan: state.pemeriksaJabatan,
+    pembuatNama: state.pembuatNama,     pembuatJabatan: state.pembuatJabatan,
+    penyetujuNama: state.penyetujuNama, penyetujuJabatan: state.penyetujuJabatan,
+  };
+}
+
+// ---------------------- render dokumen ----------------------
+function docHtml(d){
+  const gs = window.LpjBuilder.groupItems(d.items);
+  const totalOps = gs.reduce((s,g)=>s+g.subtotal,0);
+  const permintaan = angka(d.permintaanDana);
+  const sisa = permintaan - totalOps;
+
+  // Lebar kolom pratinjau memakai hitungan yang sama dengan file .xlsx,
+  // tinggal diubah dari satuan Excel ke persen supaya proporsinya sama.
+  const w = window.LpjBuilder.lebarKolom(d);
+  const wTotal = w.a + w.b + w.c + w.d + w.e;
+  const pct = {};
+  Object.keys(w).forEach(k=>{ pct[k] = Math.round(w[k]/wTotal*1000)/10; });
+
+  let body = '';
+  if(!gs.length){
+    body = `<tr><td colspan="5"><div class="doc-empty">Belum ada item terisi.</div></td></tr>`;
+  }else{
+    gs.forEach(g=>{
+      body += `<tr class="sect"><td class="center">${esc(g.romawi)}</td><td colspan="2">${esc(g.judul)}</td><td></td><td></td></tr>`;
+      g.items.forEach((it,i)=>{
+        body += `<tr>
+          <td class="center">${i+1}</td>
+          <td class="tgl">${esc(window.LpjBuilder.formatTanggalIndo(it.tanggal))}</td>
+          <td>${esc(it.kegiatan||'')}</td>
+          <td class="center">${esc(it.jenis||'')}</td>
+          <td class="money">${fmtAngka(angka(it.jumlah))}</td>
+        </tr>`;
+      });
+    });
+    body += `<tr><td></td><td></td><td></td><td></td><td></td></tr>`;
+  }
+
+  return `
+    <div class="doc-title">
+      LAPORAN PERTANGGUNG JAWABAN<br>
+      BIAYA OPERASIONAL SUB DIVISI SUMBER AIR BAKU<br>
+      ${d.periode ? 'BULAN ' + esc(d.periode) : '&nbsp;'}
+    </div>
+    <div class="doc-voucher">Atas Voucher No. ${esc(d.voucherNo||'')}</div>
+    <table class="doc-table">
+      <tr>
+        <th style="width:${pct.a}%;">No</th>
+        <th style="width:${pct.b}%;">Tanggal</th>
+        <th style="width:${pct.c}%;">Kegiatan</th>
+        <th style="width:${pct.d}%;">Keterangan</th>
+        <th style="width:${pct.e}%;">Jumlah</th>
+      </tr>
+      ${body}
+      <tr class="total"><td class="lbl" colspan="4">Jumlah Biaya Operasional</td><td class="money">${fmtAngka(totalOps)}</td></tr>
+      <tr class="total"><td class="lbl" colspan="4">Jumlah Permintaan Dana</td><td class="money">${fmtAngka(permintaan)}</td></tr>
+      <tr class="total"><td class="lbl" colspan="4">Sisa Dana</td><td class="money">${fmtAngka(sisa)}</td></tr>
+    </table>
+
+    <div class="doc-sign-date">Balikpapan, ${formatTanggalIndo(d.tanggalSurat) || '...'}</div>
+    <div class="doc-sign">
+      <div>
+        <div class="lbl">Diperiksa Oleh</div>
+        <div>${esc(d.pemeriksaJabatan||'')}${d.pemeriksaJabatan?',':''}</div>
+        <div class="space"></div>
+        <div class="nama">${esc(d.pemeriksaNama||'')}</div>
+      </div>
+      <div>
+        <div class="lbl">Dibuat Oleh</div>
+        <div>${esc(d.pembuatJabatan||'')}${d.pembuatJabatan?',':''}</div>
+        <div class="space"></div>
+        <div class="nama">${esc(d.pembuatNama||'')}</div>
+      </div>
+    </div>
+    <div class="doc-approve">
+      <div class="lbl">Disetujui Oleh</div>
+      <div>${esc(d.penyetujuJabatan||'')}${d.penyetujuJabatan?',':''}</div>
+      <div class="space"></div>
+      <div class="nama">${esc(d.penyetujuNama||'')}</div>
+    </div>
+  `;
+}
+
+// ---------------------- render UI ----------------------
+function jenisOptions(selected){
+  return window.LpjBuilder.KLASIFIKASI.map(k =>
+    `<option value="${esc(k.kode)}"${k.kode===selected?' selected':''}>${esc(k.kode)}</option>`
+  ).join('');
+}
+function chipClass(jenis){
+  return jenis==='BBM' ? 'jenis-chip bbm' : jenis==='Material' ? 'jenis-chip material' : 'jenis-chip';
+}
+
+function renderItems(){
+  const c = document.getElementById('itemsContainer');
+  c.innerHTML = state.items.map((it,idx)=>`
+    <div class="item">
+      <div class="item-head">
+        <span>Item ${idx+1} <span class="${chipClass(it.jenis)}">${esc(it.jenis||'')}</span></span>
+        ${state.items.length>1 ? `<button type="button" class="remove-btn" data-idx="${idx}">Hapus</button>` : ''}
+      </div>
+      <div class="row2">
+        <div>
+          <label>Tanggal</label>
+          <input type="date" class="f-tanggal" data-idx="${idx}" value="${esc(it.tanggal)}">
+        </div>
+        <div>
+          <label>Klasifikasi</label>
+          <select class="f-jenis" data-idx="${idx}">${jenisOptions(it.jenis)}</select>
+        </div>
+      </div>
+      <label>Kegiatan</label>
+      <input type="text" class="f-kegiatan" data-idx="${idx}" value="${esc(it.kegiatan)}" placeholder="contoh: Perbaikan pipa di Kilometer 12">
+      <label>Jumlah (Rp)</label>
+      <input type="number" class="f-jumlah" data-idx="${idx}" value="${esc(it.jumlah)}" placeholder="0" inputmode="numeric">
+    </div>
+  `).join('');
+
+  // Tanggal & klasifikasi mengubah urutan/pengelompokan di surat, jadi kartu
+  // itemnya ikut dirender ulang (chip warnanya berubah). Kegiatan & jumlah
+  // cukup memperbarui pratinjau supaya kursor ketikan tidak lompat.
+  c.querySelectorAll('.f-jenis').forEach(el=>el.addEventListener('change', e=>{
+    state.items[+e.target.dataset.idx].jenis = e.target.value;
+    saveDraft(); renderItems(); renderAll();
+  }));
+  c.querySelectorAll('.f-tanggal').forEach(el=>el.addEventListener('change', e=>{
+    state.items[+e.target.dataset.idx].tanggal = e.target.value;
+    saveDraft(); renderAll();
+  }));
+  [['f-kegiatan','kegiatan'],['f-jumlah','jumlah']].forEach(([cls,field])=>{
+    c.querySelectorAll('.'+cls).forEach(el=>el.addEventListener('input', e=>{
+      state.items[+e.target.dataset.idx][field] = e.target.value;
+      saveDraft(); renderAll();
+    }));
+  });
+  c.querySelectorAll('.remove-btn').forEach(el=>el.addEventListener('click', ()=>{
+    state.items.splice(+el.dataset.idx,1);
+    saveDraft(); renderItems(); renderAll();
+  }));
+}
+
+function renderRekap(){
+  const gs = groups();
+  const totalOps = gs.reduce((s,g)=>s+g.subtotal,0);
+  const permintaan = angka(state.permintaanDana);
+  const sisa = permintaan - totalOps;
+  const perBagian = window.LpjBuilder.KLASIFIKASI.map(k=>{
+    const g = gs.find(x=>x.kode===k.kode);
+    return `<div class="line"><span>${esc(k.judul)}${g?` <span class="${chipClass(k.kode)}">${g.items.length} item</span>`:''}</span><b>${fmtRupiah(g?g.subtotal:0)}</b></div>`;
+  }).join('');
+
+  document.getElementById('rekapBox').innerHTML = `
+    ${perBagian}
+    <div class="line total"><span>Jumlah Biaya Operasional</span><b>${fmtRupiah(totalOps)}</b></div>
+    <div class="line"><span>Jumlah Permintaan Dana</span><b>${fmtRupiah(permintaan)}</b></div>
+    <div class="line sisa${sisa<0?' minus':''}"><span>Sisa Dana</span><b>${fmtRupiah(sisa)}</b></div>
+  `;
+}
+
+function renderPeriode(){
+  const el = document.getElementById('fPeriode');
+  el.value = periodeAktif();
+  el.readOnly = !state.periodeManual;
+  document.getElementById('btnEditPeriode').textContent = state.periodeManual ? 'Otomatis' : 'Ubah';
+  document.getElementById('periodeHint').textContent = state.periodeManual
+    ? 'Periode diisi manual. Tekan "Otomatis" untuk kembali mengikuti tanggal item.'
+    : 'Terisi otomatis dari tanggal item paling awal sampai paling akhir.';
+  const p = periodeAktif();
+  document.getElementById('judulView').textContent =
+    'LAPORAN PERTANGGUNG JAWABAN BIAYA OPERASIONAL SUB DIVISI SUMBER AIR BAKU' + (p ? ' — BULAN ' + p : '');
+}
+
+function renderAll(){
+  renderPeriode();
+  renderRekap();
+  document.getElementById('docPreview').innerHTML = docHtml(currentDoc());
+}
+
+// ---------------------- template penandatangan (admin) ----------------------
+function renderSignerSelect(){
+  const sel = document.getElementById('fSignerTpl');
+  sel.innerHTML = '<option value="">— isi manual —</option>' +
+    cfg.penandatangan.map(t =>
+      `<option value="${esc(t.id)}"${t.id===state.signerTplId?' selected':''}>${esc(t.nama || 'Tanpa nama')}</option>`
+    ).join('');
+}
+function applySignerTpl(id){
+  const t = cfg.penandatangan.find(x=>x.id===id);
+  state.signerTplId = id || '';
+  if(t) SIGNER_FIELDS.forEach(f=>{ state[f] = t[f] || ''; });
+  saveDraft(); fillFormDariState();
+}
+
+// Menyimpan template ditunda sebentar supaya mengetik tidak mengirim satu
+// request per huruf.
+const saveTimers = {};
+function simpanTemplate(tpl, delay){
+  clearTimeout(saveTimers[tpl.id]);
+  saveTimers[tpl.id] = setTimeout(async ()=>{
+    try{
+      const { id, ...data } = tpl;
+      await apiJson(API_LPJ + '&what=template', {
+        method:'POST',
+        body: JSON.stringify({ id, urutan: cfg.penandatangan.indexOf(tpl), data })
+      });
+      setStatus('Template tersimpan.', 'ok');
+    }catch(err){ setStatus('Gagal menyimpan template: ' + err.message, 'err'); }
+  }, delay === undefined ? 600 : delay);
+}
+function renderSignerTplList(){
+  const box = document.getElementById('signerTplList');
+  if(!cfg.penandatangan.length){
+    box.innerHTML = '<div class="hist-empty">Belum ada template.</div>';
+    return;
+  }
+  box.innerHTML = cfg.penandatangan.map(t=>`
+    <div class="signer-tpl${t.id===state.signerTplId?' active':''}" data-id="${esc(t.id)}">
+      <div class="th">
+        <span class="nm">${esc(t.nama || 'Tanpa nama')}</span>
+        <span>
+          <button type="button" class="mini-btn s-use">Pakai</button>
+          <button type="button" class="mini-btn danger s-del">Hapus</button>
+        </span>
+      </div>
+      <label>Nama template</label>
+      <input type="text" class="t-nama" value="${esc(t.nama||'')}" placeholder="contoh: Standar SAB">
+      <div class="row2">
+        <div><label>Diperiksa — nama</label><input type="text" class="t-pemeriksaNama" value="${esc(t.pemeriksaNama||'')}"></div>
+        <div><label>Jabatan</label><input type="text" class="t-pemeriksaJabatan" value="${esc(t.pemeriksaJabatan||'')}"></div>
+      </div>
+      <div class="row2">
+        <div><label>Dibuat — nama</label><input type="text" class="t-pembuatNama" value="${esc(t.pembuatNama||'')}"></div>
+        <div><label>Jabatan</label><input type="text" class="t-pembuatJabatan" value="${esc(t.pembuatJabatan||'')}"></div>
+      </div>
+      <div class="row2">
+        <div><label>Disetujui — nama</label><input type="text" class="t-penyetujuNama" value="${esc(t.penyetujuNama||'')}"></div>
+        <div><label>Jabatan</label><input type="text" class="t-penyetujuJabatan" value="${esc(t.penyetujuJabatan||'')}"></div>
+      </div>
+    </div>
+  `).join('');
+
+  box.querySelectorAll('.signer-tpl').forEach(row=>{
+    const tpl = cfg.penandatangan.find(x=>x.id===row.dataset.id);
+    if(!tpl) return;
+    ['nama'].concat(SIGNER_FIELDS).forEach(f=>{
+      const el = row.querySelector('.t-'+f);
+      if(!el) return;
+      el.addEventListener('input', e=>{
+        tpl[f] = e.target.value;
+        // Nama template ikut tampil di dropdown & judul kartu, jadi keduanya
+        // disegarkan -- tapi tanpa render ulang daftar (kursor ketik hilang).
+        if(f === 'nama'){
+          row.querySelector('.nm').textContent = tpl.nama || 'Tanpa nama';
+          renderSignerSelect();
+        }
+        simpanTemplate(tpl);
+      });
+    });
+    row.querySelector('.s-use').addEventListener('click', ()=>{
+      applySignerTpl(tpl.id);
+      renderSignerTplList();
+    });
+    row.querySelector('.s-del').addEventListener('click', async ()=>{
+      if(!confirm(`Hapus template "${tpl.nama || 'Tanpa nama'}"?`)) return;
+      try{
+        await apiJson(`${API_LPJ}&what=template&id=${encodeURIComponent(tpl.id)}`, { method:'DELETE' });
+        cfg.penandatangan = cfg.penandatangan.filter(x=>x.id!==tpl.id);
+        if(state.signerTplId === tpl.id) state.signerTplId = '';
+        saveDraft(); renderSignerSelect(); renderSignerTplList();
+        setStatus('Template dihapus.', 'ok');
+      }catch(err){ setStatus('Gagal menghapus: ' + err.message, 'err'); }
+    });
+  });
+}
+
+// ---------------------- riwayat ----------------------
+function loadRiwayatLokal(){
+  try{
+    const raw = localStorage.getItem(HISTORY_KEY);
+    return raw ? (JSON.parse(raw) || []) : [];
+  }catch(e){ return []; }
+}
+function saveRiwayatLokal(){
+  try{ localStorage.setItem(HISTORY_KEY, JSON.stringify(riwayat.slice(0,50))); }catch(e){}
+}
+async function muatRiwayat(){
+  if(!ADMIN){
+    riwayat = loadRiwayatLokal()
+      .sort((a,b)=> String(b.createdAt||'').localeCompare(String(a.createdAt||'')));
+    renderHistory();
+    return;
+  }
+  try{
+    const data = await apiJson('/api/history?type=LPJ&limit=50');
+    // Entri "halaman dibuka" (details cuma {accessedAt}) ikut tersimpan di
+    // tabel history yang sama -- disaring supaya detailnya tidak pernah kosong.
+    riwayat = (data.data || []).filter(h => h.details && Array.isArray(h.details.items));
+    renderHistory();
+  }catch(err){
+    document.getElementById('histContainer').innerHTML =
+      `<div class="hist-empty">Gagal memuat riwayat: ${esc(err.message)}</div>`;
+  }
+}
+function renderHistory(){
+  const box = document.getElementById('histContainer');
+  document.getElementById('histCount').textContent =
+    riwayat.length ? `${riwayat.length} LPJ tercatat` : '';
+  if(!riwayat.length){
+    box.innerHTML = '<div class="hist-empty">Belum ada LPJ tercatat.</div>';
+    return;
+  }
+  box.innerHTML = `
+    <table class="hist-table">
+      <thead><tr><th>Voucher</th><th>Periode</th><th class="right">Biaya Operasional</th></tr></thead>
+      <tbody>${riwayat.map(h=>{
+        const d = h.details || {};
+        const total = window.LpjBuilder.totalOperasional(d.items);
+        return `<tr data-id="${esc(h.id)}">
+          <td class="numcol">${esc(d.voucherNo || '—')}</td>
+          <td>${esc(d.periode || '')} <span class="chip">${esc(formatTanggalIndo(d.tanggalSurat))}</span></td>
+          <td class="right">${fmtRupiah(total)}</td>
+        </tr>`;
+      }).join('')}</tbody>
+    </table>`;
+  box.querySelectorAll('tbody tr').forEach(tr=>{
+    tr.addEventListener('click', ()=>openDetail(tr.dataset.id));
+  });
+}
+
+let detailId = null;
+function detailEntry(){ return riwayat.find(x=>String(x.id)===String(detailId)); }
+function openDetail(id){
+  detailId = id;
+  const h = detailEntry();
+  if(!h) return;
+  const d = h.details;
+  document.getElementById('detailTitle').textContent = 'LPJ ' + (d.voucherNo || d.periode || '');
+  const unduh = h.createdAt ? `Diunduh ${esc(formatWaktuIndo(h.createdAt))}` : 'Tersimpan di perangkat ini';
+  document.getElementById('detailMeta').innerHTML =
+    `Tanggal surat: <b>${esc(formatTanggalIndo(d.tanggalSurat))}</b> · Biaya operasional: <b>${fmtRupiah(window.LpjBuilder.totalOperasional(d.items))}</b><br>` +
+    `${unduh}${h.createdBy ? ' oleh ' + esc(h.createdBy) : ''} · ${esc(h.documentName||'')}`;
+  document.getElementById('detailDoc').innerHTML = docHtml(d);
+  document.getElementById('detailOverlay').classList.add('open');
+}
+function closeDetail(){
+  document.getElementById('detailOverlay').classList.remove('open');
+  detailId = null;
+}
+
+// ---------------------- unduh ----------------------
+function validasi(){
+  if(!state.tanggalSurat){ setStatus('Isi dulu tanggal suratnya.', 'err'); return false; }
+  if(!groups().length){ setStatus('Isi minimal satu item (kegiatan & jumlah).', 'err'); return false; }
+  return true;
+}
+function unduhXlsx(d, fname){
+  if(!window.LpjBuilder) throw new Error('Builder .xlsx tidak termuat.');
+  const bytes = window.LpjBuilder.generateBytes(d);
+  const blob = new Blob([bytes], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = fname;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(url), 4000);
+}
+function cetak(html){
+  document.getElementById('printHost').innerHTML = html;
+  const prev = document.title;
+  document.title = ' ';
+  window.print();
+  document.title = prev;
+}
+async function prosesUnduh(format){
+  if(!validasi()) return;
+  const btn = document.getElementById(format === 'pdf' ? 'btnUnduhPdf' : 'btnUnduhExcel');
+  btn.disabled = true;
+  try{
+    const d = currentDoc();
+    const fname = window.LpjBuilder.filename(d).replace(/\.xlsx$/, format === 'pdf' ? '.pdf' : '.xlsx');
+    if(format === 'pdf'){
+      cetak(docHtml(d));
+      setStatus('Dialog cetak dibuka — pilih "Save as PDF".', 'ok');
+    }else{
+      unduhXlsx(d, fname);
+      setStatus(`Berhasil diunduh: ${fname}`, 'ok');
+    }
+
+    if(!ADMIN){
+      // Publik: riwayat disimpan di perangkat sendiri. Dikunci ke nomor
+      // voucher + tanggal supaya mengunduh ulang surat yang sama tidak
+      // menggandakan barisnya.
+      const idLokal = `${d.voucherNo}__${d.tanggalSurat}`;
+      riwayat = riwayat.filter(h=>String(h.id) !== idLokal);
+      riwayat.unshift({ id: idLokal, documentName: fname, createdAt: new Date().toISOString(), createdBy: '', details: d });
+      saveRiwayatLokal();
+      renderHistory();
+    }else{
+      setStatus('Mencatat ke riwayat…');
+      await saveHistoryEntry('LPJ', fname, d);
+      await muatRiwayat();
+      setStatus(`LPJ ${d.voucherNo || ''} tercatat di riwayat.`.replace('  ',' '), 'ok');
+    }
+  }catch(err){
+    setStatus('Gagal: ' + err.message, 'err');
+  }
+  btn.disabled = false;
+}
+
+let statusTimer = null;
+function setStatus(msg, cls){
+  const el = document.getElementById('statusMsg');
+  el.textContent = msg;
+  el.className = 'status ' + (cls||'');
+  clearTimeout(statusTimer);
+  statusTimer = setTimeout(()=>{
+    el.textContent = 'Isian tersimpan otomatis di perangkat ini.';
+    el.className = 'status';
+  }, 8000);
+}
+
+// ---------------------- isi form dari state ----------------------
+const TEXT_FIELDS = {
+  fVoucher:'voucherNo', fTanggalSurat:'tanggalSurat', fPermintaan:'permintaanDana',
+  fPemeriksaNama:'pemeriksaNama', fPemeriksaJabatan:'pemeriksaJabatan',
+  fPembuatNama:'pembuatNama',     fPembuatJabatan:'pembuatJabatan',
+  fPenyetujuNama:'penyetujuNama', fPenyetujuJabatan:'penyetujuJabatan',
+};
+function fillFormDariState(){
+  Object.keys(TEXT_FIELDS).forEach(id=>{
+    document.getElementById(id).value = state[TEXT_FIELDS[id]] || '';
+  });
+  if(ADMIN) renderSignerSelect();
+  renderItems();
+  renderAll();
+}
+
+function wire(){
+  Object.keys(TEXT_FIELDS).forEach(id=>{
+    document.getElementById(id).addEventListener('input', e=>{
+      state[TEXT_FIELDS[id]] = e.target.value;
+      saveDraft(); renderAll();
+    });
+  });
+
+  document.getElementById('fPeriode').addEventListener('input', e=>{
+    if(!state.periodeManual) return;
+    state.periode = e.target.value;
+    saveDraft();
+    document.getElementById('docPreview').innerHTML = docHtml(currentDoc());
+  });
+  document.getElementById('btnEditPeriode').addEventListener('click', ()=>{
+    state.periodeManual = !state.periodeManual;
+    if(state.periodeManual && !state.periode) state.periode = window.LpjBuilder.periodeOtomatis(state.items);
+    saveDraft(); renderAll();
+    if(state.periodeManual) document.getElementById('fPeriode').focus();
+  });
+
+  document.getElementById('btnAddItem').addEventListener('click', ()=>{
+    // Item baru ikut klasifikasi item terakhir -- biasanya diisi berurutan
+    // per jenis, jadi lebih jarang perlu ganti dropdown.
+    const terakhir = state.items[state.items.length-1];
+    state.items.push(itemKosong(terakhir && terakhir.jenis));
+    saveDraft(); renderItems(); renderAll();
+  });
+
+  document.getElementById('btnContoh').addEventListener('click', ()=>{
+    state.items = JSON.parse(JSON.stringify(CONTOH_ITEMS));
+    state.voucherNo = state.voucherNo || '1421/VII/2025';
+    state.permintaanDana = 5000000;
+    state.periodeManual = false;
+    saveDraft(); fillFormDariState();
+    setStatus('Contoh LPJ Juni–Juli 2025 dimuat.', 'ok');
+  });
+
+  // Mengetik penandatangan manual berarti surat ini tidak lagi persis
+  // mengikuti template, jadi pilihannya dilepas supaya dropdown tidak bohong.
+  SIGNER_FIELDS.forEach(f=>{
+    const id = 'f' + f.charAt(0).toUpperCase() + f.slice(1);
+    document.getElementById(id).addEventListener('input', ()=>{
+      if(!state.signerTplId) return;
+      state.signerTplId = '';
+      saveDraft();
+      if(ADMIN){ renderSignerSelect(); renderSignerTplList(); }
+    });
+  });
+
+  if(ADMIN){
+    document.getElementById('fSignerTpl').addEventListener('change', e=>{
+      applySignerTpl(e.target.value);
+      renderSignerTplList();
+    });
+    document.getElementById('btnSaveAsSignerTpl').addEventListener('click', ()=>{
+      const tpl = { id: uid('lpj-sg'), nama: 'Template baru' };
+      SIGNER_FIELDS.forEach(f=>{ tpl[f] = state[f] || ''; });
+      cfg.penandatangan.push(tpl);
+      state.signerTplId = tpl.id;
+      saveDraft(); renderSignerSelect(); renderSignerTplList();
+      simpanTemplate(tpl, 0);
+      document.getElementById('signerAdminBox').open = true;
+    });
+    document.getElementById('btnAddSignerTpl').addEventListener('click', ()=>{
+      const tpl = { id: uid('lpj-sg'), nama: 'Template baru' };
+      SIGNER_FIELDS.forEach(f=>{ tpl[f] = ''; });
+      cfg.penandatangan.push(tpl);
+      renderSignerSelect(); renderSignerTplList();
+      simpanTemplate(tpl, 0);
+      document.getElementById('signerAdminBox').open = true;
+    });
+    document.getElementById('btnRefreshHist').addEventListener('click', muatRiwayat);
+  }
+
+  document.getElementById('btnUnduhExcel').addEventListener('click', ()=>prosesUnduh('xlsx'));
+  document.getElementById('btnUnduhPdf').addEventListener('click', ()=>prosesUnduh('pdf'));
+
+  wireDetail();
+
+  const btnLogout = document.getElementById('btnLogout');
+  if(btnLogout) btnLogout.addEventListener('click', ()=>{
+    localStorage.removeItem('token'); localStorage.removeItem('role'); localStorage.removeItem('nama');
+    location.reload();
+  });
+}
+
+function wireNav(){
+  const toggle = document.getElementById('navToggle');
+  const links = document.getElementById('navLinks');
+  const backdrop = document.getElementById('navBackdrop');
+  function tutup(){ toggle.classList.remove('open'); links.classList.remove('open'); backdrop.classList.remove('open'); }
+  toggle.addEventListener('click', ()=>{
+    const buka = !links.classList.contains('open');
+    toggle.classList.toggle('open', buka);
+    links.classList.toggle('open', buka);
+    backdrop.classList.toggle('open', buka);
+  });
+  backdrop.addEventListener('click', tutup);
+
+  const chip = document.getElementById('adminChip');
+  if(chip) chip.addEventListener('click', ()=>{
+    document.getElementById('adminWrap').classList.toggle('open');
+  });
+  document.addEventListener('click', e=>{
+    const wrap = document.getElementById('adminWrap');
+    if(wrap && !wrap.contains(e.target)) wrap.classList.remove('open');
+  });
+}
+
+function wireDetail(){
+  document.getElementById('detailClose').addEventListener('click', closeDetail);
+  document.getElementById('detailOverlay').addEventListener('click', e=>{
+    if(e.target.id === 'detailOverlay') closeDetail();
+  });
+  document.addEventListener('keydown', e=>{
+    if(e.key === 'Escape') closeDetail();
+  });
+
+  document.getElementById('detailLoad').addEventListener('click', ()=>{
+    const h = detailEntry();
+    if(!h) return;
+    const d = h.details;
+    state = Object.assign(blankState(), {
+      voucherNo: d.voucherNo || '',
+      tanggalSurat: d.tanggalSurat || todayStr(),
+      // Periode ikut dikunci manual: surat lama sudah punya periodenya
+      // sendiri, dan menghitung ulang dari tanggal item bisa mengubahnya.
+      periode: d.periode || '', periodeManual: !!d.periode,
+      items: JSON.parse(JSON.stringify(d.items || [])),
+      permintaanDana: d.permintaanDana || '',
+      pemeriksaNama: d.pemeriksaNama || '', pemeriksaJabatan: d.pemeriksaJabatan || '',
+      pembuatNama: d.pembuatNama || '',     pembuatJabatan: d.pembuatJabatan || '',
+      penyetujuNama: d.penyetujuNama || '', penyetujuJabatan: d.penyetujuJabatan || '',
+    });
+    if(!state.items.length) state.items = [itemKosong()];
+    saveDraft(); fillFormDariState(); closeDetail();
+    window.scrollTo({ top:0, behavior:'smooth' });
+    setStatus('LPJ dimuat ke form.', 'ok');
+  });
+
+  document.getElementById('detailXlsx').addEventListener('click', ()=>{
+    const h = detailEntry();
+    if(!h) return;
+    try{
+      unduhXlsx(h.details, h.documentName || window.LpjBuilder.filename(h.details));
+      setStatus('File diunduh ulang.', 'ok');
+    }catch(err){ setStatus('Gagal: ' + err.message, 'err'); }
+  });
+
+  document.getElementById('detailPdf').addEventListener('click', ()=>{
+    const h = detailEntry();
+    if(h) cetak(docHtml(h.details));
+  });
+
+  document.getElementById('detailDelete').addEventListener('click', async ()=>{
+    const h = detailEntry();
+    if(!h || !confirm('Hapus entri riwayat ini?')) return;
+    try{
+      if(ADMIN){
+        await apiJson(`/api/history?id=${encodeURIComponent(h.id)}`, { method:'DELETE' });
+        closeDetail();
+        await muatRiwayat();
+      }else{
+        riwayat = riwayat.filter(x=>String(x.id) !== String(h.id));
+        saveRiwayatLokal(); closeDetail(); renderHistory();
+      }
+      setStatus('Entri riwayat dihapus.', 'ok');
+    }catch(err){ setStatus('Gagal menghapus: ' + err.message, 'err'); }
+  });
+}
+
+function applyAkses(){
+  if(ADMIN){
+    document.getElementById('badgeAdmin').style.display = '';
+    document.getElementById('adminWrap').style.display = '';
+    document.getElementById('signerTplPicker').style.display = '';
+    document.getElementById('signerAdminBox').style.display = '';
+    document.getElementById('btnRefreshHist').style.display = '';
+    const nama = localStorage.getItem('nama') || 'Admin';
+    document.getElementById('adminName').textContent = nama;
+    document.getElementById('adminAvatar').textContent = nama.trim().charAt(0).toUpperCase() || 'A';
+    document.getElementById('signerHint').textContent =
+      'Terisi dari template bersama. Boleh diubah untuk surat ini — perubahannya tidak mengubah templatenya.';
+    document.getElementById('histHint').textContent =
+      'Riwayat dari server — LPJ yang diunduh admin mana pun ikut tampil di sini dan di Dashboard Admin.';
+    document.getElementById('footerNote').textContent =
+      'LPJ yang diunduh tercatat di /api/history, jadi bisa diunduh ulang dari Dashboard Admin.';
+  }else{
+    document.getElementById('navLoginBtn').style.display = '';
+    document.getElementById('signerHint').textContent =
+      'Nama pejabat sengaja dikosongkan untuk pengguna umum. Isi sendiri kalau memang perlu tercetak — isian tersimpan di perangkat ini saja.';
+    document.getElementById('histHint').textContent =
+      'Riwayat tersimpan di perangkat ini saja, tidak dikirim ke server.';
+    document.getElementById('footerNote').textContent =
+      'Isian, penandatangan, dan riwayat kamu tersimpan di perangkat ini saja.';
+  }
+}
+
+// Template penandatangan cuma ada untuk admin; kalau servernya bermasalah,
+// halaman tetap dipakai dengan isian baku -- unduh .xlsx/PDF tidak pernah
+// bergantung pada panggilan ini.
+async function muatKonfigurasi(){
+  if(!ADMIN) return;
+  try{
+    const data = await apiJson(API_LPJ);
+    cfg.penandatangan = data.penandatangan || [];
+  }catch(err){
+    setStatus('Template penandatangan gagal dimuat: ' + err.message, 'err');
+  }
+  renderSignerSelect();
+  renderSignerTplList();
+}
+
+async function startApp(){
+  applyAkses();
+  wireNav();
+  wire();
+  fillFormDariState();
+  await muatKonfigurasi();
+  await muatRiwayat();
+}
+startApp();
+</script>
+</body>
+</html>
