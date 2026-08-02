@@ -226,10 +226,10 @@ window.LpjBuilder = (function () {
 <border><left style="thin"><color indexed="64"/></left><right style="thin"><color indexed="64"/></right><top/><bottom/><diagonal/></border>
 </borders>
 <cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
-<cellXfs count="12">
+<cellXfs count="17">
 <xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>
 <xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1" applyAlignment="1"><alignment horizontal="center"/></xf>
-<xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1" applyAlignment="1"><alignment horizontal="left" wrapText="1"/></xf>
+<xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1" applyAlignment="1"><alignment horizontal="left"/></xf>
 <xf numFmtId="0" fontId="2" fillId="0" borderId="0" xfId="0" applyFont="1" applyAlignment="1"><alignment horizontal="center"/></xf>
 <xf numFmtId="0" fontId="3" fillId="0" borderId="0" xfId="0" applyFont="1" applyAlignment="1"><alignment horizontal="center"/></xf>
 <xf numFmtId="0" fontId="2" fillId="0" borderId="1" xfId="0" applyFont="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>
@@ -239,11 +239,22 @@ window.LpjBuilder = (function () {
 <xf numFmtId="0" fontId="1" fillId="0" borderId="2" xfId="0" applyFont="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>
 <xf numFmtId="0" fontId="1" fillId="0" borderId="2" xfId="0" applyFont="1" applyBorder="1" applyAlignment="1"><alignment horizontal="left" vertical="center" wrapText="1"/></xf>
 <xf numFmtId="164" fontId="1" fillId="0" borderId="2" xfId="0" applyNumberFormat="1" applyFont="1" applyBorder="1" applyAlignment="1"><alignment vertical="center"/></xf>
+<xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1" applyAlignment="1"><alignment horizontal="right"/></xf>
+<xf numFmtId="0" fontId="2" fillId="0" borderId="0" xfId="0" applyFont="1" applyAlignment="1"><alignment horizontal="left"/></xf>
+<xf numFmtId="0" fontId="2" fillId="0" borderId="0" xfId="0" applyFont="1" applyAlignment="1"><alignment horizontal="right"/></xf>
+<xf numFmtId="0" fontId="3" fillId="0" borderId="0" xfId="0" applyFont="1" applyAlignment="1"><alignment horizontal="left"/></xf>
+<xf numFmtId="0" fontId="3" fillId="0" borderId="0" xfId="0" applyFont="1" applyAlignment="1"><alignment horizontal="right"/></xf>
 </cellXfs>
 <cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>
 </styleSheet>`;
 
-  const S_CENTER=1, S_LEFT=2, S_BOLD_CENTER=3, S_NAME=4,
+  // Blok tanda tangan: rata kiri untuk kolom kiri, rata kanan untuk kolom
+  // kanan. Sebelumnya dua-duanya rata tengah di dalam sel gabungan, tapi
+  // lebar kolom di sini mengikuti isi tabel (kolom Kegiatan hampir separuh
+  // lebar surat), jadi titik tengah tiap gabungan jatuh di tempat yang tidak
+  // beraturan dan blok tanda tangannya kelihatan berpencar.
+  const S_RIGHT=12, S_BOLD_LEFT_PLAIN=13, S_BOLD_RIGHT=14, S_NAME_LEFT=15, S_NAME_RIGHT=16;
+  const S_CENTER=1, S_LEFT_PLAIN=2, S_BOLD_CENTER=3, S_NAME=4,
         S_BOX_BOLD_CENTER=5, S_BOX_BOLD_MONEY=6,
         S_SIDE_BOLD_CENTER=7, S_SIDE_BOLD_LEFT=8,
         S_SIDE_CENTER=9, S_SIDE_LEFT=10, S_SIDE_MONEY=11;
@@ -346,33 +357,38 @@ window.LpjBuilder = (function () {
     const rLabel = rTgl + 1;
     const rJabatan = rLabel + 1;
     const rNama = rJabatan + 4;          // ruang tanda tangan basah
-    const rLabel2 = rNama + 2;
+    const rLabel2 = rNama + 3;
     const rJabatan2 = rLabel2 + 1;
     const rNama2 = rJabatan2 + 4;
 
-    addRow(rTgl,[cell(4,S_CENTER,{type:'str',value:`Balikpapan, ${formatTanggalIndo(data.tanggalSurat)||''}`})]);
-    merges.push(`D${rTgl}:E${rTgl}`);
+    const koma = s => s ? s + ',' : '';
+    // Kolom kiri dipatok ke tepi kiri kolom B, kolom kanan ke tepi kanan
+    // kolom E, dan blok "Disetujui Oleh" digabung selebar tabel (A:E) supaya
+    // benar-benar di tengah. Semuanya tidak bergantung pada lebar kolom yang
+    // berubah-ubah mengikuti isi.
+    addRow(rTgl,[cell(4,S_RIGHT,{type:'str',value:`Balikpapan, ${formatTanggalIndo(data.tanggalSurat)||''}`})]);
+    merges.push(`C${rTgl}:E${rTgl}`);
 
     addRow(rLabel,[
-      cell(2,S_BOLD_CENTER,{type:'str',value:'Diperiksa Oleh'}),
-      cell(4,S_BOLD_CENTER,{type:'str',value:'Dibuat Oleh'}),
+      cell(1,S_BOLD_LEFT_PLAIN,{type:'str',value:'Diperiksa Oleh'}),
+      cell(4,S_BOLD_RIGHT,{type:'str',value:'Dibuat Oleh'}),
     ]);
     addRow(rJabatan,[
-      cell(2,S_CENTER,{type:'str',value:(data.pemeriksaJabatan||'')+(data.pemeriksaJabatan?',':'')}),
-      cell(4,S_CENTER,{type:'str',value:(data.pembuatJabatan||'')+(data.pembuatJabatan?',':'')}),
+      cell(1,S_LEFT_PLAIN,{type:'str',value:koma(data.pemeriksaJabatan)}),
+      cell(4,S_RIGHT,{type:'str',value:koma(data.pembuatJabatan)}),
     ]);
     addRow(rNama,[
-      cell(2,S_NAME,{type:'str',value:data.pemeriksaNama||''}),
-      cell(4,S_NAME,{type:'str',value:data.pembuatNama||''}),
+      cell(1,S_NAME_LEFT,{type:'str',value:data.pemeriksaNama||''}),
+      cell(4,S_NAME_RIGHT,{type:'str',value:data.pembuatNama||''}),
     ]);
-    merges.push(`B${rLabel}:C${rLabel}`,`D${rLabel}:E${rLabel}`,
-                `B${rJabatan}:C${rJabatan}`,`D${rJabatan}:E${rJabatan}`,
-                `B${rNama}:C${rNama}`,`D${rNama}:E${rNama}`);
+    merges.push(`A${rLabel}:C${rLabel}`,`D${rLabel}:E${rLabel}`,
+                `A${rJabatan}:C${rJabatan}`,`D${rJabatan}:E${rJabatan}`,
+                `A${rNama}:C${rNama}`,`D${rNama}:E${rNama}`);
 
-    addRow(rLabel2,[cell(2,S_BOLD_CENTER,{type:'str',value:'Disetujui Oleh'})]);
-    addRow(rJabatan2,[cell(2,S_CENTER,{type:'str',value:(data.penyetujuJabatan||'')+(data.penyetujuJabatan?',':'')})]);
-    addRow(rNama2,[cell(2,S_NAME,{type:'str',value:data.penyetujuNama||''})]);
-    merges.push(`B${rLabel2}:D${rLabel2}`,`B${rJabatan2}:D${rJabatan2}`,`B${rNama2}:D${rNama2}`);
+    addRow(rLabel2,[cell(1,S_BOLD_CENTER,{type:'str',value:'Disetujui Oleh'})]);
+    addRow(rJabatan2,[cell(1,S_CENTER,{type:'str',value:koma(data.penyetujuJabatan)})]);
+    addRow(rNama2,[cell(1,S_NAME,{type:'str',value:data.penyetujuNama||''})]);
+    merges.push(`A${rLabel2}:E${rLabel2}`,`A${rJabatan2}:E${rJabatan2}`,`A${rNama2}:E${rNama2}`);
 
     const LAST_ROW = rNama2 + 1;
 

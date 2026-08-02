@@ -253,12 +253,18 @@
   table.doc-table tr.total td{border:1px solid #000;font-weight:700;text-align:center;}
   table.doc-table tr.total td.money{text-align:right;}
   .doc-empty{text-align:center;color:#888;font-style:italic;padding:14px 0;}
+  /* Blok tanda tangan dipatok ke tepi: kolom kiri rata kiri, kolom kanan
+     rata kanan, dan "Disetujui Oleh" tepat di tengah -- sama dengan tata
+     letak di file .xlsx, yang tidak bisa mengandalkan titik tengah kolom
+     karena lebar kolomnya mengikuti isi tabel. */
   .doc-sign-date{text-align:right;margin:18px 0 8px;}
-  .doc-sign{display:grid;grid-template-columns:1fr 1fr;gap:8px;text-align:center;}
+  .doc-sign{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+  .doc-sign > div:first-child{text-align:left;}
+  .doc-sign > div:last-child{text-align:right;}
   .doc-sign .space,.doc-approve .space{height:52px;}
   .doc-sign .nama,.doc-approve .nama{font-weight:700;text-decoration:underline;}
   .doc-sign .lbl,.doc-approve .lbl{font-weight:700;}
-  .doc-approve{text-align:center;margin-top:14px;}
+  .doc-approve{text-align:center;margin-top:20px;}
 
   /* ---------- template penandatangan (admin) ---------- */
   .signer-tpl{
