@@ -295,7 +295,7 @@ header{
   position:absolute;top:-50px;right:-50px;width:170px;height:170px;
   border-radius:50%;filter:blur(10px);opacity:.5;pointer-events:none;z-index:0;
 }
-.hub-card > *:not(.hub-glow):not(.hub-wash):not(.hub-sheen){position:relative;z-index:1}
+.hub-card > *:not(.hub-glow):not(.hub-wash){position:relative;z-index:1}
 .hub-card:hover{border-color:#BFD8E0}
 .last-input{
   font-size:11.5px;color:var(--ink-soft);
@@ -469,7 +469,7 @@ footer{border-top:1px solid var(--mist);padding:26px 20px;text-align:center;font
   /* p diberi tinggi minimum supaya kartu pendek dan panjang tidak terlalu
      beda tinggi ketika berdiri berdampingan di dek. */
   .hub-deck .hub-card p{min-height:84px}
-  .hub-deck .hub-card > *:not(.hub-glow):not(.hub-wash):not(.hub-sheen){z-index:2}
+  .hub-deck .hub-card > *:not(.hub-glow):not(.hub-wash){z-index:2}
   /* transform kartu diatur JS lewat style inline, jadi hover translateY dari
      aturan grid tidak boleh ikut campur di mode dek. */
   .hub-deck .hub-card:hover{transform:none}
@@ -484,15 +484,8 @@ footer{border-top:1px solid var(--mist);padding:26px 20px;text-align:center;font
     background:linear-gradient(202deg,rgba(var(--tint-rgb),.72) 0%,
                rgba(var(--tint-rgb),.26) 34%,transparent 62%);
   }
-  .hub-sheen{
-    position:absolute;inset:0;pointer-events:none;z-index:1;opacity:0;
-    transition:opacity .45s;border-radius:inherit;
-    background:linear-gradient(112deg,transparent 34%,var(--sheen) 48%,transparent 62%);
-    background-size:260% 100%;background-position:50% 0;
-  }
-
-  /* Kartu tengah: blob sudut membesar, sapuan turun ke seluruh permukaan,
-     sheen menyala. Ukuran blob dan offsetnya sepasang -- offset selalu
+  /* Kartu tengah: blob sudut membesar dan sapuannya turun ke seluruh
+     permukaan. Ukuran blob dan offsetnya sepasang -- offset selalu
      -((ukuran-170)/2 + 50) supaya pusat lingkaran tetap di sudut yang sama. */
   .hub-deck[data-glow="mid"] .hub-card.is-active .hub-glow{
     width:300px;height:300px;top:-115px;right:-115px;opacity:1;
@@ -504,13 +497,12 @@ footer{border-top:1px solid var(--mist);padding:26px 20px;text-align:center;font
     background:linear-gradient(202deg,rgba(var(--tint-rgb),.5) 0%,
                rgba(var(--tint-rgb),.18) 34%,transparent 62%);
   }
-  .hub-card.is-active .hub-wash,
-  .hub-card.is-active .hub-sheen{opacity:1}
-  .hub-deck .hub-card.is-active .hub-ic{box-shadow:0 12px 26px var(--sheen)}
+  .hub-card.is-active .hub-wash{opacity:1}
+  .hub-deck .hub-card.is-active .hub-ic{box-shadow:0 12px 26px var(--aksen)}
   .hub-deck .hub-card.is-active .tag{background:#fff}
   .hub-deck .hub-card.is-active .open{
     background:linear-gradient(150deg,var(--g1),var(--g2));
-    box-shadow:0 10px 22px var(--sheen);
+    box-shadow:0 10px 22px var(--aksen);
   }
   .hub-deck .hub-card.is-active .open:hover{background:linear-gradient(150deg,var(--g2),var(--g1))}
 
@@ -532,14 +524,10 @@ footer{border-top:1px solid var(--mist);padding:26px 20px;text-align:center;font
   }
   .deck-dots button[aria-current="true"]{width:22px;border-radius:4px;background:var(--g2)}
   .deck-hint{text-align:center;font-size:12px;color:#8AA6B4;margin-top:18px}
-
-  @keyframes deckSweep{from{background-position:8% 0}to{background-position:92% 0}}
-  .hub-card.is-active .hub-sheen.sweep{animation:deckSweep .85s cubic-bezier(.3,.7,.3,1)}
 }
 @media (prefers-reduced-motion:reduce){
-  .hub-deck .hub-card,.hub-deck .hub-glow,.hub-wash,.hub-sheen,
+  .hub-deck .hub-card,.hub-deck .hub-glow,.hub-wash,
   .deck-dots button,.deck-arw{transition:none}
-  .hub-card.is-active .hub-sheen.sweep{animation:none}
 }
 </style>
 </head>
@@ -1166,9 +1154,9 @@ function doLogout(){
      Data oranye, Development hijau. Oranye paling maju di mata, jadi
      halaman Data memakai tingkat glow 'soft' supaya sekuat yang lain. */
   var TEMA = {
-    'page-tools':{rgb:'207,237,239',sheen:'rgba(20,184,166,.20)',g1:'#14B8A6',g2:'#0E8E96',ring:'#B7E2E4',glow:'mid'},
-    'page-data' :{rgb:'251,228,198',sheen:'rgba(245,166,35,.16)',g1:'#F5A623',g2:'#E8791D',ring:'#F3D3A6',glow:'soft'},
-    'page-dev'  :{rgb:'210,236,214',sheen:'rgba(43,179,154,.20)',g1:'#2BB39A',g2:'#0F8E7E',ring:'#AEDCB6',glow:'mid'}
+    'page-tools':{rgb:'207,237,239',aksen:'rgba(20,184,166,.20)',g1:'#14B8A6',g2:'#0E8E96',ring:'#B7E2E4',glow:'mid'},
+    'page-data' :{rgb:'251,228,198',aksen:'rgba(245,166,35,.16)',g1:'#F5A623',g2:'#E8791D',ring:'#F3D3A6',glow:'soft'},
+    'page-dev'  :{rgb:'210,236,214',aksen:'rgba(43,179,154,.20)',g1:'#2BB39A',g2:'#0F8E7E',ring:'#AEDCB6',glow:'mid'}
   };
 
   /* Lapis 1 dan 2 saling menindih sekitar 40px dan 26px. Tindihan itu yang
@@ -1223,10 +1211,8 @@ function doLogout(){
     d.kartu.forEach(function(k){
       var glow = k.querySelector(':scope > .hub-glow');
       var wash = document.createElement('span'); wash.className = 'hub-wash';
-      var sheen = document.createElement('span'); sheen.className = 'hub-sheen';
       if(glow) k.insertBefore(wash, glow.nextSibling);
       else k.insertBefore(wash, k.firstChild);
-      k.insertBefore(sheen, wash.nextSibling);
     });
 
     grid.classList.add('hub-deck');
@@ -1236,7 +1222,7 @@ function doLogout(){
     grid.setAttribute('aria-label','Dek kartu — geser dengan panah kiri dan kanan');
     grid.setAttribute('tabindex','0');
     grid.style.setProperty('--tint-rgb', tema.rgb);
-    grid.style.setProperty('--sheen', tema.sheen);
+    grid.style.setProperty('--aksen', tema.aksen);
     grid.style.setProperty('--g1', tema.g1);
     grid.style.setProperty('--g2', tema.g2);
 
@@ -1291,17 +1277,9 @@ function doLogout(){
     grid.addEventListener('pointerdown', function(e){ tekan=true; mulaiX=e.clientX; });
     window.addEventListener('pointerup', function(){ tekan=false; });
     grid.addEventListener('pointermove', function(e){
-      if(tekan){
-        var dx = e.clientX - mulaiX;
-        if(Math.abs(dx) > 85){ geser(d, dx>0?-1:1); mulaiX = e.clientX; }
-        return;
-      }
-      var sheen = d.kartu[d.akt] && d.kartu[d.akt].querySelector(':scope > .hub-sheen');
-      if(sheen && !sheen.classList.contains('sweep')){
-        var r = grid.getBoundingClientRect();
-        var t = Math.max(0, Math.min(1, (e.clientX - r.left) / r.width));
-        sheen.style.backgroundPosition = Math.round(8 + t*84) + '% 0';
-      }
+      if(!tekan) return;
+      var dx = e.clientX - mulaiX;
+      if(Math.abs(dx) > 85){ geser(d, dx>0?-1:1); mulaiX = e.clientX; }
     });
 
     var kunci = 0;
@@ -1320,7 +1298,7 @@ function doLogout(){
     if(!d.hidup) return;
     var grid = d.grid;
     grid.querySelectorAll(':scope > [data-salinan]').forEach(function(k){ k.remove(); });
-    grid.querySelectorAll('.hub-wash, .hub-sheen').forEach(function(s){ s.remove(); });
+    grid.querySelectorAll('.hub-wash').forEach(function(s){ s.remove(); });
     d.asli.forEach(function(k){
       k.classList.remove('is-active');
       k.style.transform=''; k.style.opacity=''; k.style.zIndex='';
@@ -1385,13 +1363,7 @@ function doLogout(){
         else tautan.setAttribute('tabindex','-1');
       }
 
-      var sheen = k.querySelector(':scope > .hub-sheen');
-      if(a === 0){
-        if(!k.classList.contains('is-active')){
-          k.classList.add('is-active');
-          if(sheen){ sheen.classList.remove('sweep'); void sheen.offsetWidth; sheen.classList.add('sweep'); }
-        }
-      } else k.classList.remove('is-active');
+      k.classList.toggle('is-active', a === 0);
     });
 
     d.titik.forEach(function(b, j){
