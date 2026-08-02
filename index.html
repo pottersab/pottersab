@@ -481,8 +481,8 @@ footer{border-top:1px solid var(--mist);padding:26px 20px;text-align:center;font
   .hub-wash{
     position:absolute;inset:0;pointer-events:none;z-index:0;opacity:0;
     transition:opacity .55s;border-radius:inherit;
-    background:linear-gradient(202deg,rgba(var(--tint-rgb),.72) 0%,
-               rgba(var(--tint-rgb),.26) 34%,transparent 62%);
+    background:linear-gradient(202deg,rgba(var(--tint-rgb),.5) 0%,
+               rgba(var(--tint-rgb),.18) 34%,transparent 62%);
   }
   /* Kartu tengah: blob sudut membesar dan sapuannya turun ke seluruh
      permukaan. Ukuran blob dan offsetnya sepasang -- offset selalu
@@ -493,13 +493,14 @@ footer{border-top:1px solid var(--mist);padding:26px 20px;text-align:center;font
   .hub-deck[data-glow="soft"] .hub-card.is-active .hub-glow{
     width:250px;height:250px;top:-90px;right:-90px;opacity:.8;
   }
+  /* Oranye tetap disetel satu tingkat di bawah teal dan hijau supaya jaraknya
+     terjaga waktu sapuan dasarnya diturunkan. */
   .hub-deck[data-glow="soft"] .hub-wash{
-    background:linear-gradient(202deg,rgba(var(--tint-rgb),.5) 0%,
-               rgba(var(--tint-rgb),.18) 34%,transparent 62%);
+    background:linear-gradient(202deg,rgba(var(--tint-rgb),.36) 0%,
+               rgba(var(--tint-rgb),.13) 34%,transparent 62%);
   }
   .hub-card.is-active .hub-wash{opacity:1}
   .hub-deck .hub-card.is-active .hub-ic{box-shadow:0 12px 26px var(--aksen)}
-  .hub-deck .hub-card.is-active .tag{background:#fff}
   .hub-deck .hub-card.is-active .open{
     background:linear-gradient(150deg,var(--g1),var(--g2));
     box-shadow:0 10px 22px var(--aksen);
