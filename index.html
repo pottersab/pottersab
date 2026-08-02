@@ -295,7 +295,7 @@ header{
   position:absolute;top:-50px;right:-50px;width:170px;height:170px;
   border-radius:50%;filter:blur(10px);opacity:.5;pointer-events:none;z-index:0;
 }
-.hub-card > *:not(.hub-glow){position:relative;z-index:1}
+.hub-card > *:not(.hub-glow):not(.hub-wash):not(.hub-sheen){position:relative;z-index:1}
 .hub-card:hover{border-color:#BFD8E0}
 .last-input{
   font-size:11.5px;color:var(--ink-soft);
@@ -447,6 +447,99 @@ footer{border-top:1px solid var(--mist);padding:26px 20px;text-align:center;font
      jadi 4+1 lalu 3+2 -- itu perilaku grid yang diharapkan. */
   .hub-grid{grid-template-columns:repeat(auto-fit,minmax(232px,1fr))}
   .hub-head{margin-bottom:32px}
+}
+
+/* ============ HUB SEBAGAI DEK KARTU (desktop lebar) ============
+   Kelas .hub-deck dipasang oleh JS di atas .hub-grid yang sudah ada, bukan
+   menggantikannya. Kalau JS mati atau layar lebih sempit dari 1180px, markup
+   yang sama tetap tampil sebagai grid seperti sebelumnya.
+   1180px dipilih karena kartu terluar berhenti di 455+105=560px dari poros;
+   di bawah itu kartu lapis kedua mulai terpotong tepi layar. */
+@media (min-width:1180px){
+  .hub-deck{
+    display:block;position:relative;height:440px;
+    max-width:var(--w-inner,1180px);margin:0 auto;perspective:1500px;
+  }
+  .hub-deck .hub-card{
+    position:absolute;left:50%;top:50%;width:320px;padding:24px;margin:0;
+    transition:transform .5s cubic-bezier(.22,.75,.3,1),opacity .5s,
+               box-shadow .5s,border-color .5s;
+    will-change:transform;
+  }
+  /* p diberi tinggi minimum supaya kartu pendek dan panjang tidak terlalu
+     beda tinggi ketika berdiri berdampingan di dek. */
+  .hub-deck .hub-card p{min-height:84px}
+  .hub-deck .hub-card > *:not(.hub-glow):not(.hub-wash):not(.hub-sheen){z-index:2}
+  /* transform kartu diatur JS lewat style inline, jadi hover translateY dari
+     aturan grid tidak boleh ikut campur di mode dek. */
+  .hub-deck .hub-card:hover{transform:none}
+
+  .hub-deck .hub-glow{
+    transition:width .55s cubic-bezier(.22,.75,.3,1),height .55s cubic-bezier(.22,.75,.3,1),
+               opacity .55s,top .55s,right .55s;
+  }
+  .hub-wash{
+    position:absolute;inset:0;pointer-events:none;z-index:0;opacity:0;
+    transition:opacity .55s;border-radius:inherit;
+    background:linear-gradient(202deg,rgba(var(--tint-rgb),.72) 0%,
+               rgba(var(--tint-rgb),.26) 34%,transparent 62%);
+  }
+  .hub-sheen{
+    position:absolute;inset:0;pointer-events:none;z-index:1;opacity:0;
+    transition:opacity .45s;border-radius:inherit;
+    background:linear-gradient(112deg,transparent 34%,var(--sheen) 48%,transparent 62%);
+    background-size:260% 100%;background-position:50% 0;
+  }
+
+  /* Kartu tengah: blob sudut membesar, sapuan turun ke seluruh permukaan,
+     sheen menyala. Ukuran blob dan offsetnya sepasang -- offset selalu
+     -((ukuran-170)/2 + 50) supaya pusat lingkaran tetap di sudut yang sama. */
+  .hub-deck[data-glow="mid"] .hub-card.is-active .hub-glow{
+    width:300px;height:300px;top:-115px;right:-115px;opacity:1;
+  }
+  .hub-deck[data-glow="soft"] .hub-card.is-active .hub-glow{
+    width:250px;height:250px;top:-90px;right:-90px;opacity:.8;
+  }
+  .hub-deck[data-glow="soft"] .hub-wash{
+    background:linear-gradient(202deg,rgba(var(--tint-rgb),.5) 0%,
+               rgba(var(--tint-rgb),.18) 34%,transparent 62%);
+  }
+  .hub-card.is-active .hub-wash,
+  .hub-card.is-active .hub-sheen{opacity:1}
+  .hub-deck .hub-card.is-active .hub-ic{box-shadow:0 12px 26px var(--sheen)}
+  .hub-deck .hub-card.is-active .tag{background:#fff}
+  .hub-deck .hub-card.is-active .open{
+    background:linear-gradient(150deg,var(--g1),var(--g2));
+    box-shadow:0 10px 22px var(--sheen);
+  }
+  .hub-deck .hub-card.is-active .open:hover{background:linear-gradient(150deg,var(--g2),var(--g1))}
+
+  .deck-arw{
+    position:absolute;top:50%;z-index:99;width:46px;height:46px;border-radius:50%;
+    border:1px solid var(--mist);background:#fff;color:var(--ink);
+    display:grid;place-items:center;padding:0;cursor:pointer;
+    box-shadow:0 4px 12px rgba(10,37,55,.07);
+    transition:border-color .2s,transform .2s,color .2s;
+  }
+  .deck-arw:hover{border-color:var(--g2);color:var(--g2)}
+  .deck-arw.prev{left:-6px;transform:translateY(-50%)}
+  .deck-arw.next{right:-6px;transform:translateY(-50%)}
+  .deck-arw.prev:hover,.deck-arw.next:hover{transform:translateY(-50%) scale(1.07)}
+  .deck-dots{display:flex;gap:7px;justify-content:center;margin-top:2px}
+  .deck-dots button{
+    width:8px;height:8px;padding:0;border:0;border-radius:50%;background:#C4D8E0;
+    cursor:pointer;transition:width .35s,background .35s,border-radius .35s;
+  }
+  .deck-dots button[aria-current="true"]{width:22px;border-radius:4px;background:var(--g2)}
+  .deck-hint{text-align:center;font-size:12px;color:#8AA6B4;margin-top:18px}
+
+  @keyframes deckSweep{from{background-position:8% 0}to{background-position:92% 0}}
+  .hub-card.is-active .hub-sheen.sweep{animation:deckSweep .85s cubic-bezier(.3,.7,.3,1)}
+}
+@media (prefers-reduced-motion:reduce){
+  .hub-deck .hub-card,.hub-deck .hub-glow,.hub-wash,.hub-sheen,
+  .deck-dots button,.deck-arw{transition:none}
+  .hub-card.is-active .hub-sheen.sweep{animation:none}
 }
 </style>
 </head>
@@ -1056,6 +1149,275 @@ function doLogout(){
       if(wadukBadge) wadukBadge.lastChild.textContent = (data.waduk || []).length + ' waduk';
     })
     .catch(function(err){ console.error('Gagal memuat preview peta hero', err); });
+})();
+
+/* ============ HUB SEBAGAI DEK KARTU ============
+   Mengubah .hub-grid jadi carousel bergaya coverflow di layar >=1180px:
+   kartu tengah berukuran penuh, tetangganya mengecil dan miring menghadap
+   ke tengah, dan dek menyambung tanpa ujung.
+
+   Markup grid tidak digandakan. Kartu yang sama dipindah posisinya lewat
+   transform, jadi kalau media query tidak terpenuhi (atau JS gagal) yang
+   tersisa adalah grid asli -- bukan halaman kosong. */
+(function(){
+  var MQ = window.matchMedia('(min-width:1180px)');
+
+  /* Warna diambil dari kode warna yang sudah dipakai tiap hub: Tools teal,
+     Data oranye, Development hijau. Oranye paling maju di mata, jadi
+     halaman Data memakai tingkat glow 'soft' supaya sekuat yang lain. */
+  var TEMA = {
+    'page-tools':{rgb:'207,237,239',sheen:'rgba(20,184,166,.20)',g1:'#14B8A6',g2:'#0E8E96',ring:'#B7E2E4',glow:'mid'},
+    'page-data' :{rgb:'251,228,198',sheen:'rgba(245,166,35,.16)',g1:'#F5A623',g2:'#E8791D',ring:'#F3D3A6',glow:'soft'},
+    'page-dev'  :{rgb:'210,236,214',sheen:'rgba(43,179,154,.20)',g1:'#2BB39A',g2:'#0F8E7E',ring:'#AEDCB6',glow:'mid'}
+  };
+
+  /* Lapis 1 dan 2 saling menindih sekitar 40px dan 26px. Tindihan itu yang
+     bikin kartu terbaca sebagai satu dek, bukan tiga kotak berjajar. */
+  var LAPIS = {1:{x:250,s:.82,o:.95,z:40},2:{x:455,s:.66,o:.5,z:30}};
+  var TAMPAK = 2;
+  var IKON_KIRI = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>';
+  var IKON_KANAN = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>';
+
+  var deks = [];
+
+  function buat(pageId){
+    var page = document.getElementById(pageId);
+    if(!page) return null;
+    var grid = page.querySelector('.hub-grid');
+    if(!grid) return null;
+
+    var tema = TEMA[pageId];
+    var asli = Array.prototype.slice.call(grid.querySelectorAll(':scope > .hub-card'));
+    if(asli.length < 2) return null;
+
+    var d = {
+      grid:grid, tema:tema, asli:asli, kartu:[], titik:[],
+      unik:asli.length, n:0, akt:0, hidup:false, els:{}
+    };
+
+    /* Dek 5 slot butuh minimal 5 kartu. Data dan Development cuma punya 4,
+       jadi deknya diputar dua kali: 8 elemen untuk 4 kartu. Salinan selalu
+       berjarak 4 posisi -- di luar jangkauan yang terlihat -- sehingga satu
+       kartu tidak pernah muncul dua kali di layar. */
+    d.ulang = d.unik < 5 ? 2 : 1;
+    d.n = d.unik * d.ulang;
+    return d;
+  }
+
+  function pasang(d){
+    if(d.hidup) return;
+    var grid = d.grid, tema = d.tema;
+
+    for(var r=1; r<d.ulang; r++){
+      d.asli.forEach(function(k){
+        var salinan = k.cloneNode(true);
+        salinan.setAttribute('aria-hidden','true');
+        salinan.setAttribute('data-salinan','1');
+        var tautan = salinan.querySelector('.open');
+        if(tautan) tautan.setAttribute('tabindex','-1');
+        grid.appendChild(salinan);
+      });
+    }
+    d.kartu = Array.prototype.slice.call(grid.querySelectorAll(':scope > .hub-card'));
+
+    d.kartu.forEach(function(k){
+      var glow = k.querySelector(':scope > .hub-glow');
+      var wash = document.createElement('span'); wash.className = 'hub-wash';
+      var sheen = document.createElement('span'); sheen.className = 'hub-sheen';
+      if(glow) k.insertBefore(wash, glow.nextSibling);
+      else k.insertBefore(wash, k.firstChild);
+      k.insertBefore(sheen, wash.nextSibling);
+    });
+
+    grid.classList.add('hub-deck');
+    grid.setAttribute('data-glow', tema.glow);
+    grid.setAttribute('role','group');
+    grid.setAttribute('aria-roledescription','carousel');
+    grid.setAttribute('aria-label','Dek kartu — geser dengan panah kiri dan kanan');
+    grid.setAttribute('tabindex','0');
+    grid.style.setProperty('--tint-rgb', tema.rgb);
+    grid.style.setProperty('--sheen', tema.sheen);
+    grid.style.setProperty('--g1', tema.g1);
+    grid.style.setProperty('--g2', tema.g2);
+
+    var prev = document.createElement('button');
+    prev.type='button'; prev.className='deck-arw prev';
+    prev.setAttribute('aria-label','Kartu sebelumnya'); prev.innerHTML = IKON_KIRI;
+    var next = document.createElement('button');
+    next.type='button'; next.className='deck-arw next';
+    next.setAttribute('aria-label','Kartu berikutnya'); next.innerHTML = IKON_KANAN;
+    grid.appendChild(prev); grid.appendChild(next);
+
+    var titik = document.createElement('div');
+    titik.className = 'deck-dots';
+    for(var j=0; j<d.unik; j++){
+      (function(j){
+        var b = document.createElement('button');
+        b.type='button';
+        b.setAttribute('aria-label','Ke kartu ke-' + (j+1));
+        b.addEventListener('click', function(){ d.akt = terdekat(d, j); gambar(d); });
+        titik.appendChild(b); d.titik.push(b);
+      })(j);
+    }
+    var petunjuk = document.createElement('p');
+    petunjuk.className = 'deck-hint';
+    petunjuk.textContent = 'Geser, klik panah, atau klik kartu di samping untuk memindahkannya ke tengah';
+    grid.parentNode.insertBefore(titik, grid.nextSibling);
+    grid.parentNode.insertBefore(petunjuk, titik.nextSibling);
+
+    d.els = {prev:prev, next:next, titik:titik, petunjuk:petunjuk};
+    d.hidup = true;
+
+    prev.addEventListener('click', function(){ geser(d,-1); });
+    next.addEventListener('click', function(){ geser(d, 1); });
+
+    /* Kartu di samping tidak boleh membuka tautannya -- klik pertama
+       memindahkannya ke tengah dulu, klik kedua baru membuka. */
+    grid.addEventListener('click', function(e){
+      var k = e.target.closest ? e.target.closest('.hub-card') : null;
+      if(!k || k.parentNode !== grid) return;
+      var i = d.kartu.indexOf(k);
+      if(i < 0 || i === d.akt) return;
+      e.preventDefault(); e.stopPropagation();
+      d.akt = i; gambar(d);
+    }, true);
+
+    grid.addEventListener('keydown', function(e){
+      if(e.key === 'ArrowRight'){ geser(d, 1); e.preventDefault(); }
+      if(e.key === 'ArrowLeft'){ geser(d,-1); e.preventDefault(); }
+    });
+
+    var tekan=false, mulaiX=0;
+    grid.addEventListener('pointerdown', function(e){ tekan=true; mulaiX=e.clientX; });
+    window.addEventListener('pointerup', function(){ tekan=false; });
+    grid.addEventListener('pointermove', function(e){
+      if(tekan){
+        var dx = e.clientX - mulaiX;
+        if(Math.abs(dx) > 85){ geser(d, dx>0?-1:1); mulaiX = e.clientX; }
+        return;
+      }
+      var sheen = d.kartu[d.akt] && d.kartu[d.akt].querySelector(':scope > .hub-sheen');
+      if(sheen && !sheen.classList.contains('sweep')){
+        var r = grid.getBoundingClientRect();
+        var t = Math.max(0, Math.min(1, (e.clientX - r.left) / r.width));
+        sheen.style.backgroundPosition = Math.round(8 + t*84) + '% 0';
+      }
+    });
+
+    var kunci = 0;
+    grid.addEventListener('wheel', function(e){
+      var t = Date.now();
+      if(t - kunci < 400) return;
+      if(Math.abs(e.deltaX) > Math.abs(e.deltaY) && Math.abs(e.deltaX) > 8){
+        kunci = t; geser(d, e.deltaX>0?1:-1); e.preventDefault();
+      }
+    }, {passive:false});
+
+    gambar(d);
+  }
+
+  function bongkar(d){
+    if(!d.hidup) return;
+    var grid = d.grid;
+    grid.querySelectorAll(':scope > [data-salinan]').forEach(function(k){ k.remove(); });
+    grid.querySelectorAll('.hub-wash, .hub-sheen').forEach(function(s){ s.remove(); });
+    d.asli.forEach(function(k){
+      k.classList.remove('is-active');
+      k.style.transform=''; k.style.opacity=''; k.style.zIndex='';
+      k.style.boxShadow=''; k.style.borderColor=''; k.style.cursor='';
+      k.style.pointerEvents='';
+      var tautan = k.querySelector('.open');
+      if(tautan) tautan.removeAttribute('tabindex');
+    });
+    grid.classList.remove('hub-deck');
+    ['data-glow','role','aria-roledescription','aria-label','tabindex'].forEach(function(a){
+      grid.removeAttribute(a);
+    });
+    if(d.els.prev) d.els.prev.remove();
+    if(d.els.next) d.els.next.remove();
+    if(d.els.titik) d.els.titik.remove();
+    if(d.els.petunjuk) d.els.petunjuk.remove();
+    d.titik = []; d.kartu = []; d.akt = 0; d.hidup = false;
+  }
+
+  /* Jarak melingkar terpendek dari kartu aktif: nilainya -n/2..n/2, jadi
+     kartu terakhir bertetangga langsung dengan kartu pertama. */
+  function jarak(d, i){
+    var v = (i - d.akt) % d.n; if(v < 0) v += d.n;
+    return v > d.n/2 ? v - d.n : v;
+  }
+  function terdekat(d, j){
+    var pilih = j, min = Infinity;
+    for(var k = j; k < d.n; k += d.unik){
+      var v = Math.abs(jarak(d, k));
+      if(v < min){ min = v; pilih = k; }
+    }
+    return pilih;
+  }
+  function geser(d, arah){
+    d.akt = ((d.akt + arah) % d.n + d.n) % d.n;
+    gambar(d);
+  }
+
+  function gambar(d){
+    d.kartu.forEach(function(k, i){
+      var v = jarak(d, i), a = Math.abs(v), tampak = a <= TAMPAK;
+      var x, s, o, z;
+      if(a === 0){ x=0; s=1; o=1; z=50; }
+      else {
+        var L = LAPIS[a] || LAPIS[2];
+        x = (v<0?-1:1) * L.x; s = L.s; o = tampak ? L.o : 0; z = L.z;
+      }
+      var putar = a === 0 ? 0 : (v<0 ? 9 : -9);
+      k.style.transform = 'translate(-50%,-50%) translateX('+x+'px) scale('+s+') rotateY('+putar+'deg)';
+      k.style.opacity = o;
+      k.style.zIndex = z;
+      k.style.boxShadow = a === 0
+        ? '0 24px 50px rgba(10,37,55,.18), 0 0 0 1px ' + d.tema.ring
+        : '0 6px 16px rgba(10,37,55,.06)';
+      k.style.borderColor = a === 0 ? 'transparent' : '';
+      k.style.cursor = a === 0 ? '' : 'pointer';
+      k.style.pointerEvents = tampak ? '' : 'none';
+
+      var tautan = k.querySelector('.open');
+      if(tautan && !k.hasAttribute('data-salinan')) {
+        if(a === 0) tautan.removeAttribute('tabindex');
+        else tautan.setAttribute('tabindex','-1');
+      }
+
+      var sheen = k.querySelector(':scope > .hub-sheen');
+      if(a === 0){
+        if(!k.classList.contains('is-active')){
+          k.classList.add('is-active');
+          if(sheen){ sheen.classList.remove('sweep'); void sheen.offsetWidth; sheen.classList.add('sweep'); }
+        }
+      } else k.classList.remove('is-active');
+    });
+
+    d.titik.forEach(function(b, j){
+      b.setAttribute('aria-current', (d.akt % d.unik) === j ? 'true' : 'false');
+    });
+  }
+
+  ['page-tools','page-data','page-dev'].forEach(function(id){
+    var d = buat(id);
+    if(d) deks.push(d);
+  });
+
+  function terapkan(){
+    deks.forEach(function(d){ MQ.matches ? pasang(d) : bongkar(d); });
+  }
+  if(MQ.addEventListener) MQ.addEventListener('change', terapkan);
+  else MQ.addListener(terapkan);
+  /* Sebagian browser tidak mengirim 'change' saat jendela diubah lewat alat
+     pengembang. resize dipakai sebagai jaring pengaman -- terapkan() sendiri
+     sudah aman dipanggil berulang karena dijaga bendera d.hidup. */
+  var tunda;
+  window.addEventListener('resize', function(){
+    clearTimeout(tunda);
+    tunda = setTimeout(terapkan, 150);
+  });
+  terapkan();
 })();
 </script>
 
