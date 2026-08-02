@@ -152,7 +152,8 @@ window.LpjBuilder = (function () {
   const TOTAL_MAKS = 93, MIN_KEGIATAN = 24;
   function lebarKolom(data){
     const gs = groupItems(data.items);
-    const tanggal=['Tanggal'], kegiatan=['Kegiatan'], jenis=['Keterangan'], jumlah=['Jumlah'];
+    // Kegiatan tidak ikut diukur -- kolomnya memang mengambil sisa lebar.
+    const tanggal=['Tanggal'], jenis=['Keterangan'], jumlah=['Jumlah'];
     let nomorMaks = 1, totalOps = 0;
     gs.forEach(g=>{
       nomorMaks = Math.max(nomorMaks, g.items.length);
@@ -162,7 +163,6 @@ window.LpjBuilder = (function () {
       tanggal.push(g.judul);
       g.items.forEach(it=>{
         tanggal.push(formatTanggalIndo(it.tanggal));
-        kegiatan.push(it.kegiatan||'');
         jenis.push(it.jenis||'');
         jumlah.push(pisahRibu(it.jumlah));
       });
@@ -178,15 +178,15 @@ window.LpjBuilder = (function () {
     // Format akuntansi menyisakan ruang di kiri-kanan angka, jadi kolom
     // Jumlah perlu tambahan lebih banyak daripada kolom teks biasa.
     let e = Math.max(panjang(jumlah) + 5, 12);
-    let c = Math.max(panjang(kegiatan) + 3, MIN_KEGIATAN);
-
     // Blok tanda tangan kanan memakai gabungan kolom D+E, dan sel gabungan
     // memotong teks yang kelebihan -- jadi lebarnya dijaga di sini.
     const kanan = panjang(['Dibuat Oleh', data.pembuatJabatan||'', data.pembuatNama||'']) + 2;
     if(d + e < kanan) e += kanan - (d + e);
 
-    const sisa = TOTAL_MAKS - (a + b + d + e);
-    if(c > sisa) c = Math.max(MIN_KEGIATAN, sisa);
+    // Kegiatan mengambil semua sisa lebar, bukan cuma selebar teksnya:
+    // tabelnya jadi selalu selebar surat, tidak menyempit sendiri waktu
+    // uraian kegiatannya kebetulan pendek.
+    const c = Math.max(MIN_KEGIATAN, TOTAL_MAKS - (a + b + d + e));
 
     const bulat = n => Math.round(n*100)/100;
     return { a:bulat(a), b:bulat(b), c:bulat(c), d:bulat(d), e:bulat(e) };
@@ -226,7 +226,7 @@ window.LpjBuilder = (function () {
 <border><left style="thin"><color indexed="64"/></left><right style="thin"><color indexed="64"/></right><top/><bottom/><diagonal/></border>
 </borders>
 <cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
-<cellXfs count="17">
+<cellXfs count="13">
 <xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>
 <xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1" applyAlignment="1"><alignment horizontal="center"/></xf>
 <xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1" applyAlignment="1"><alignment horizontal="left"/></xf>
@@ -240,20 +240,11 @@ window.LpjBuilder = (function () {
 <xf numFmtId="0" fontId="1" fillId="0" borderId="2" xfId="0" applyFont="1" applyBorder="1" applyAlignment="1"><alignment horizontal="left" vertical="center" wrapText="1"/></xf>
 <xf numFmtId="164" fontId="1" fillId="0" borderId="2" xfId="0" applyNumberFormat="1" applyFont="1" applyBorder="1" applyAlignment="1"><alignment vertical="center"/></xf>
 <xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1" applyAlignment="1"><alignment horizontal="right"/></xf>
-<xf numFmtId="0" fontId="2" fillId="0" borderId="0" xfId="0" applyFont="1" applyAlignment="1"><alignment horizontal="left"/></xf>
-<xf numFmtId="0" fontId="2" fillId="0" borderId="0" xfId="0" applyFont="1" applyAlignment="1"><alignment horizontal="right"/></xf>
-<xf numFmtId="0" fontId="3" fillId="0" borderId="0" xfId="0" applyFont="1" applyAlignment="1"><alignment horizontal="left"/></xf>
-<xf numFmtId="0" fontId="3" fillId="0" borderId="0" xfId="0" applyFont="1" applyAlignment="1"><alignment horizontal="right"/></xf>
 </cellXfs>
 <cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>
 </styleSheet>`;
 
-  // Blok tanda tangan: rata kiri untuk kolom kiri, rata kanan untuk kolom
-  // kanan. Sebelumnya dua-duanya rata tengah di dalam sel gabungan, tapi
-  // lebar kolom di sini mengikuti isi tabel (kolom Kegiatan hampir separuh
-  // lebar surat), jadi titik tengah tiap gabungan jatuh di tempat yang tidak
-  // beraturan dan blok tanda tangannya kelihatan berpencar.
-  const S_RIGHT=12, S_BOLD_LEFT_PLAIN=13, S_BOLD_RIGHT=14, S_NAME_LEFT=15, S_NAME_RIGHT=16;
+  const S_RIGHT=12;
   const S_CENTER=1, S_LEFT_PLAIN=2, S_BOLD_CENTER=3, S_NAME=4,
         S_BOX_BOLD_CENTER=5, S_BOX_BOLD_MONEY=6,
         S_SIDE_BOLD_CENTER=7, S_SIDE_BOLD_LEFT=8,
@@ -362,24 +353,26 @@ window.LpjBuilder = (function () {
     const rNama2 = rJabatan2 + 4;
 
     const koma = s => s ? s + ',' : '';
-    // Kolom kiri dipatok ke tepi kiri kolom B, kolom kanan ke tepi kanan
-    // kolom E, dan blok "Disetujui Oleh" digabung selebar tabel (A:E) supaya
-    // benar-benar di tengah. Semuanya tidak bergantung pada lebar kolom yang
-    // berubah-ubah mengikuti isi.
+    // Surat dibagi dua: separuh kiri (A:C) untuk "Diperiksa Oleh", separuh
+    // kanan (D:E) untuk "Dibuat Oleh", dan "Disetujui Oleh" digabung selebar
+    // tabel (A:E). Isinya rata tengah di dalam gabungannya masing-masing --
+    // yang membuat versi sebelumnya kelihatan berpencar bukan perataannya,
+    // tapi gabungan yang belum membelah surat jadi dua bagian utuh.
+    // Tanggal surat rata kanan supaya menempel di tepi kanan tabel.
     addRow(rTgl,[cell(4,S_RIGHT,{type:'str',value:`Balikpapan, ${formatTanggalIndo(data.tanggalSurat)||''}`})]);
     merges.push(`C${rTgl}:E${rTgl}`);
 
     addRow(rLabel,[
-      cell(1,S_BOLD_LEFT_PLAIN,{type:'str',value:'Diperiksa Oleh'}),
-      cell(4,S_BOLD_RIGHT,{type:'str',value:'Dibuat Oleh'}),
+      cell(1,S_BOLD_CENTER,{type:'str',value:'Diperiksa Oleh'}),
+      cell(4,S_BOLD_CENTER,{type:'str',value:'Dibuat Oleh'}),
     ]);
     addRow(rJabatan,[
-      cell(1,S_LEFT_PLAIN,{type:'str',value:koma(data.pemeriksaJabatan)}),
-      cell(4,S_RIGHT,{type:'str',value:koma(data.pembuatJabatan)}),
+      cell(1,S_CENTER,{type:'str',value:koma(data.pemeriksaJabatan)}),
+      cell(4,S_CENTER,{type:'str',value:koma(data.pembuatJabatan)}),
     ]);
     addRow(rNama,[
-      cell(1,S_NAME_LEFT,{type:'str',value:data.pemeriksaNama||''}),
-      cell(4,S_NAME_RIGHT,{type:'str',value:data.pembuatNama||''}),
+      cell(1,S_NAME,{type:'str',value:data.pemeriksaNama||''}),
+      cell(4,S_NAME,{type:'str',value:data.pembuatNama||''}),
     ]);
     merges.push(`A${rLabel}:C${rLabel}`,`D${rLabel}:E${rLabel}`,
                 `A${rJabatan}:C${rJabatan}`,`D${rJabatan}:E${rJabatan}`,
