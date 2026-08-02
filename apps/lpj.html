@@ -392,6 +392,18 @@
         </div>
       </div>
 
+      <div class="row2" style="margin-top:2px;">
+        <div>
+          <label for="fJudul">Judul surat</label>
+          <input type="text" id="fJudul" placeholder="LAPORAN PERTANGGUNG JAWABAN">
+        </div>
+        <div>
+          <label for="fSubDivisi">Sub Divisi</label>
+          <input type="text" id="fSubDivisi" placeholder="kosongkan bila tidak dipakai">
+        </div>
+      </div>
+      <div class="hint" id="subDivisiHint"></div>
+
       <label for="fPeriode">Periode (judul baris ke-3)</label>
       <div class="lock-line">
         <input type="text" id="fPeriode" readonly placeholder="otomatis dari tanggal item">
@@ -610,6 +622,10 @@ function itemKosong(jenis){
 function blankState(){
   const s = {
     voucherNo:'', tanggalSurat: todayStr(),
+    judul: window.LpjBuilder.JUDUL_DEFAULT,
+    // Sub divisi sengaja kosong untuk pengguna umum -- surat mereka bukan
+    // surat Sub Divisi Sumber Air Baku.
+    subDivisi:'',
     periode:'', periodeManual:false,
     items:[itemKosong()],
     permintaanDana:'',
@@ -618,7 +634,10 @@ function blankState(){
     pembuatNama:'', pembuatJabatan:'',
     penyetujuNama:'', penyetujuJabatan:'',
   };
-  if(ADMIN) Object.assign(s, SIGNER_DEFAULT);
+  if(ADMIN){
+    Object.assign(s, SIGNER_DEFAULT);
+    s.subDivisi = window.LpjBuilder.SUB_DIVISI_DEFAULT;
+  }
   return s;
 }
 function loadDraft(){
@@ -670,6 +689,8 @@ function currentDoc(){
   return {
     voucherNo: state.voucherNo,
     tanggalSurat: state.tanggalSurat,
+    judul: state.judul,
+    subDivisi: state.subDivisi,
     periode: periodeAktif(),
     items: JSON.parse(JSON.stringify(state.items)),
     permintaanDana: angka(state.permintaanDana),
@@ -698,7 +719,9 @@ function docHtml(d){
     body = `<tr><td colspan="5"><div class="doc-empty">Belum ada item terisi.</div></td></tr>`;
   }else{
     gs.forEach(g=>{
-      body += `<tr class="sect"><td class="center">${esc(g.romawi)}</td><td colspan="2">${esc(g.judul)}</td><td></td><td></td></tr>`;
+      // Tanpa colspan supaya garis kolomnya lurus dengan baris item di
+      // bawahnya -- sama seperti di file .xlsx.
+      body += `<tr class="sect"><td class="center">${esc(g.romawi)}</td><td class="tgl">${esc(g.judul)}</td><td></td><td></td><td></td></tr>`;
       g.items.forEach((it,i)=>{
         body += `<tr>
           <td class="center">${i+1}</td>
@@ -712,11 +735,12 @@ function docHtml(d){
     body += `<tr><td></td><td></td><td></td><td></td><td></td></tr>`;
   }
 
+  const judul = window.LpjBuilder.barisJudul(d);
   return `
     <div class="doc-title">
-      LAPORAN PERTANGGUNG JAWABAN<br>
-      BIAYA OPERASIONAL SUB DIVISI SUMBER AIR BAKU<br>
-      ${d.periode ? 'BULAN ' + esc(d.periode) : '&nbsp;'}
+      ${esc(judul[0])}<br>
+      ${esc(judul[1])}<br>
+      ${judul[2] ? esc(judul[2]) : '&nbsp;'}
     </div>
     <div class="doc-voucher">Atas Voucher No. ${esc(d.voucherNo||'')}</div>
     <table class="doc-table">
@@ -841,9 +865,8 @@ function renderPeriode(){
   document.getElementById('periodeHint').textContent = state.periodeManual
     ? 'Periode diisi manual. Tekan "Otomatis" untuk kembali mengikuti tanggal item.'
     : 'Terisi otomatis dari tanggal item paling awal sampai paling akhir.';
-  const p = periodeAktif();
   document.getElementById('judulView').textContent =
-    'LAPORAN PERTANGGUNG JAWABAN BIAYA OPERASIONAL SUB DIVISI SUMBER AIR BAKU' + (p ? ' — BULAN ' + p : '');
+    window.LpjBuilder.barisJudul(currentDoc()).filter(Boolean).join(' — ');
 }
 
 function renderAll(){
@@ -1097,6 +1120,7 @@ function setStatus(msg, cls){
 // ---------------------- isi form dari state ----------------------
 const TEXT_FIELDS = {
   fVoucher:'voucherNo', fTanggalSurat:'tanggalSurat', fPermintaan:'permintaanDana',
+  fJudul:'judul', fSubDivisi:'subDivisi',
   fPemeriksaNama:'pemeriksaNama', fPemeriksaJabatan:'pemeriksaJabatan',
   fPembuatNama:'pembuatNama',     fPembuatJabatan:'pembuatJabatan',
   fPenyetujuNama:'penyetujuNama', fPenyetujuJabatan:'penyetujuJabatan',
@@ -1236,6 +1260,10 @@ function wireDetail(){
     state = Object.assign(blankState(), {
       voucherNo: d.voucherNo || '',
       tanggalSurat: d.tanggalSurat || todayStr(),
+      // Judul & sub divisi diambil apa adanya dari surat lama. Entri lama
+      // yang belum punya kolom ini dianggap memakai judul bakunya.
+      judul: d.judul == null ? window.LpjBuilder.JUDUL_DEFAULT : d.judul,
+      subDivisi: d.subDivisi == null ? window.LpjBuilder.SUB_DIVISI_DEFAULT : d.subDivisi,
       // Periode ikut dikunci manual: surat lama sudah punya periodenya
       // sendiri, dan menghitung ulang dari tanggal item bisa mengubahnya.
       periode: d.periode || '', periodeManual: !!d.periode,
@@ -1294,6 +1322,8 @@ function applyAkses(){
     document.getElementById('adminAvatar').textContent = nama.trim().charAt(0).toUpperCase() || 'A';
     document.getElementById('signerHint').textContent =
       'Terisi dari template bersama. Boleh diubah untuk surat ini — perubahannya tidak mengubah templatenya.';
+    document.getElementById('subDivisiHint').textContent =
+      'Judul baris ke-2 jadi "BIAYA OPERASIONAL SUB DIVISI <sub divisi>". Terisi baku Sumber Air Baku, boleh diganti.';
     document.getElementById('histHint').textContent =
       'Riwayat dari server — LPJ yang diunduh admin mana pun ikut tampil di sini dan di Dashboard Admin.';
     document.getElementById('footerNote').textContent =
@@ -1302,6 +1332,8 @@ function applyAkses(){
     document.getElementById('navLoginBtn').style.display = '';
     document.getElementById('signerHint').textContent =
       'Nama pejabat sengaja dikosongkan untuk pengguna umum. Isi sendiri kalau memang perlu tercetak — isian tersimpan di perangkat ini saja.';
+    document.getElementById('subDivisiHint').textContent =
+      'Dikosongkan untuk pengguna umum — judul jadi "BIAYA OPERASIONAL" saja. Isi kalau suratmu memang atas nama sub divisi tertentu.';
     document.getElementById('histHint').textContent =
       'Riwayat tersimpan di perangkat ini saja, tidak dikirim ke server.';
     document.getElementById('footerNote').textContent =

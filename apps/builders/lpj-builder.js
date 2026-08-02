@@ -119,6 +119,21 @@ window.LpjBuilder = (function () {
   function totalOperasional(items){
     return groupItems(items).reduce((s,g)=>s+g.subtotal,0);
   }
+  // Tiga baris judul di kepala surat. Sub divisi dipisah supaya bisa diganti
+  // (atau dikosongkan untuk pengguna umum) tanpa mengetik ulang seluruh
+  // judulnya -- kalau kosong, kata "SUB DIVISI" ikut hilang supaya tidak
+  // tertinggal menggantung.
+  const JUDUL_DEFAULT = 'LAPORAN PERTANGGUNG JAWABAN';
+  const SUB_DIVISI_DEFAULT = 'SUMBER AIR BAKU';
+  function barisJudul(data){
+    const sub = String(data.subDivisi || '').trim();
+    return [
+      String(data.judul == null ? JUDUL_DEFAULT : data.judul).trim(),
+      sub ? `BIAYA OPERASIONAL SUB DIVISI ${sub}` : 'BIAYA OPERASIONAL',
+      (data.periode || periodeOtomatis(data.items)) ? `BULAN ${data.periode || periodeOtomatis(data.items)}` : ''
+    ];
+  }
+
   function pisahRibu(n){
     const bulat = Math.round(Math.abs(angka(n)));
     const teks = String(bulat).replace(/\B(?=(\d{3})+(?!\d))/g,'.');
@@ -142,6 +157,9 @@ window.LpjBuilder = (function () {
     gs.forEach(g=>{
       nomorMaks = Math.max(nomorMaks, g.items.length);
       totalOps += g.subtotal;
+      // Judul bagian ("Biaya Konsumsi") duduk di kolom Tanggal tanpa
+      // penggabungan sel, jadi lebarnya ikut ditentukan judul terpanjang.
+      tanggal.push(g.judul);
       g.items.forEach(it=>{
         tanggal.push(formatTanggalIndo(it.tanggal));
         kegiatan.push(it.kegiatan||'');
@@ -243,9 +261,10 @@ window.LpjBuilder = (function () {
     function cell(col,style,opts){return Object.assign({col,style},opts);}
     const merges=[];
 
-    addRow(2,[cell(1,S_BOLD_CENTER,{type:'str',value:'LAPORAN PERTANGGUNG JAWABAN'})]);
-    addRow(3,[cell(1,S_BOLD_CENTER,{type:'str',value:'BIAYA OPERASIONAL SUB DIVISI SUMBER AIR BAKU'})]);
-    addRow(4,[cell(1,S_BOLD_CENTER,{type:'str',value:periode ? `BULAN ${periode}` : ''})]);
+    const judul = barisJudul(Object.assign({}, data, { periode }));
+    addRow(2,[cell(1,S_BOLD_CENTER,{type:'str',value:judul[0]})]);
+    addRow(3,[cell(1,S_BOLD_CENTER,{type:'str',value:judul[1]})]);
+    addRow(4,[cell(1,S_BOLD_CENTER,{type:'str',value:judul[2]})]);
     addRow(5,[cell(1,S_BOLD_CENTER,{type:'str',value:`Atas Voucher No. ${data.voucherNo||''}`})]);
     merges.push('A2:E2','A3:E3','A4:E4','A5:E5');
 
@@ -265,6 +284,10 @@ window.LpjBuilder = (function () {
     let rn = HEADER_ROW + 1;
     const rentangItem = [];
     groups.forEach(g=>{
+      // Judul bagian TIDAK menggabung B:C -- kalau digabung, garis pemisah
+      // Tanggal|Kegiatan putus di baris ini dan tidak lurus dengan baris
+      // item di bawahnya. Lebar kolom B sudah ikut memperhitungkan judul
+      // bagian (lihat lebarKolom) supaya tetap muat tanpa penggabungan.
       addRow(rn,[
         cell(1,S_SIDE_BOLD_CENTER,{type:'str',value:g.romawi}),
         cell(2,S_SIDE_BOLD_LEFT,{type:'str',value:g.judul}),
@@ -272,7 +295,6 @@ window.LpjBuilder = (function () {
         cell(4,S_SIDE_CENTER,{type:'str',value:''}),
         cell(5,S_SIDE_MONEY,{type:'str',value:''}),
       ]);
-      merges.push(`B${rn}:C${rn}`);
       rn++;
       const awal = rn;
       g.items.forEach((it,i)=>{
@@ -443,6 +465,9 @@ ${mergeXml}
     periodeOtomatis,
     formatTanggalIndo,
     lebarKolom,
+    barisJudul,
     KLASIFIKASI,
+    JUDUL_DEFAULT,
+    SUB_DIVISI_DEFAULT,
   };
 })();

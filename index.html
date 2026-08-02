@@ -234,6 +234,10 @@ header{
   display:flex;align-items:center;justify-content:space-between;gap:10px;
   transition:background .12s,color .12s,border-color .12s,transform .12s;
 }
+/* Kartu beranda cuma memajang 4 tautan teratas -- sisanya lewat tombol
+   "Buka semua ..." di bawah kartu, supaya kartu tetap sama tingginya
+   walaupun jumlah menunya bertambah. */
+.card-links a:nth-of-type(n+5){display:none}
 .card-links a::after{content:"→";font-size:13px;color:var(--ink-soft);flex-shrink:0}
 .card-links a:hover{background:#E4F1F3;border-color:var(--teal);color:var(--teal-deep)}
 .card-links a:hover::after{color:var(--teal-deep)}
