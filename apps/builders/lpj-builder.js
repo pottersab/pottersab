@@ -152,8 +152,7 @@ window.LpjBuilder = (function () {
   const TOTAL_MAKS = 93, MIN_KEGIATAN = 24;
   function lebarKolom(data){
     const gs = groupItems(data.items);
-    // Kegiatan tidak ikut diukur -- kolomnya memang mengambil sisa lebar.
-    const tanggal=['Tanggal'], jenis=['Keterangan'], jumlah=['Jumlah'];
+    const tanggal=['Tanggal'], kegiatan=['Kegiatan'], jenis=['Keterangan'], jumlah=['Jumlah'];
     let nomorMaks = 1, totalOps = 0;
     gs.forEach(g=>{
       nomorMaks = Math.max(nomorMaks, g.items.length);
@@ -163,6 +162,7 @@ window.LpjBuilder = (function () {
       tanggal.push(g.judul);
       g.items.forEach(it=>{
         tanggal.push(formatTanggalIndo(it.tanggal));
+        kegiatan.push(it.kegiatan||'');
         jenis.push(it.jenis||'');
         jumlah.push(pisahRibu(it.jumlah));
       });
@@ -183,10 +183,11 @@ window.LpjBuilder = (function () {
     const kanan = panjang(['Dibuat Oleh', data.pembuatJabatan||'', data.pembuatNama||'']) + 2;
     if(d + e < kanan) e += kanan - (d + e);
 
-    // Kegiatan mengambil semua sisa lebar, bukan cuma selebar teksnya:
-    // tabelnya jadi selalu selebar surat, tidak menyempit sendiri waktu
-    // uraian kegiatannya kebetulan pendek.
-    const c = Math.max(MIN_KEGIATAN, TOTAL_MAKS - (a + b + d + e));
+    // Kegiatan selebar uraian terpanjangnya. Kalau sisa lebar halaman tidak
+    // cukup, kolom ini yang dipersempit -- dia satu-satunya yang teksnya
+    // boleh dibungkus ke baris berikutnya.
+    const sisa = TOTAL_MAKS - (a + b + d + e);
+    const c = Math.min(Math.max(panjang(kegiatan) + 3, MIN_KEGIATAN), Math.max(MIN_KEGIATAN, sisa));
 
     const bulat = n => Math.round(n*100)/100;
     return { a:bulat(a), b:bulat(b), c:bulat(c), d:bulat(d), e:bulat(e) };
