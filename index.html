@@ -459,6 +459,7 @@ footer{border-top:1px solid var(--mist);padding:26px 20px;text-align:center;font
   .hub-deck{
     display:block;position:relative;height:440px;
     max-width:var(--w-inner,1180px);margin:0 auto;perspective:1500px;
+    transition:height .6s cubic-bezier(.22,.75,.3,1);
   }
   .hub-deck .hub-card{
     position:absolute;left:50%;top:50%;width:320px;padding:24px;margin:0;
@@ -518,17 +519,36 @@ footer{border-top:1px solid var(--mist);padding:26px 20px;text-align:center;font
   .deck-arw.prev{left:-6px;transform:translateY(-50%)}
   .deck-arw.next{right:-6px;transform:translateY(-50%)}
   .deck-arw.prev:hover,.deck-arw.next:hover{transform:translateY(-50%) scale(1.07)}
-  .deck-dots{display:flex;gap:7px;justify-content:center;margin-top:2px}
+  /* Tombol duduk tepat di bawah kartu tengah, titik indikator di bawahnya. */
+  .deck-bawah{
+    display:flex;flex-direction:column;align-items:center;gap:16px;margin-top:-10px;
+  }
+  .deck-semua{
+    font-family:'Space Grotesk',sans-serif;font-size:13.5px;font-weight:600;
+    color:var(--teal-deep);background:#fff;border:1.5px solid #C8E0E4;
+    padding:10px 20px;border-radius:9px;cursor:pointer;
+    display:inline-flex;align-items:center;gap:8px;
+    transition:background .18s,border-color .18s;
+  }
+  .deck-semua:hover{background:#EAF4F5;border-color:var(--g2)}
+  .deck-semua svg{transition:transform .4s cubic-bezier(.22,.75,.3,1)}
+  .deck-semua.buka svg{transform:rotate(180deg)}
+
+  .deck-dots{display:flex;gap:7px;justify-content:center;transition:opacity .3s}
   .deck-dots button{
     width:8px;height:8px;padding:0;border:0;border-radius:50%;background:#C4D8E0;
     cursor:pointer;transition:width .35s,background .35s,border-radius .35s;
   }
   .deck-dots button[aria-current="true"]{width:22px;border-radius:4px;background:var(--g2)}
+  .deck-dots.sembunyi{opacity:0;pointer-events:none}
   .deck-hint{text-align:center;font-size:12px;color:#8AA6B4;margin-top:18px}
+
+  /* Mode kisi: tidak ada lagi yang bisa digeser, jadi panah dipadamkan. */
+  .hub-deck.kisi .deck-arw{opacity:0;pointer-events:none}
 }
 @media (prefers-reduced-motion:reduce){
-  .hub-deck .hub-card,.hub-deck .hub-glow,.hub-wash,
-  .deck-dots button,.deck-arw{transition:none}
+  .hub-deck,.hub-deck .hub-card,.hub-deck .hub-glow,.hub-wash,
+  .deck-dots button,.deck-arw,.deck-semua svg{transition:none}
 }
 </style>
 </head>
@@ -1166,6 +1186,23 @@ function doLogout(){
   var TAMPAK = 2;
   var IKON_KIRI = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>';
   var IKON_KANAN = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>';
+  var IKON_BAWAH = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>';
+  var PETUNJUK_DEK = 'Geser, klik panah, atau klik kartu di samping untuk memindahkannya ke tengah';
+
+  /* Ukuran mode kisi. LEBAR_KISI disamakan dengan --w-inner supaya barisannya
+     jatuh tepat di tepi yang sama dengan bagian lain halaman. */
+  var LEBAR_KARTU = 320, SELA = 18, LEBAR_KISI = 1180, TINGGI_DEK = 440;
+  var HALUS = 'cubic-bezier(.22,.75,.3,1)';
+
+  /* Laju 1.8x dan jeda 40ms: gerakannya sengaja dibuat lambat dan rapat
+     supaya tiga tahapnya -- terkumpul, diangkat, dibagikan -- terbaca satu
+     per satu, bukan lewat begitu saja. */
+  var LAJU = 1.8, JEDA = 40;
+  var HEMAT_GERAK = window.matchMedia('(prefers-reduced-motion: reduce)');
+  /* Durasi transisi disetel JS lewat style inline, dan itu menang atas
+     media query. Jadi pembatasan gerak harus dijawab di sini juga:
+     semua durasi jadi nol dan perpindahannya langsung ke keadaan akhir. */
+  function ms(v){ return HEMAT_GERAK.matches ? 0 : Math.round(v*LAJU); }
 
   var deks = [];
 
@@ -1181,7 +1218,8 @@ function doLogout(){
 
     var d = {
       grid:grid, tema:tema, asli:asli, kartu:[], titik:[],
-      unik:asli.length, n:0, akt:0, hidup:false, els:{}
+      unik:asli.length, n:0, akt:0, hidup:false, els:{},
+      mode:'dek', sibuk:false, tinggiBaris:0
     };
 
     /* Dek 5 slot butuh minimal 5 kartu. Data dan Development cuma punya 4,
@@ -1242,25 +1280,40 @@ function doLogout(){
         var b = document.createElement('button');
         b.type='button';
         b.setAttribute('aria-label','Ke kartu ke-' + (j+1));
-        b.addEventListener('click', function(){ d.akt = terdekat(d, j); gambar(d); });
+        b.addEventListener('click', function(){
+          if(d.mode !== 'dek' || d.sibuk) return;
+          d.akt = terdekat(d, j); gambar(d);
+        });
         titik.appendChild(b); d.titik.push(b);
       })(j);
     }
+    var semua = document.createElement('button');
+    semua.type='button'; semua.className='deck-semua';
+    semua.setAttribute('aria-expanded','false');
+    semua.innerHTML = '<span>Tampilkan semua kartu</span>' + IKON_BAWAH;
+
+    var bawah = document.createElement('div');
+    bawah.className = 'deck-bawah';
+    bawah.appendChild(semua); bawah.appendChild(titik);
+
     var petunjuk = document.createElement('p');
     petunjuk.className = 'deck-hint';
-    petunjuk.textContent = 'Geser, klik panah, atau klik kartu di samping untuk memindahkannya ke tengah';
-    grid.parentNode.insertBefore(titik, grid.nextSibling);
-    grid.parentNode.insertBefore(petunjuk, titik.nextSibling);
+    petunjuk.textContent = PETUNJUK_DEK;
+    grid.parentNode.insertBefore(bawah, grid.nextSibling);
+    grid.parentNode.insertBefore(petunjuk, bawah.nextSibling);
 
-    d.els = {prev:prev, next:next, titik:titik, petunjuk:petunjuk};
+    d.els = {prev:prev, next:next, titik:titik, bawah:bawah, semua:semua, petunjuk:petunjuk};
     d.hidup = true;
 
     prev.addEventListener('click', function(){ geser(d,-1); });
     next.addEventListener('click', function(){ geser(d, 1); });
+    semua.addEventListener('click', function(){ d.mode==='dek' ? bentang(d) : lipat(d); });
 
     /* Kartu di samping tidak boleh membuka tautannya -- klik pertama
-       memindahkannya ke tengah dulu, klik kedua baru membuka. */
+       memindahkannya ke tengah dulu, klik kedua baru membuka. Di mode kisi
+       semua kartu sejajar, jadi tautannya bekerja seperti biasa. */
     grid.addEventListener('click', function(e){
+      if(d.mode !== 'dek' || d.sibuk) return;
       var k = e.target.closest ? e.target.closest('.hub-card') : null;
       if(!k || k.parentNode !== grid) return;
       var i = d.kartu.indexOf(k);
@@ -1275,7 +1328,10 @@ function doLogout(){
     });
 
     var tekan=false, mulaiX=0;
-    grid.addEventListener('pointerdown', function(e){ tekan=true; mulaiX=e.clientX; });
+    grid.addEventListener('pointerdown', function(e){
+      if(d.mode !== 'dek' || d.sibuk) return;
+      tekan=true; mulaiX=e.clientX;
+    });
     window.addEventListener('pointerup', function(){ tekan=false; });
     grid.addEventListener('pointermove', function(e){
       if(!tekan) return;
@@ -1304,7 +1360,7 @@ function doLogout(){
       k.classList.remove('is-active');
       k.style.transform=''; k.style.opacity=''; k.style.zIndex='';
       k.style.boxShadow=''; k.style.borderColor=''; k.style.cursor='';
-      k.style.pointerEvents='';
+      k.style.pointerEvents=''; k.style.transition=''; k.style.transitionDelay='';
       var tautan = k.querySelector('.open');
       if(tautan) tautan.removeAttribute('tabindex');
     });
@@ -1312,11 +1368,147 @@ function doLogout(){
     ['data-glow','role','aria-roledescription','aria-label','tabindex'].forEach(function(a){
       grid.removeAttribute(a);
     });
+    grid.classList.remove('kisi');
+    grid.style.height = '';
+    grid.style.transitionDuration = '';
     if(d.els.prev) d.els.prev.remove();
     if(d.els.next) d.els.next.remove();
-    if(d.els.titik) d.els.titik.remove();
+    if(d.els.bawah) d.els.bawah.remove();
     if(d.els.petunjuk) d.els.petunjuk.remove();
     d.titik = []; d.kartu = []; d.akt = 0; d.hidup = false;
+    d.mode = 'dek'; d.sibuk = false;
+  }
+
+  /* ---- mode kisi: kartu berbaris dari kiri ke kanan ----
+     Halaman dengan 4 kartu memakai 4 kolom supaya benar-benar sebaris;
+     kartunya menyusut seperlunya agar muat. Tools yang 6 kartu memakai
+     3 kolom dua baris, dengan kartu tetap seukuran aslinya. */
+  function kisi(d, i){
+    var kolom = d.unik <= 4 ? d.unik : 3;
+    /* Kartu menyusut hanya sejauh yang diperlukan agar sebaris muat, lalu
+       jarak antar kartu dikunci di SELA -- sama dengan gutter grid aslinya.
+       Kalau lebar kolom yang dibagi rata, kartu 320px mengambang di tengah
+       kolom dan jaraknya membengkak jadi hampir 80px. */
+    var skala = Math.min(1, (LEBAR_KISI - (kolom-1)*SELA) / (kolom*LEBAR_KARTU));
+    var lebarKartu = LEBAR_KARTU*skala;
+    var lebarTotal = kolom*lebarKartu + (kolom-1)*SELA;
+    var baris = Math.ceil(d.unik/kolom);
+    var tinggiBaris = d.tinggiBaris || 372;
+    var kol = i % kolom, brs = Math.floor(i/kolom);
+    return {
+      x: -lebarTotal/2 + kol*(lebarKartu+SELA) + lebarKartu/2,
+      y: -(baris*tinggiBaris)/2 + brs*tinggiBaris + tinggiBaris/2,
+      s: skala,
+      tinggi: baris*tinggiBaris
+    };
+  }
+
+  /* Miring kecil berselang-seling supaya tumpukan terbaca sebagai beberapa
+     kartu, bukan satu kartu tunggal. */
+  function miring(i){ return (i%2 ? 1 : -1) * (1.2 + (i%3)*0.9); }
+
+  function bentang(d){
+    if(d.sibuk) return;
+    d.sibuk = true; d.mode = 'kisi';
+    var grid = d.grid;
+    grid.classList.add('kisi');
+    d.els.semua.classList.add('buka');
+    d.els.semua.setAttribute('aria-expanded','true');
+    d.els.semua.firstChild.textContent = 'Kembali ke dek';
+    d.els.titik.classList.add('sembunyi');
+
+    /* Tinggi baris diukur di sini, bukan dipatok, karena halaman Data punya
+       sparkline yang membuat kartunya lebih tinggi dari halaman lain. Saat
+       tombol ditekan halamannya pasti sedang tampil, jadi ukurannya sahih. */
+    var skala = kisi(d,0).s, tertinggi = 0;
+    d.kartu.forEach(function(k){ if(k.offsetHeight > tertinggi) tertinggi = k.offsetHeight; });
+    d.tinggiBaris = Math.round(tertinggi*skala) + 26;
+
+    var tKumpul = ms(380), tAngkat = ms(260), tBagi = ms(520), sela = ms(JEDA);
+
+    d.kartu.forEach(function(k,i){
+      k.classList.remove('is-active');
+      k.style.transition = 'transform '+tKumpul+'ms '+HALUS+',opacity '+tKumpul+'ms,box-shadow '+tKumpul+'ms';
+      k.style.transitionDelay = '0ms';
+      k.style.transform = 'translate(-50%,-50%) translateX(0px) scale(.78) rotate('+miring(i)+'deg)';
+      k.style.opacity = i < d.unik ? 1 : 0;
+      k.style.zIndex = 50 - i;
+      k.style.boxShadow = '0 8px 20px rgba(10,37,55,.10)';
+      k.style.borderColor = '';
+    });
+
+    setTimeout(function(){
+      d.kartu.forEach(function(k,i){
+        k.style.transition = 'transform '+tAngkat+'ms '+HALUS+',box-shadow '+tAngkat+'ms';
+        k.style.transform = 'translate(-50%,-50%) translate(0px,-36px) scale(.86) rotate('+miring(i)+'deg)';
+        k.style.boxShadow = '0 30px 56px rgba(10,37,55,.20)';
+      });
+    }, tKumpul);
+
+    setTimeout(function(){
+      grid.style.transitionDuration = ms(600)+'ms';
+      grid.style.height = kisi(d,0).tinggi + 'px';
+      d.kartu.forEach(function(k,i){
+        k.style.transition = 'transform '+tBagi+'ms '+HALUS+',opacity '+ms(300)+'ms,box-shadow '+tBagi+'ms';
+        if(i >= d.unik){ k.style.opacity = 0; k.style.transitionDelay = '0ms'; return; }
+        var g = kisi(d,i);
+        k.style.transitionDelay = (i*sela)+'ms';
+        k.style.transform = 'translate(-50%,-50%) translate('+g.x+'px,'+g.y+'px) scale('+g.s+') rotate(0deg)';
+        k.style.opacity = 1; k.style.zIndex = 10;
+        k.style.boxShadow = '0 6px 16px rgba(10,37,55,.06)';
+        k.style.cursor = ''; k.style.pointerEvents = '';
+        var tautan = k.querySelector('.open');
+        if(tautan && !k.hasAttribute('data-salinan')) tautan.removeAttribute('tabindex');
+      });
+      d.els.petunjuk.textContent = 'Semua ' + d.unik + ' kartu tampil sekaligus';
+      setTimeout(function(){ d.sibuk = false; }, tBagi + (d.unik-1)*sela + ms(60));
+    }, tKumpul + tAngkat);
+  }
+
+  function lipat(d){
+    if(d.sibuk) return;
+    d.sibuk = true;
+    var grid = d.grid;
+    d.els.semua.classList.remove('buka');
+    d.els.semua.setAttribute('aria-expanded','false');
+    d.els.semua.firstChild.textContent = 'Tampilkan semua kartu';
+
+    var tTarik = ms(420), tTurun = ms(240), tSebar = ms(500), sela = ms(JEDA*0.7);
+
+    /* Ditarik balik dari kanan ke kiri -- kebalikan urutan waktu dibagikan. */
+    d.kartu.forEach(function(k,i){
+      k.style.transition = 'transform '+tTarik+'ms '+HALUS+',opacity '+ms(260)+'ms,box-shadow '+tTarik+'ms';
+      k.style.transitionDelay = ((d.unik-1-Math.min(i, d.unik-1))*sela)+'ms';
+      k.style.transform = 'translate(-50%,-50%) translate(0px,-36px) scale(.86) rotate('+miring(i)+'deg)';
+      k.style.opacity = i < d.unik ? 1 : 0;
+      k.style.zIndex = 50 - i;
+      k.style.boxShadow = '0 30px 56px rgba(10,37,55,.20)';
+    });
+    grid.style.transitionDuration = ms(600)+'ms';
+    grid.style.height = TINGGI_DEK+'px';
+
+    var tSemua = tTarik + (d.unik-1)*sela;
+
+    setTimeout(function(){
+      d.kartu.forEach(function(k,i){
+        k.style.transition = 'transform '+tTurun+'ms '+HALUS+',box-shadow '+tTurun+'ms';
+        k.style.transitionDelay = '0ms';
+        k.style.transform = 'translate(-50%,-50%) translateX(0px) scale(.78) rotate('+miring(i)+'deg)';
+        k.style.boxShadow = '0 8px 20px rgba(10,37,55,.10)';
+      });
+    }, tSemua);
+
+    setTimeout(function(){
+      d.mode = 'dek';
+      grid.classList.remove('kisi');
+      d.els.titik.classList.remove('sembunyi');
+      d.els.petunjuk.textContent = PETUNJUK_DEK;
+      d.kartu.forEach(function(k){
+        k.style.transition = 'transform '+tSebar+'ms '+HALUS+',opacity '+tSebar+'ms,box-shadow '+tSebar+'ms';
+      });
+      gambar(d, true);
+      setTimeout(function(){ d.sibuk = false; }, tSebar + ms(40));
+    }, tSemua + tTurun);
   }
 
   /* Jarak melingkar terpendek dari kartu aktif: nilainya -n/2..n/2, jadi
@@ -1334,11 +1526,14 @@ function doLogout(){
     return pilih;
   }
   function geser(d, arah){
+    if(d.mode !== 'dek' || d.sibuk) return;
     d.akt = ((d.akt + arah) % d.n + d.n) % d.n;
     gambar(d);
   }
 
-  function gambar(d){
+  /* pakaiTransisi=true dipakai saat kembali dari mode kisi: durasi transisinya
+     sudah disetel lipat(), jadi jangan ditimpa dengan durasi dek biasa. */
+  function gambar(d, pakaiTransisi){
     d.kartu.forEach(function(k, i){
       var v = jarak(d, i), a = Math.abs(v), tampak = a <= TAMPAK;
       var x, s, o, z;
@@ -1348,6 +1543,10 @@ function doLogout(){
         x = (v<0?-1:1) * L.x; s = L.s; o = tampak ? L.o : 0; z = L.z;
       }
       var putar = a === 0 ? 0 : (v<0 ? 9 : -9);
+      if(!pakaiTransisi){
+        k.style.transition = 'transform .5s '+HALUS+',opacity .5s,box-shadow .5s,border-color .5s';
+      }
+      k.style.transitionDelay = '0ms';
       k.style.transform = 'translate(-50%,-50%) translateX('+x+'px) scale('+s+') rotateY('+putar+'deg)';
       k.style.opacity = o;
       k.style.zIndex = z;
