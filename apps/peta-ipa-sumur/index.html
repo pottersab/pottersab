@@ -244,6 +244,25 @@ header.map-top {
 .hero-box .hero-label { font-size:11.5px; color:#8A5A1E; }
 .hero-box .hero-value { font-family:'Space Grotesk',sans-serif; font-size:18px; font-weight:700; color:#8A5A1E; }
 
+/* Tombol "Google Maps" & "Rute ke sini" di bagian bawah tiap popup.
+   nowrap penting: bikin lebar minimum grid ini ikut dihitung Leaflet, jadi
+   popup melebar sendiri daripada teks tombolnya patah jadi dua baris. */
+.gmaps-aksi {
+  margin-top:9px; padding-top:8px; border-top:1px solid var(--line);
+  display:grid; grid-template-columns:1fr 1fr; gap:5px;
+}
+.gmaps-aksi .gm-btn {
+  display:flex; align-items:center; justify-content:center; gap:5px; white-space:nowrap;
+  font-family:'Space Grotesk',sans-serif; font-size:11.5px; font-weight:600;
+  padding:7px 8px; border-radius:9px; text-decoration:none;
+  transition:background .15s ease, border-color .15s ease;
+}
+.gmaps-aksi .gm-btn.solid { background:var(--primary); color:#fff; border:1px solid var(--primary); }
+.gmaps-aksi .gm-btn.solid:hover { background:var(--primary-light); border-color:var(--primary-light); }
+.gmaps-aksi .gm-btn.ghost { background:var(--surface); color:var(--primary); border:1px solid var(--line); }
+.gmaps-aksi .gm-btn.ghost:hover { background:var(--primary-pale); border-color:var(--primary-pale); }
+.gmaps-aksi .gm-btn:focus-visible { outline:2px solid var(--primary-light); outline-offset:2px; }
+
 .note { padding:9px 5vw; font-size:11.5px; color:var(--ink-soft); background:var(--surface); }
 
 .pin-img {

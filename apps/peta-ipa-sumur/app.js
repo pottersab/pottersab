@@ -74,6 +74,35 @@ function popupHeader(avatarClass, iconSrc, nama, tanggalLabel) {
   `;
 }
 
+// ---- Buka titik di Google Maps ------------------------------------------
+// Pakai format resmi Google Maps URLs API supaya pin jatuh PERSIS di
+// koordinat -- bukan hasil pencarian nama yang bisa meleset ke tempat lain
+// dengan nama mirip. Di HP link ini otomatis membuka aplikasi Google Maps
+// kalau terpasang; di desktop kebuka di tab baru.
+function gmapsLihatUrl(lat, lng) {
+  return 'https://www.google.com/maps/search/?api=1&query=' + lat + ',' + lng;
+}
+// Sekalian rute: Maps langsung menghitung arah dari posisi pengguna ke titik
+// ini, jadi tim lapangan tidak perlu menekan "Rute" lagi di dalam Maps.
+function gmapsRuteUrl(lat, lng) {
+  return 'https://www.google.com/maps/dir/?api=1&destination=' + lat + ',' + lng;
+}
+
+const GM_PIN_SVG = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z"/><circle cx="12" cy="10" r="3"/></svg>';
+const GM_NAV_SVG = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>';
+
+// Blok tombol di bagian bawah popup. Koordinatnya sendiri sengaja tidak
+// ditampilkan supaya popup tetap pendek -- popup sumur sudah punya badge +
+// stat 3 kolom.
+function gmapsBlok(lat, lng) {
+  return `
+    <div class="gmaps-aksi">
+      <a class="gm-btn solid" href="${gmapsLihatUrl(lat, lng)}" target="_blank" rel="noopener">${GM_PIN_SVG} Google Maps</a>
+      <a class="gm-btn ghost" href="${gmapsRuteUrl(lat, lng)}" target="_blank" rel="noopener">${GM_NAV_SVG} Rute ke sini</a>
+    </div>
+  `;
+}
+
 function makeImgIcon(src, ringClass, extraClass, size) {
   const s = size || 36;
   return L.divIcon({
@@ -129,6 +158,7 @@ async function init() {
         ${statBox('AP', d.ap, 'm3', { applicable: d.apApplicable, formatter: fmtIDInt })}
         ${statBox('ATD', d.atd, 'm3', { applicable: d.atdApplicable, formatter: fmtIDInt })}
       </div>
+      ${gmapsBlok(loc.lat, loc.lng)}
     `;
     markersById[loc.id] = L.marker([loc.lat, loc.lng], { icon: ipaIcon })
       .bindPopup(html)
@@ -149,6 +179,7 @@ async function init() {
         ${statBox('Dinamis', d.dinamis, 'm')}
         ${statBox('Debit', d.debit, 'm3/jam')}
       </div>
+      ${gmapsBlok(loc.lat, loc.lng)}
     `;
     markersById[loc.id] = L.marker([loc.lat, loc.lng], { icon })
       .bindPopup(html)
@@ -167,6 +198,7 @@ async function init() {
         ${statBox('NTU', d.ntu, '')}
         ${statBox('pH', d.ph, '')}
       </div>
+      ${gmapsBlok(loc.lat, loc.lng)}
     `;
     markersById[loc.id] = L.marker([loc.lat, loc.lng], { icon: wadukIcon })
       .bindPopup(html)
