@@ -414,6 +414,217 @@ async function handleSumurHistory(req, res) {
   return res.status(405).json({ error: 'Method not allowed' });
 }
 
+// --- action=bulk: simpan BANYAK baris sekaligus (tab "Input Massal" di
+// apps/input-data-historis.html). Sengaja dibuat terpisah dari action=daily /
+// action=sumur -- form input satu-per-satu yang lama tetap hidup apa adanya,
+// dua cara input berdampingan.
+//
+// Aturan yang membedakan endpoint ini dari yang lama: SEL KOSONG TIDAK PERNAH
+// MENGHAPUS. Di lapangan satu tanggal diisi dua orang (Level & Curah Hujan
+// Manggar dicatat petugas waduk, NTU & PH menyusul dari sub-divisi lain), jadi
+// tempelan yang cuma berisi kolom NTU/PH harus membiarkan Level & Curah Hujan
+// tanggal itu apa adanya. Diwujudkan lewat COALESCE(EXCLUDED.x, tabel.x) di
+// klausa ON CONFLICT: nilai baru menang kalau ada isinya, nilai lama bertahan
+// kalau sel yang ditempel kosong. Konsekuensinya, mengosongkan nilai TIDAK
+// bisa lewat sini -- itu tetap lewat tombol 🗑️ di form lama, dan memang lebih
+// aman begitu.
+const BULK_DAILY_KEYS = ['manggar_level', 'manggar_hujan', 'manggar_ntu', 'manggar_ph',
+                         'teritip_level', 'teritip_ntu', 'teritip_ph'];
+
+// Batas per permintaan. Bukan batas jumlah data yang bisa diimpor -- frontend
+// memecah tempelan panjang jadi beberapa kiriman -- cuma penjaga supaya satu
+// statement tidak melar sampai kena batas 10 detik fungsi Vercel.
+const BULK_MAX_ROWS = 500;
+
+function isIsoDate(s) { return typeof s === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(s); }
+function isIsoMonth(s) { return typeof s === 'string' && /^\d{4}-\d{2}$/.test(s); }
+
+// Satu INSERT multi-baris, bukan perulangan pool.query per baris: 300 baris
+// harian x round-trip serverless->Neon satu per satu tidak akan selesai dalam
+// batas waktu fungsi.
+async function bulkUpsert(client, table, dateCol, cols, rows) {
+  const params = [];
+  const tuples = rows.map(r => {
+    const ph = [`$${params.push(r.date)}::date`];
+    cols.forEach(c => ph.push(`$${params.push(r.values[c] !== undefined ? r.values[c] : null)}::numeric`));
+    return `(${ph.join(', ')})`;
+  });
+  const updateSet = cols.map(c => `${c} = COALESCE(EXCLUDED.${c}, ${table}.${c})`).join(', ');
+  await client.query(
+    `INSERT INTO ${table} (${dateCol}, ${cols.join(', ')}) VALUES ${tuples.join(', ')}
+     ON CONFLICT (${dateCol}) DO UPDATE SET ${updateSet}`,
+    params
+  );
+}
+
+async function bulkDaily(req, res) {
+  const { rows } = req.body || {};
+  if (!Array.isArray(rows) || rows.length === 0) {
+    return res.status(400).json({ error: 'rows wajib diisi' });
+  }
+  if (rows.length > BULK_MAX_ROWS) {
+    return res.status(400).json({ error: `Maksimal ${BULK_MAX_ROWS} baris sekali kirim` });
+  }
+
+  // Kelompokkan per tabel tujuan -- satu tanggal bisa menyentuh dua tabel
+  // sekaligus (Level ke manggar_level_curahhujan, NTU/PH ke
+  // kualitas_air_manggar_teritip). Tanggal yang muncul dua kali dalam satu
+  // tempelan digabung (yang belakangan menang) karena satu statement INSERT
+  // ... ON CONFLICT DO UPDATE dilarang menyentuh baris yang sama dua kali.
+  const byTable = new Map(); // table -> { dateCol, cols:Set, rows:Map(tanggal -> {col:num}) }
+  const tanggalTersentuh = new Set();
+  let dilewati = 0;
+
+  for (const r of rows) {
+    if (!r || !isIsoDate(r.tanggal)) { dilewati++; continue; }
+    const values = r.values || {};
+    for (const key of Object.keys(values)) {
+      if (!BULK_DAILY_KEYS.includes(key)) continue;
+      const num = toNumOrNull(values[key]);
+      if (num === null) continue; // sel kosong: lewati, jangan tulis NULL
+      const src = DATASETS[key];
+      if (!byTable.has(src.table)) {
+        byTable.set(src.table, { dateCol: src.dateCol, cols: new Set(), rows: new Map() });
+      }
+      const t = byTable.get(src.table);
+      t.cols.add(src.col);
+      if (!t.rows.has(r.tanggal)) t.rows.set(r.tanggal, {});
+      t.rows.get(r.tanggal)[src.col] = num;
+      tanggalTersentuh.add(r.tanggal);
+    }
+  }
+
+  if (byTable.size === 0) {
+    return res.status(400).json({ error: 'Tidak ada nilai yang bisa disimpan dari data yang dikirim.' });
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    for (const [table, t] of byTable) {
+      const cols = Array.from(t.cols);
+      const list = Array.from(t.rows.entries()).map(([date, values]) => ({ date, values }));
+      await bulkUpsert(client, table, t.dateCol, cols, list);
+    }
+    await client.query('COMMIT');
+  } catch (err) {
+    await client.query('ROLLBACK').catch(() => {});
+    return res.status(500).json({ error: 'Gagal menyimpan: ' + err.message });
+  } finally {
+    client.release();
+  }
+
+  return res.status(200).json({ success: true, tanggal: tanggalTersentuh.size, dilewati });
+}
+
+async function bulkSumur(req, res) {
+  const { installation, category } = req.query;
+  if (!installation || !['debit', 'level'].includes(category)) {
+    return res.status(400).json({ error: 'installation dan category (debit/level) wajib diisi' });
+  }
+  const { rows } = req.body || {};
+  if (!Array.isArray(rows) || rows.length === 0) {
+    return res.status(400).json({ error: 'rows wajib diisi' });
+  }
+  if (rows.length > BULK_MAX_ROWS) {
+    return res.status(400).json({ error: `Maksimal ${BULK_MAX_ROWS} baris sekali kirim` });
+  }
+
+  // Cuma sumur yang sudah terdaftar di sumur_wells yang diterima. Nama yang
+  // tidak dikenal dikembalikan ke frontend supaya admin bisa mendaftarkannya
+  // dulu -- lebih baik ditolak terang-terangan daripada diam-diam bikin baris
+  // data yatim yang tidak pernah muncul di grafik mana pun.
+  const terdaftar = new Set(await fetchSumurWells(installation, category));
+  const takDikenal = new Set();
+  const byKey = new Map(); // `${well}|${bulan}` -> { well, bulan, statis?, dinamis?, value? }
+  const bulanTersentuh = new Set();
+  let dilewati = 0;
+
+  for (const r of rows) {
+    if (!r || !isIsoMonth(r.bulan)) { dilewati++; continue; }
+    const values = r.values || {};
+    for (const well of Object.keys(values)) {
+      if (!terdaftar.has(well)) { takDikenal.add(well); continue; }
+      const raw = values[well];
+      const entry = { well, bulan: `${r.bulan}-01` };
+      if (category === 'debit') {
+        const v = toNumOrNull(raw);
+        if (v === null) continue;
+        entry.value = v;
+      } else {
+        const statis = toNumOrNull(raw && raw.statis);
+        const dinamis = toNumOrNull(raw && raw.dinamis);
+        if (statis === null && dinamis === null) continue;
+        entry.statis = statis;
+        entry.dinamis = dinamis;
+      }
+      byKey.set(`${well}|${r.bulan}`, entry);
+      bulanTersentuh.add(r.bulan);
+    }
+  }
+
+  if (byKey.size === 0) {
+    return res.status(400).json({
+      error: takDikenal.size > 0
+        ? `Tidak ada nilai yang bisa disimpan. Nama sumur yang tidak dikenal: ${Array.from(takDikenal).join(', ')}`
+        : 'Tidak ada nilai yang bisa disimpan dari data yang dikirim.',
+      takDikenal: Array.from(takDikenal)
+    });
+  }
+
+  const entries = Array.from(byKey.values());
+  const params = [];
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    if (category === 'debit') {
+      const tuples = entries.map(e =>
+        `($${params.push(installation)}, $${params.push(e.well)}, $${params.push(e.bulan)}::date, $${params.push(e.value)}::numeric)`
+      );
+      await client.query(
+        `INSERT INTO sumur_debit_readings (installation, well_name, bulan, value) VALUES ${tuples.join(', ')}
+         ON CONFLICT (installation, well_name, bulan)
+         DO UPDATE SET value = COALESCE(EXCLUDED.value, sumur_debit_readings.value)`,
+        params
+      );
+    } else {
+      const tuples = entries.map(e =>
+        `($${params.push(installation)}, $${params.push(e.well)}, $${params.push(e.bulan)}::date, ` +
+        `$${params.push(e.statis)}::numeric, $${params.push(e.dinamis)}::numeric)`
+      );
+      await client.query(
+        `INSERT INTO sumur_level_readings (installation, well_name, bulan, statis, dinamis) VALUES ${tuples.join(', ')}
+         ON CONFLICT (installation, well_name, bulan)
+         DO UPDATE SET statis = COALESCE(EXCLUDED.statis, sumur_level_readings.statis),
+                       dinamis = COALESCE(EXCLUDED.dinamis, sumur_level_readings.dinamis)`,
+        params
+      );
+    }
+    await client.query('COMMIT');
+  } catch (err) {
+    await client.query('ROLLBACK').catch(() => {});
+    return res.status(500).json({ error: 'Gagal menyimpan: ' + err.message });
+  } finally {
+    client.release();
+  }
+
+  return res.status(200).json({
+    success: true,
+    bulan: bulanTersentuh.size,
+    nilai: entries.length,
+    dilewati,
+    takDikenal: Array.from(takDikenal)
+  });
+}
+
+async function handleBulk(req, res) {
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+  const { kind } = req.query;
+  if (kind === 'daily') return bulkDaily(req, res);
+  if (kind === 'sumur') return bulkSumur(req, res);
+  return res.status(400).json({ error: 'kind wajib diisi (daily/sumur)' });
+}
+
 // --- action=wells: CRUD daftar sumur aktif per instalasi ------------------
 async function handleWells(req, res) {
   if (req.method === 'GET') {
@@ -706,10 +917,11 @@ module.exports = async (req, res) => {
   if (action === 'daily-history') return handleDailyHistory(req, res);
   if (action === 'sumur') return handleSumur(req, res);
   if (action === 'sumur-history') return handleSumurHistory(req, res);
+  if (action === 'bulk') return handleBulk(req, res);
   if (action === 'wells') return handleWells(req, res);
   if (action === 'signers') return handleSigners(req, res);
   if (action === 'spd') return handleSpd(req, res);
   if (action === 'lpj') return handleLpj(req, res);
 
-  return res.status(400).json({ error: 'action wajib diisi (daily/daily-history/sumur/sumur-history/wells/signers/spd/lpj/map-latest)' });
+  return res.status(400).json({ error: 'action wajib diisi (daily/daily-history/sumur/sumur-history/bulk/wells/signers/spd/lpj/map-latest)' });
 };

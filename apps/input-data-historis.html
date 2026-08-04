@@ -436,6 +436,13 @@ table.history-table tbody tr.is-today td.date-cell::after{content:'hari ini';mar
 
 </div>
 
+<!-- Tab "Input Massal" (tempel dari Excel). Modul terpisah supaya form input
+     satu-per-satu di bawah tidak perlu diubah sama sekali. SheetJS dipakai
+     hanya kalau admin mengunggah .xlsx -- versi & CDN-nya disamakan dengan
+     apps/riwayat-air-baku dan apps/library. -->
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="input-massal.js"></script>
+
 <script>
 // =============================================================================
 // KONFIGURASI MENU — sama seperti apps/library/app.js (GROUPS/kategori/
@@ -446,7 +453,12 @@ table.history-table tbody tr.is-today td.date-cell::after{content:'hari ini';mar
 const GROUPS = [
   { key:'manggar', label:'Waduk Manggar' },
   { key:'teritip', label:'Waduk Teritip' },
-  { key:'sumur',   label:'Sumur Dalam' }
+  { key:'sumur',   label:'Sumur Dalam' },
+  // Cara input KEDUA, berdampingan dengan tiga tab di atas (bukan pengganti):
+  // tempel satu blok dari Excel sekaligus. Seluruh logicnya di
+  // apps/input-massal.js, tidak ada satu pun fungsi di bawah yang dipakai
+  // bersama, jadi tab ini tidak bisa mengganggu form yang sudah jalan.
+  { key:'massal',  label:'📋 Input Massal' }
 ];
 
 const SUMUR_CATEGORIES = [
@@ -1219,7 +1231,8 @@ function renderAll() {
   buildMenuMain();
   buildMenuCategory();
   buildMenuSub();
-  if (currentGroup === 'sumur') renderSumurPanel();
+  if (currentGroup === 'massal') window.InputMassal.render(document.getElementById('panel'));
+  else if (currentGroup === 'sumur') renderSumurPanel();
   else renderDailyPanel();
 }
 
