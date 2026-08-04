@@ -86,7 +86,8 @@
     mapping: [],       // arti tiap kolom: '' | 'tanggal' | 'bulan' | <fieldKey> | 'well:<nama>:<statis|dinamis|->'
     wells: [],
     existing: null,    // Map tanggal/bulan -> nilai lama
-    blokTerakhir: null, // tempelan terakhir, untuk tombol "putar"
+    periode: '',       // 'YYYY-MM' untuk harian, 'YYYY' untuk sumur
+    adaSuntingan: false, // ada ketikan/tempelan yang belum disimpan
     pesan: ''
   };
 
@@ -94,30 +95,15 @@
   // PARSER
   // ==========================================================================
 
-  // Tempelan dari Excel = TSV. Tapi orang juga sering menempel dari Word/PDF
-  // atau mengetik ulang, jadi pemisahnya ditebak: tab kalau ada, kalau tidak
-  // titik-koma, kalau tidak koma, terakhir spasi ganda.
-  function tebakPemisah(teks) {
-    // Tab menang mutlak kalau ada. Tempelan dari Excel SELALU bertab, dan
-    // tanpa aturan ini "9,63<tab>6,82" akan terbaca dengan pemisah koma
-    // (koma muncul lebih sering daripada tab) sehingga 9,63 pecah jadi 9
-    // dan 63 -- angka desimal Indonesia rusak diam-diam.
-    if (teks.indexOf('\t') >= 0) return '\t';
+  // Pemisah kolom SELALU tab, tidak pernah ditebak. Satu-satunya sumber data
+  // di sini adalah papan klip, dan Excel/Sheets/LibreOffice semuanya menaruh
+  // TSV di papan klip. Penebakan pemisah justru berbahaya untuk angka gaya
+  // Indonesia: menempel satu kolom berisi "9,63" akan terbaca berpemisah koma
+  // dan pecah jadi 9 dan 63, diam-diam, tanpa tanda apa pun.
+  var PEMISAH = '\t';
 
-    var baris = teks.split(/\r?\n/).filter(function (b) { return b.trim() !== ''; }).slice(0, 5);
-    if (baris.length === 0) return '\t';
-    var kandidat = [';', ',', '  '];
-    var terbaik = '\t', skorTerbaik = 0;
-    kandidat.forEach(function (sep) {
-      var jml = baris.map(function (b) { return b.split(sep).length; });
-      var min = Math.min.apply(null, jml);
-      if (min > skorTerbaik) { skorTerbaik = min; terbaik = sep; }
-    });
-    return skorTerbaik > 1 ? terbaik : '\t';
-  }
-
-  // CSV/TSV dengan dukungan tanda kutip -- kolom teks dari Excel yang
-  // mengandung pemisah akan terbungkus kutip, tanpa ini kolomnya bergeser.
+  // TSV dengan dukungan tanda kutip -- sel teks yang mengandung tab akan
+  // terbungkus kutip oleh Excel, tanpa ini kolomnya bergeser.
   function parseDelimited(teks, sep) {
     var rows = [], row = [], cell = '', dalamKutip = false, i = 0;
     teks = teks.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
@@ -172,6 +158,9 @@
     var n = Number(s);
     return isFinite(n) ? n : null;
   }
+
+  var BULAN_PANJANG = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+                       'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
 
   var BULAN_NAMA = {
     jan: 1, feb: 2, peb: 2, mar: 3, apr: 4, mei: 5, may: 5, jun: 6, jul: 7,
@@ -335,15 +324,6 @@
     return angka.length < berisi.length / 2;
   }
 
-  function transpose(grid) {
-    var maks = Math.max.apply(null, grid.map(function (r) { return r.length; }));
-    var out = [];
-    for (var c = 0; c < maks; c++) {
-      out.push(grid.map(function (r) { return r[c] === undefined ? '' : r[c]; }));
-    }
-    return out;
-  }
-
   // ==========================================================================
   // PENYUSUNAN BARIS SIAP KIRIM + PERBANDINGAN DENGAN DATA LAMA
   // ==========================================================================
@@ -385,10 +365,13 @@
         if (v !== null) { nilai[k.fld.key] = v; adaIsi = true; }
       });
 
+      // Baris yang cuma berisi tanggal (bawaan periode, belum diisi angka)
+      // dilewati diam-diam -- bukan kesalahan, memang belum ada datanya.
+      if (!adaIsi) return;
+
       var alasan = null;
       if (idxTanggal < 0) alasan = 'Kolom tanggal belum ditentukan';
       else if (!tgl) alasan = 'Tanggal tidak terbaca: "' + (r[idxTanggal] || '') + '"';
-      else if (!adaIsi) alasan = 'Semua nilai kosong';
 
       baris.push({ no: x.no, kunci: tgl, mentahKunci: idxTanggal >= 0 ? r[idxTanggal] : '', nilai: nilai, alasan: alasan });
     });
@@ -421,10 +404,11 @@
         }
       });
 
+      if (!adaIsi) return;
+
       var alasan = null;
       if (idxBulan < 0) alasan = 'Kolom bulan belum ditentukan';
       else if (!bln) alasan = 'Bulan tidak terbaca: "' + (r[idxBulan] || '') + '"';
-      else if (!adaIsi) alasan = 'Semua nilai kosong';
 
       baris.push({ no: x.no, kunci: bln, mentahKunci: idxBulan >= 0 ? r[idxBulan] : '', nilai: nilai, alasan: alasan });
     });
@@ -486,7 +470,9 @@
       '.im-target-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px}',
       '.im-target-row select{padding:8px 10px;border:1px solid var(--line-muted);border-radius:9px;font-size:13px;font-family:"Inter",sans-serif;background:#fff;color:var(--ink)}',
       '.im-hint{font-size:12.5px;color:var(--ink-soft);margin:0 0 10px;line-height:1.55}',
-      '.im-tools{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px}',
+      '.im-periode-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}',
+      '.im-periode-row input,.im-periode-row select{padding:9px 11px;border:1px solid var(--line-muted);border-radius:9px;font-size:14px;font-family:"IBM Plex Mono",monospace;font-weight:600;color:var(--primary);background:#fff}',
+      '.im-periode-info{font-size:12.5px;color:var(--ink-soft);margin:8px 0 0;line-height:1.55}',
 
       // Tabel isian. Judul kolomnya berupa menu pilihan, jadi kolom bisa
       // ditukar artinya tanpa langkah terpisah.
@@ -543,9 +529,8 @@
     return Number(p[2]) + ' ' + M[Number(p[1]) - 1] + ' ' + p[0];
   }
   function fmtBulanID(ym) {
-    var M = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
     var p = ym.split('-');
-    return M[Number(p[1]) - 1] + ' ' + p[0];
+    return BULAN_PANJANG[Number(p[1]) - 1] + ' ' + p[0];
   }
 
   // "pH" satuannya juga "pH" -- jangan sampai keluar "pH (pH)".
@@ -561,10 +546,12 @@
   // GRID — kolomnya sudah berlabel sesuai tujuan, jadi tidak ada lagi langkah
   // "cocokkan kolom" tersendiri: judul tiap kolom ITU SENDIRI menu pilihannya.
   // Yang perlu dilakukan cuma klik satu sel lalu Ctrl+V.
+  //
+  // Jumlah barisnya dikunci persis sebanyak tanggal di periode yang dipilih --
+  // tidak ada baris cadangan, tidak ada tombol tambah baris. Setiap baris
+  // selalu punya tanggal yang sah, jadi tidak mungkin ada data nyasar ke
+  // tanggal yang tidak ada.
   // ==========================================================================
-  var BARIS_AWAL = 12;
-  var BARIS_CADANGAN = 3; // selalu sisakan baris kosong di bawah
-
   function kolomBawaan() {
     var t = TARGETS[state.target];
     if (t.jenis === 'harian') {
@@ -584,65 +571,129 @@
     return r;
   }
 
+  function periodeSekarang() {
+    var d = new Date();
+    return TARGETS[state.target].jenis === 'harian'
+      ? d.getFullYear() + '-' + pad2(d.getMonth() + 1)
+      : String(d.getFullYear());
+  }
+
+  function jumlahHari(tahun, bulan) { return new Date(tahun, bulan, 0).getDate(); }
+
+  // Semua kunci baris untuk periode yang dipilih: tanggal 1..akhir bulan untuk
+  // data harian, Januari..Desember untuk data sumur yang memang bulanan.
+  function kunciPeriode() {
+    var out = [];
+    if (TARGETS[state.target].jenis === 'harian') {
+      var p = state.periode.split('-').map(Number);
+      var n = jumlahHari(p[0], p[1]);
+      for (var d = 1; d <= n; d++) out.push(state.periode + '-' + pad2(d));
+    } else {
+      for (var m = 1; m <= 12; m++) out.push(state.periode + '-' + pad2(m));
+    }
+    return out;
+  }
+
+  // Satu baris tabel untuk satu tanggal/bulan, sudah terisi nilai yang ADA di
+  // database. Inilah yang membuat memilih bulan lampau berarti "muat data":
+  // yang sudah tersimpan langsung kelihatan dan bisa dikoreksi di tempat.
+  function barisDariExisting(kunci) {
+    var t = TARGETS[state.target];
+    var row = barisKosong(state.mapping.length);
+    var lama = state.existing ? state.existing.get(kunci) : null;
+
+    state.mapping.forEach(function (m, c) {
+      if (m === 'tanggal' || m === 'bulan') { row[c] = kunci; return; }
+      if (!lama) return;
+      var v = null;
+      if (t.jenis === 'harian') {
+        var fld = t.fields.find(function (f) { return f.key === m; });
+        if (fld) v = lama[fld.histKey];
+      } else if (typeof m === 'string' && m.indexOf('well:') === 0) {
+        var p = m.split(':');
+        var isi = lama[p[1]];
+        if (isi !== undefined && isi !== null) {
+          // Debit menyimpan satu angka per sumur, level sepasang {statis,
+          // dinamis}. Kalau bentuknya tidak seperti yang diharapkan kategori
+          // ini, lebih baik selnya dibiarkan kosong daripada menulis
+          // "[object Object]" ke tabel yang bisa ikut terkirim.
+          v = state.category === 'debit'
+            ? (typeof isi === 'object' ? null : isi)
+            : (typeof isi === 'object' ? isi[p[2]] : null);
+        }
+      }
+      if (v !== null && v !== undefined && typeof v !== 'object') row[c] = String(v);
+    });
+    return row;
+  }
+
+  function muatPeriode() {
+    state.grid = kunciPeriode().map(barisDariExisting);
+    state.adaSuntingan = false;
+    state.pesan = '';
+  }
+
   function siapkanGrid() {
     state.mapping = kolomBawaan();
-    state.grid = [];
-    for (var i = 0; i < BARIS_AWAL; i++) state.grid.push(barisKosong(state.mapping.length));
     state.adaJudul = false; // grid tidak pernah menyimpan baris judul
-    state.blokTerakhir = null;
+    if (!state.periode) state.periode = periodeSekarang();
+    muatPeriode();
+  }
+
+  // Jumlah tanggal/bulan dalam periode ini yang SUDAH punya isi di database --
+  // ditampilkan sebagai keterangan supaya jelas apakah bulan itu masih kosong
+  // atau sedang menampilkan data lama.
+  function jumlahTerisiDiPeriode() {
+    if (!state.existing) return null;
+    var n = 0;
+    kunciPeriode().forEach(function (k) {
+      var v = state.existing.get(k);
+      if (!v) return;
+      var adaNilai = Object.keys(v).some(function (kk) {
+        var x = v[kk];
+        if (x === null || x === undefined) return false;
+        if (typeof x === 'object') return x.statis !== null || x.dinamis !== null;
+        return true;
+      });
+      if (adaNilai) n++;
+    });
+    return n;
+  }
+
+  function gantiPeriode(baru, panel) {
+    // Di luar rentang tahun yang tersedia di dropdown: batalkan, kalau tidak
+    // dropdown tahun akan kosong dan periodenya jadi tidak terbaca.
+    var th = Number(String(baru).slice(0, 4));
+    if (th < 2014 || th > new Date().getFullYear() + 1) { render(panel); return; }
+
+    // render(panel) saat dibatalkan bukan sekadar hiasan: dropdown sudah
+    // terlanjur menampilkan pilihan baru, harus dikembalikan ke periode lama.
+    if (state.adaSuntingan && !confirm('Ganti periode? Isian yang belum disimpan di tabel akan hilang.')) {
+      render(panel);
+      return;
+    }
+    state.periode = baru;
+    muatPeriode();
+    render(panel);
+  }
+
+  function geserPeriode(arah) {
+    if (TARGETS[state.target].jenis === 'harian') return tambahBulan(state.periode, arah);
+    return String(Number(state.periode) + arah);
   }
 
   function barisKosongSemua(r) {
     return state.grid[r].every(function (c) { return String(c).trim() === ''; });
   }
 
-  // Jaga selalu ada beberapa baris kosong di bawah supaya tidak perlu menekan
-  // "tambah baris" saat mengetik berurutan.
-  function pastikanBarisCadangan() {
-    var kosong = 0;
-    for (var r = state.grid.length - 1; r >= 0 && barisKosongSemua(r); r--) kosong++;
-    while (kosong < BARIS_CADANGAN) { state.grid.push(barisKosong(state.mapping.length)); kosong++; }
-  }
-
   function adaIsi() {
     return state.grid.some(function (_, r) { return !barisKosongSemua(r); });
   }
 
-  function tambahHari(iso, n) {
-    var p = iso.split('-').map(Number);
-    var d = new Date(p[0], p[1] - 1, p[2] + n);
-    return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
-  }
   function tambahBulan(ym, n) {
     var p = ym.split('-').map(Number);
     var d = new Date(p[0], p[1] - 1 + n, 1);
     return d.getFullYear() + '-' + pad2(d.getMonth() + 1);
-  }
-
-  // Sering datanya cuma satu kolom angka berurutan (sebulan penuh NTU) tanpa
-  // kolom tanggal. Isi satu tanggal awal, tombol ini melanjutkan ke bawah
-  // sejauh masih ada baris berisi.
-  function isiTanggalTurun() {
-    var harian = TARGETS[state.target].jenis === 'harian';
-    var c = state.mapping.indexOf(harian ? 'tanggal' : 'bulan');
-    if (c < 0) { state.pesan = 'Kolom ' + (harian ? 'tanggal' : 'bulan') + ' tidak ada di tabel.'; return; }
-
-    var mulai = null, mulaiRow = -1;
-    for (var r = 0; r < state.grid.length; r++) {
-      var v = harian ? parseTanggal(state.grid[r][c]) : parseBulan(state.grid[r][c]);
-      if (v) { mulai = v; mulaiRow = r; break; }
-    }
-    if (!mulai) {
-      state.pesan = 'Isi dulu ' + (harian ? 'tanggal' : 'bulan') + ' pertama di salah satu baris, baru tombol ini bisa melanjutkannya ke bawah.';
-      return;
-    }
-
-    for (var r2 = mulaiRow; r2 < state.grid.length; r2++) {
-      var berisi = state.grid[r2].some(function (v2, i) { return i !== c && String(v2).trim() !== ''; });
-      if (!berisi) break; // berhenti di baris kosong pertama, jangan mengarang tanggal
-      state.grid[r2][c] = harian ? tambahHari(mulai, r2 - mulaiRow) : tambahBulan(mulai, r2 - mulaiRow);
-    }
-    state.pesan = '';
   }
 
   // Tempelkan satu blok sel (hasil parse) ke grid mulai dari (r0, c0).
@@ -667,20 +718,74 @@
 
     var lebarTerpakai = 0;
     blok.forEach(function (r) { lebarTerpakai = Math.max(lebarTerpakai, r.length); });
-    var kelebihan = Math.max(0, c0 + lebarTerpakai - state.mapping.length);
+    var lebihLebar = Math.max(0, c0 + lebarTerpakai - state.mapping.length);
 
-    while (state.grid.length < r0 + blok.length) state.grid.push(barisKosong(state.mapping.length));
+    // Tabel TIDAK ikut memanjang: jumlah barisnya dikunci sebanyak tanggal di
+    // periode yang dipilih. Tempelan yang lebih panjang dipotong dan
+    // dilaporkan -- baris di luar bulan itu tidak punya tanggal yang sah,
+    // jadi lebih baik ditolak terang-terangan daripada diam-diam masuk.
+    var lebihPanjang = Math.max(0, r0 + blok.length - state.grid.length);
+
     blok.forEach(function (baris, i) {
+      var r = r0 + i;
+      if (r >= state.grid.length) return;
       baris.forEach(function (sel, j) {
         var c = c0 + j;
-        if (c < state.mapping.length) state.grid[r0 + i][c] = sel;
+        if (c < state.mapping.length) state.grid[r][c] = sel;
       });
     });
 
-    pastikanBarisCadangan();
-    state.pesan = kelebihan > 0
-      ? 'Tempelan lebih lebar ' + kelebihan + ' kolom dari tabel — kolom paling kanan diabaikan. Kalau kolomnya penting, tempel ulang mulai dari kolom yang tepat.'
+    var keluhan = [];
+    if (lebihPanjang > 0) keluhan.push(lebihPanjang + ' baris melebihi jumlah tanggal di periode ini');
+    if (lebihLebar > 0) keluhan.push(lebihLebar + ' kolom melebihi lebar tabel');
+    state.pesan = keluhan.length
+      ? 'Tempelan dipotong: ' + keluhan.join(' dan ') + '. Periksa apakah baris awal tempelan sudah pas dengan tanggalnya.'
       : '';
+  }
+
+  // 2014 = tahun data tertua yang ada (lihat berkas CSV arsip Waduk Manggar).
+  function opsiTahun(terpilih) {
+    var kini = new Date().getFullYear();
+    var out = [];
+    for (var y = kini + 1; y >= 2014; y--) {
+      out.push('<option value="' + y + '"' + (String(y) === String(terpilih) ? ' selected' : '') + '>' + y + '</option>');
+    }
+    return out.join('');
+  }
+
+  function renderPeriode() {
+    var harian = TARGETS[state.target].jenis === 'harian';
+    var terisi = jumlahTerisiDiPeriode();
+    var jml = kunciPeriode().length;
+
+    // Sengaja TIDAK memakai <input type="month">: kotak bawaan peramban
+    // menampilkan nama bulan mengikuti bahasa peramban ("July 2026"), tidak
+    // bisa dipaksa Indonesia. Dua dropdown sendiri selalu tampil "Juli 2026".
+    var pemilih;
+    if (harian) {
+      var bl = Number(state.periode.slice(5, 7));
+      var opsiBulan = BULAN_PANJANG.map(function (nama, i) {
+        return '<option value="' + pad2(i + 1) + '"' + (i + 1 === bl ? ' selected' : '') + '>' + nama + '</option>';
+      }).join('');
+      pemilih = '<select id="imBulan">' + opsiBulan + '</select>' +
+                '<select id="imTahun">' + opsiTahun(state.periode.slice(0, 4)) + '</select>';
+    } else {
+      pemilih = '<select id="imTahun">' + opsiTahun(state.periode) + '</select>';
+    }
+
+    var ket;
+    if (terisi === null) ket = 'Memuat data lama…';
+    else if (terisi === 0) ket = jml + ' baris disiapkan. Belum ada data tersimpan untuk periode ini.';
+    else ket = jml + ' baris disiapkan. <b>' + terisi + '</b> ' + (harian ? 'tanggal' : 'bulan') +
+      ' sudah ada isinya dan langsung dimuat ke tabel di bawah — tinggal dikoreksi atau dilengkapi.';
+
+    return '<div class="im-periode-row">' +
+      '<button class="tbtn" id="imPrev" title="Periode sebelumnya">◀</button>' +
+      pemilih +
+      '<button class="tbtn" id="imNext" title="Periode berikutnya">▶</button>' +
+      '<button class="tbtn" id="imReload" title="Muat ulang dari database, buang isian di tabel">↻ Muat ulang</button>' +
+      '</div>' +
+      '<p class="im-periode-info">' + ket + '</p>';
   }
 
   function render(panel) {
@@ -708,17 +813,14 @@
       '</div>' +
 
       '<div class="im-step">' +
-        '<div class="im-step-title"><span class="im-step-num">2</span> Isi tabel</div>' +
+        '<div class="im-step-title"><span class="im-step-num">2</span> Pilih periode</div>' +
+        renderPeriode() +
+      '</div>' +
+
+      '<div class="im-step">' +
+        '<div class="im-step-title"><span class="im-step-num">3</span> Isi tabel</div>' +
         '<p class="im-hint">Blok sel di Excel → <b>Ctrl+C</b> → klik satu sel di bawah → <b>Ctrl+V</b>. Boleh sekolom saja, boleh sebagian kolom — kolom yang tidak diisi tidak akan tersentuh. Bisa juga diketik langsung; Enter turun satu baris, Tab pindah ke kanan.</p>' +
         '<div class="im-grid-wrap" id="imGridWrap"></div>' +
-        '<div class="im-tools">' +
-          '<button class="tbtn" id="imBtnRows">+ 10 baris</button>' +
-          '<button class="tbtn" id="imBtnFillDate">Isi ' + (t.jenis === 'harian' ? 'tanggal' : 'bulan') + ' berurutan</button>' +
-          '<button class="tbtn" id="imBtnFile">Unggah CSV / XLSX…</button>' +
-          '<input type="file" id="imFile" accept=".csv,.tsv,.txt,.xlsx,.xls" style="display:none">' +
-          '<button class="tbtn" id="imBtnTranspose" title="Untuk data yang tersusun mendatar: tanggal di baris atas, bukan di kolom kiri">Putar tempelan terakhir ⇄</button>' +
-          '<button class="tbtn danger" id="imBtnClear">Kosongkan tabel</button>' +
-        '</div>' +
       '</div>' +
 
       '<div id="imAfter"></div>';
@@ -732,32 +834,23 @@
       document.getElementById('imCat').onchange = function (e) { state.category = e.target.value; gantiTujuan(panel); };
     }
 
-    document.getElementById('imBtnRows').onclick = function () {
-      for (var i = 0; i < 10; i++) state.grid.push(barisKosong(state.mapping.length));
-      renderGrid(panel);
-      renderAfter(panel);
-    };
-    document.getElementById('imBtnFillDate').onclick = function () {
-      isiTanggalTurun();
-      renderGrid(panel);
-      renderAfter(panel);
-    };
-    document.getElementById('imBtnFile').onclick = function () { document.getElementById('imFile').click(); };
-    document.getElementById('imFile').onchange = function (e) { if (e.target.files[0]) bacaBerkas(e.target.files[0], panel); };
+    document.getElementById('imPrev').onclick = function () { gantiPeriode(geserPeriode(-1), panel); };
+    document.getElementById('imNext').onclick = function () { gantiPeriode(geserPeriode(1), panel); };
 
-    // Data yang tersusun mendatar (tanggal berderet di baris atas) cukup
-    // ditempel biasa lalu ditekan tombol ini -- tempelan terakhir dipasang
-    // ulang dalam keadaan terputar, tanpa perlu menyalin ulang dari Excel.
-    document.getElementById('imBtnTranspose').onclick = function () {
-      var b = state.blokTerakhir;
-      if (!b) { state.pesan = 'Belum ada tempelan untuk diputar.'; renderAfter(panel); return; }
-      siapkanGrid();
-      terimaBlok(0, 0, transpose(b.blok), panel);
-    };
-    document.getElementById('imBtnClear').onclick = function () {
-      siapkanGrid();
-      renderGrid(panel);
-      renderAfter(panel);
+    var selBulan = document.getElementById('imBulan');
+    var selTahun = document.getElementById('imTahun');
+    function dariDropdown() {
+      return selBulan ? selTahun.value + '-' + selBulan.value : selTahun.value;
+    }
+    if (selBulan) selBulan.onchange = function () { gantiPeriode(dariDropdown(), panel); };
+    selTahun.onchange = function () { gantiPeriode(dariDropdown(), panel); };
+    document.getElementById('imReload').onclick = async function () {
+      if (state.adaSuntingan && !confirm('Muat ulang dari database? Isian yang belum disimpan di tabel akan hilang.')) return;
+      state.existing = null;
+      render(panel);
+      await muatExisting();
+      muatPeriode();
+      render(panel);
     };
 
     renderGrid(panel);
@@ -806,16 +899,7 @@
       if (!el.classList.contains('im-cell')) return;
       var r = Number(el.getAttribute('data-r')), c = Number(el.getAttribute('data-c'));
       state.grid[r][c] = el.value;
-
-      // Tumbuhkan tabel begitu baris terakhir mulai terisi, supaya mengetik
-      // berurutan tidak pernah mentok. Ini satu-satunya keadaan tabel digambar
-      // ulang saat mengetik, jadi kursor dikembalikan ke sel yang sama.
-      if (r >= state.grid.length - 1 && el.value.trim() !== '') {
-        pastikanBarisCadangan();
-        renderGrid(panel);
-        var lagi = wrap.querySelector('.im-cell[data-r="' + r + '"][data-c="' + c + '"]');
-        if (lagi) { lagi.focus(); lagi.setSelectionRange(lagi.value.length, lagi.value.length); }
-      }
+      state.adaSuntingan = true;
       renderAfter(panel);
     });
 
@@ -835,13 +919,13 @@
       var teks = (ev.clipboardData || window.clipboardData).getData('text');
       if (!teks || !teks.trim()) return;
       ev.preventDefault();
-      var blok = parseDelimited(teks, tebakPemisah(teks));
+      var blok = parseDelimited(teks, PEMISAH);
       terimaBlok(Number(el.getAttribute('data-r')), Number(el.getAttribute('data-c')), blok, panel);
     });
   }
 
   function terimaBlok(r0, c0, blok, panel) {
-    state.blokTerakhir = { r0: r0, c0: c0, blok: blok };
+    state.adaSuntingan = true;
     tempelBlok(r0, c0, blok);
     renderGrid(panel);
     renderAfter(panel);
@@ -853,51 +937,18 @@
       state.wells = [];
       try { await muatWells(); } catch (err) { state.pesan = 'Gagal memuat daftar sumur: ' + err.message; }
     }
+    // Harian memakai periode 'YYYY-MM', sumur 'YYYY' -- bentuknya beda, jadi
+    // periode disetel ulang saat pindah antar keduanya.
+    var harian = TARGETS[state.target].jenis === 'harian';
+    if (harian !== (state.periode.length === 7)) state.periode = '';
     siapkanGrid();
     render(panel);
     await muatExisting();
-    renderAfter(panel);
+    if (!state.adaSuntingan) muatPeriode();
+    render(panel);
   }
 
-  function bacaBerkas(file, panel) {
-    var nama = file.name.toLowerCase();
-
-    if (/\.xlsx?$/.test(nama)) {
-      if (typeof XLSX === 'undefined') {
-        state.pesan = 'Pembaca XLSX belum termuat. Coba muat ulang halaman, atau simpan berkasnya sebagai CSV.';
-        renderAfter(panel);
-        return;
-      }
-      var fr = new FileReader();
-      fr.onload = function (e) {
-        try {
-          var wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
-          var ws = wb.Sheets[wb.SheetNames[0]];
-          // raw:false -> tanggal keluar sudah terformat, tidak jadi serial.
-          var rows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: false, defval: '' })
-            .map(function (r) { return r.map(function (c) { return String(c === null || c === undefined ? '' : c).trim(); }); })
-            .filter(function (r) { return r.some(function (c) { return c !== ''; }); });
-          siapkanGrid();
-          terimaBlok(0, 0, rows, panel);
-        } catch (err) {
-          state.pesan = 'Gagal membaca berkas: ' + err.message;
-          renderAfter(panel);
-        }
-      };
-      fr.readAsArrayBuffer(file);
-      return;
-    }
-
-    var fr2 = new FileReader();
-    fr2.onload = function (e) {
-      var teks = e.target.result;
-      siapkanGrid();
-      terimaBlok(0, 0, parseDelimited(teks, tebakPemisah(teks)), panel);
-    };
-    fr2.readAsText(file);
-  }
-
-  // --- Langkah 3: pratinjau & simpan ---------------------------------------
+  // --- Langkah 4: pratinjau & simpan ---------------------------------------
   function renderAfter(panel) {
     var after = document.getElementById('imAfter');
     if (!after) return;
@@ -1014,7 +1065,7 @@
     var bisaSimpan = siap.length > 0 && (nBaru + nTimpa) > 0;
 
     return '<div class="im-step">' +
-      '<div class="im-step-title"><span class="im-step-num">3</span> Periksa lalu simpan</div>' +
+      '<div class="im-step-title"><span class="im-step-num">4</span> Periksa lalu simpan</div>' +
       '<div class="im-summary">' +
         '<span class="im-badge baru">' + nBaru + ' nilai baru</span>' +
         '<span class="im-badge timpa">' + nTimpa + ' menimpa nilai lama</span>' +
@@ -1127,14 +1178,19 @@
     // lain untuk memeriksa.
     await muatExisting();
 
-    var after = document.getElementById('imAfter');
     var pesan = gagal
       ? '<div class="im-alert err">Berhenti setelah ' + terkirim + ' baris tersimpan. ' + esc(gagal) + '</div>'
       : '<div class="im-alert ok">Berhasil menyimpan ' + terkirim + ' baris' +
         (takDikenal.length ? '. Nama sumur yang dilewati karena belum terdaftar: <b>' + esc(Array.from(new Set(takDikenal)).join(', ')) + '</b>' : '') +
         '.</div>';
 
-    renderAfter(panel);
+    // Kalau semuanya masuk, tabel diisi ulang dari database: yang tampil
+    // sesudahnya adalah apa yang BENAR-BENAR tersimpan, bukan apa yang tadi
+    // diketik. Kalau ada yang gagal, isian dibiarkan supaya tidak hilang.
+    if (!gagal) muatPeriode();
+    render(panel);
+
+    var after = document.getElementById('imAfter');
     if (after) after.insertAdjacentHTML('afterbegin', pesan);
   }
 
@@ -1149,11 +1205,16 @@
       }
       // Isi tabel dipertahankan saat pindah tab lalu balik lagi -- tabel baru
       // cuma disiapkan kalau memang belum pernah ada.
-      if (state.grid.length === 0) siapkanGrid();
+      var pertamaKali = state.grid.length === 0;
+      if (pertamaKali) siapkanGrid();
       render(panel);
       if (state.existing === null) {
         await muatExisting();
-        renderAfter(panel);
+        // Data lama baru sampai setelah tabel tergambar; isi ulang tabel
+        // supaya nilai yang sudah tersimpan ikut muncul -- kecuali kalau
+        // sudah terlanjur ada yang diketik.
+        if (!state.adaSuntingan) muatPeriode();
+        render(panel);
       }
     }
   };
