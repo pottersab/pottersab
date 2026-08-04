@@ -182,9 +182,16 @@ module.exports = async (req, res) => {
       const semuaTahun = String(year || '').toLowerCase() === 'all';
       const tahunDipakai = semuaTahun ? years : [pickYear(years, year)];
 
+      // Dua tahun per halaman supaya berkasnya tidak jadi setebal jumlah
+      // tahunnya. Kecuali halaman pertama: di situ sudah ada grafik, sisa
+      // ruangnya cuma cukup untuk satu tahun. Jadi tahun ke-0 sendirian, lalu
+      // berpasangan -- indeks ganjil membuka halaman, indeks genap menyambung.
       pdfBytes = await bikinPdf({
         landscape: true,
-        sections: tahunDipakai.map(bikinSectionTahun)
+        sections: tahunDipakai.map((t, i) => ({
+          ...bikinSectionTahun(t),
+          sambung: i >= 2 && i % 2 === 0
+        }))
       });
       filename = semuaTahun
         ? `rekapitulasi_${dataType}_semua-tahun.pdf`
