@@ -640,6 +640,71 @@
     muatPeriode();
   }
 
+  // --- Salin dari bulan sebelumnya (khusus Statis & Dinamis) ---------------
+  // Muka air statis/dinamis sumur nyaris tidak bergeser dari bulan ke bulan;
+  // yang tercatat sering angka yang sama persis. Jadi mengetik ulang 16 kolom
+  // tiap bulan cuma menyalin pekerjaan bulan lalu. Tombol ini yang
+  // menyalinnya, tinggal ubah yang memang berbeda.
+  //
+  // Batasan yang dipegang, supaya tidak pernah mengarang data:
+  //   - hanya mengisi sel yang KOSONG, tidak pernah menimpa angka yang ada
+  //   - berhenti di bulan berjalan, tidak mengisi bulan yang belum terjadi
+  //   - hasilnya cuma masuk tabel, bukan database -- semuanya tetap muncul
+  //     sebagai "nilai baru" di pratinjau dan baru tersimpan kalau ditekan
+  //     tombol simpan
+  function bulanBerjalan() {
+    var d = new Date();
+    return d.getFullYear() + '-' + pad2(d.getMonth() + 1);
+  }
+
+  function barisPunyaNilai(r) {
+    var row = state.grid[r];
+    return state.mapping.some(function (m, c) {
+      return m && m !== 'bulan' && m !== 'tanggal' && String(row[c] === undefined ? '' : row[c]).trim() !== '';
+    });
+  }
+
+  function salinDariBulanSebelumnya() {
+    var idx = state.mapping.indexOf('bulan');
+    if (idx < 0) return;
+
+    var batas = bulanBerjalan();
+    var selTerisi = 0, bulanTersentuh = 0;
+
+    for (var r = 0; r < state.grid.length; r++) {
+      var kunci = state.grid[r][idx];
+      if (!kunci || kunci > batas) break;
+
+      // Sumbernya baris di atasnya kalau sudah ada isinya -- termasuk isi yang
+      // baru saja disalin, jadi rantainya menurun dari bulan terakhir yang
+      // benar-benar tercatat. Untuk baris Januari, bulan sebelumnya ada di
+      // tahun lain, jadi diambil langsung dari data yang termuat.
+      var sumber = (r > 0 && barisPunyaNilai(r - 1))
+        ? state.grid[r - 1]
+        : barisDariExisting(tambahBulan(kunci, -1));
+
+      var adaDisalin = false;
+      state.mapping.forEach(function (m, c) {
+        if (c === idx || !m) return;
+        if (String(state.grid[r][c] === undefined ? '' : state.grid[r][c]).trim() !== '') return;
+        var v = sumber[c];
+        if (v === undefined || String(v).trim() === '') return;
+        state.grid[r][c] = String(v);
+        selTerisi++;
+        adaDisalin = true;
+      });
+      if (adaDisalin) bulanTersentuh++;
+    }
+
+    if (selTerisi === 0) {
+      state.pesan = 'Tidak ada yang bisa disalin — sel yang kosong tidak punya angka bulan sebelumnya, atau semuanya sudah terisi.';
+      return;
+    }
+    state.adaSuntingan = true;
+    state.pesan = selTerisi + ' nilai disalin dari bulan sebelumnya ke ' + bulanTersentuh +
+      ' bulan. Ubah yang memang berbeda, lalu tekan simpan — belum ada yang masuk database.';
+  }
+
   // Jumlah tanggal/bulan dalam periode ini yang SUDAH punya isi di database --
   // ditampilkan sebagai keterangan supaya jelas apakah bulan itu masih kosong
   // atau sedang menampilkan data lama.
@@ -779,11 +844,20 @@
     else ket = jml + ' baris disiapkan. <b>' + terisi + '</b> ' + (harian ? 'tanggal' : 'bulan') +
       ' sudah ada isinya dan langsung dimuat ke tabel di bawah — tinggal dikoreksi atau dilengkapi.';
 
+    // Khusus Statis & Dinamis: angkanya jarang berubah antar bulan, jadi
+    // menyalin bulan sebelumnya jauh lebih cepat daripada mengetik ulang.
+    // Tidak ditawarkan untuk Debit -- debit memang berubah tiap bulan, dan
+    // menyalinnya justru menghasilkan angka yang salah.
+    var salin = (!harian && state.category === 'level')
+      ? '<button class="tbtn" id="imSalin" title="Isi bulan yang masih kosong dengan angka bulan sebelumnya">⧉ Salin dari bulan sebelumnya</button>'
+      : '';
+
     return '<div class="im-periode-row">' +
       '<button class="tbtn" id="imPrev" title="Periode sebelumnya">◀</button>' +
       pemilih +
       '<button class="tbtn" id="imNext" title="Periode berikutnya">▶</button>' +
       '<button class="tbtn" id="imReload" title="Muat ulang dari database, buang isian di tabel">↻ Muat ulang</button>' +
+      salin +
       '</div>' +
       '<p class="im-periode-info">' + ket + '</p>';
   }
@@ -844,6 +918,13 @@
     }
     if (selBulan) selBulan.onchange = function () { gantiPeriode(dariDropdown(), panel); };
     selTahun.onchange = function () { gantiPeriode(dariDropdown(), panel); };
+    var btnSalin = document.getElementById('imSalin');
+    if (btnSalin) btnSalin.onclick = function () {
+      salinDariBulanSebelumnya();
+      renderGrid(panel);
+      renderAfter(panel);
+    };
+
     document.getElementById('imReload').onclick = async function () {
       if (state.adaSuntingan && !confirm('Muat ulang dari database? Isian yang belum disimpan di tabel akan hilang.')) return;
       state.existing = null;
