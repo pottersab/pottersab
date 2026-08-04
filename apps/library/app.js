@@ -559,6 +559,37 @@ function lastValidPoint(vals) {
   return null;
 }
 
+function bulanTahunID(d) {
+  return MONTHS_ID[d.getMonth()] + ' ' + d.getFullYear();
+}
+
+// Nilai pembanding = pembacaan terakhir SEBELUM tanggal tertentu, dicari di
+// SELURUH data -- bukan cuma di rentang yang sedang difilter.
+//
+// Ini yang dulu membuat kartu bertuliskan "data belum cukup": pembandingnya
+// dicari di dalam rentang saja, jadi memilih tahun 2026 memutus Januari 2026
+// dari Desember 2025 yang datanya sebenarnya ada. Data sumur juga berlubang
+// (satu-dua bulan kosong itu biasa), makanya yang dicari bukan persis satu
+// bulan sebelumnya, tapi bulan terisi terdekat sebelum itu -- bulannya
+// disebutkan di kartu supaya jelas dibandingkan dengan apa.
+function titikSebelum(data, kolom, sebelumTgl) {
+  for (let i = data.length - 1; i >= 0; i--) {
+    const r = data[i];
+    if (r.date >= sebelumTgl) continue;
+    const v = r[kolom];
+    if (v !== null && v !== undefined) return { val: v, date: r.date };
+  }
+  return null;
+}
+
+function deltaHtml(last, banding) {
+  if (!last || !banding) return '<span class="tile-metric-delta kosong">—</span>';
+  const d = last.val - banding.val;
+  if (Math.abs(d) < 0.005) return '<span class="tile-metric-delta">tetap</span>';
+  const naik = d > 0;
+  return `<span class="tile-metric-delta ${naik ? 'naik' : 'turun'}">${naik ? '▲' : '▼'} ${Math.abs(d).toFixed(2)}</span>`;
+}
+
 function buildTiles() {
   const grid = document.getElementById('tilesGrid');
   const ds = currentDataset();
@@ -567,26 +598,41 @@ function buildTiles() {
   grid.innerHTML = '';
 
   ds.wellColumns.forEach(w => {
-    const mainVals = isPair ? rows.map(r => r[w + '_Statis']) : rows.map(r => r[w]);
-    const secVals = isPair ? rows.map(r => r[w + '_Dinamis']) : null;
+    const kolomUtama = isPair ? w + '_Statis' : w;
+    const kolomKedua = isPair ? w + '_Dinamis' : null;
+
+    const mainVals = rows.map(r => r[kolomUtama]);
+    const secVals = kolomKedua ? rows.map(r => r[kolomKedua]) : null;
     const lastMain = lastValidPoint(mainVals);
-    const prevMain = lastMain ? lastValidPoint(mainVals.slice(0, lastMain.idx)) : null;
-    const delta = (lastMain && prevMain) ? (lastMain.val - prevMain.val) : null;
     const lastSec = secVals ? lastValidPoint(secVals) : null;
     const pts = sparklinePoints(mainVals);
 
-    let deltaTxt;
-    if (delta === null) deltaTxt = 'data belum cukup';
-    else if (Math.abs(delta) < 0.005) deltaTxt = 'stabil dari periode lalu';
-    else deltaTxt = (delta > 0 ? '▲ ' : '▼ ') + Math.abs(delta).toFixed(2) + ' ' + ds.unit + ' dari periode lalu';
+    const bandingMain = lastMain ? titikSebelum(ds.data, kolomUtama, rows[lastMain.idx].date) : null;
+    const bandingSec = (lastSec && kolomKedua) ? titikSebelum(ds.data, kolomKedua, rows[lastSec.idx].date) : null;
+
+    // Statis & Dinamis bisa saja punya bulan pembanding yang berbeda kalau
+    // salah satunya bolong, jadi keterangannya menyebut keduanya kalau memang
+    // beda -- lebih baik agak panjang daripada menyesatkan.
+    const bulanBanding = [];
+    if (bandingMain) bulanBanding.push({ nama: isPair ? 'statis' : null, teks: bulanTahunID(bandingMain.date) });
+    if (bandingSec) bulanBanding.push({ nama: 'dinamis', teks: bulanTahunID(bandingSec.date) });
+
+    let ketBanding;
+    if (bulanBanding.length === 0) {
+      ketBanding = 'belum ada bulan sebelumnya untuk dibandingkan';
+    } else if (bulanBanding.length === 2 && bulanBanding[0].teks !== bulanBanding[1].teks) {
+      ketBanding = `dibanding ${bulanBanding[0].teks} (statis) & ${bulanBanding[1].teks} (dinamis)`;
+    } else {
+      ketBanding = `dibanding ${bulanBanding[0].teks}`;
+    }
 
     const metricsHtml = isPair
       ? `<div class="tile-metrics">
-           <div class="tile-metric"><span class="tile-metric-label">Statis</span><span class="tile-metric-value">${lastMain ? lastMain.val.toFixed(2) : '-'} ${ds.unit}</span></div>
-           <div class="tile-metric"><span class="tile-metric-label">Dinamis</span><span class="tile-metric-value">${lastSec ? lastSec.val.toFixed(2) : '-'} ${ds.unit}</span></div>
+           <div class="tile-metric"><span class="tile-metric-label">Statis</span><span class="tile-metric-value">${lastMain ? lastMain.val.toFixed(2) : '-'} ${ds.unit}</span>${deltaHtml(lastMain, bandingMain)}</div>
+           <div class="tile-metric"><span class="tile-metric-label">Dinamis</span><span class="tile-metric-value">${lastSec ? lastSec.val.toFixed(2) : '-'} ${ds.unit}</span>${deltaHtml(lastSec, bandingSec)}</div>
          </div>`
       : `<div class="tile-metrics">
-           <div class="tile-metric"><span class="tile-metric-label">${ds.label}</span><span class="tile-metric-value">${lastMain ? lastMain.val.toFixed(2) : '-'} ${ds.unit}</span></div>
+           <div class="tile-metric"><span class="tile-metric-label">${ds.label}</span><span class="tile-metric-value">${lastMain ? lastMain.val.toFixed(2) : '-'} ${ds.unit}</span>${deltaHtml(lastMain, bandingMain)}</div>
          </div>`;
 
     const card = document.createElement('div');
@@ -594,7 +640,7 @@ function buildTiles() {
     card.innerHTML = `
       <div class="tile-name">${w.replace(/_/g, ' ')}</div>
       ${metricsHtml}
-      <div class="tile-delta">${deltaTxt}</div>
+      <div class="tile-delta">${ketBanding}</div>
       <svg viewBox="0 0 100 28" width="100%" height="28">${pts ? `<polyline points="${pts}" fill="none" stroke="var(--primary)" stroke-width="2"/>` : ''}</svg>
     `;
     grid.appendChild(card);
