@@ -888,11 +888,12 @@ function downloadRekapExcel() {
 // dari HP tanpa ini menghasilkan grafik jangkung yang memakan setengah halaman
 // lanskap.
 //
-// Waktu chip-nya "Semua Data", grafiknya garis lintas tahun sementara tabel di
-// PDF tetap satu tahun (bentuk pivot cuma muat segitu) dan subjudulnya menyebut
-// tahun itu saja. Supaya tidak terbaca sebagai tabel yang salah, keterangan
-// cakupannya ditulis DI DALAM gambar grafiknya -- ikut ke mana pun berkasnya
-// diteruskan, tidak bisa terpisah seperti kalau ditaruh di badan halaman.
+// Waktu chip-nya "Semua Data", grafiknya garis lintas tahun dan tabel di PDF
+// dipecah jadi satu halaman per tahun. Grafiknya cuma menempel di halaman
+// pertama, yang tabelnya tahun paling awal -- gampang dikira grafik tahun itu
+// saja. Karena itu cakupannya ditulis DI DALAM gambar grafiknya: ikut ke mana
+// pun berkasnya diteruskan, tidak bisa terpisah seperti kalau ditaruh di badan
+// halaman.
 const PDF_CHART_W = 1100;
 const PDF_CHART_H = 320;
 
@@ -910,7 +911,7 @@ function grafikRekapPngPdf() {
     skala: { ...rekapYRange(semuaBulan.map(r => r.value), rk.tickStep), step: rk.tickStep },
     label: `Jumlah — ${rk.categoryLabel}`,
     judul: series.lintasTahun
-      ? `Grafik: seluruh riwayat ${series.labels[0]} – ${series.labels[series.labels.length - 1]}  ·  tabel di bawah: tahun ${rekapActiveYear()}`
+      ? `Grafik: seluruh riwayat ${series.labels[0]} – ${series.labels[series.labels.length - 1]}  ·  tabel dipecah per tahun, satu halaman tiap tahun`
       : null
   }, false));
   try {
@@ -971,7 +972,10 @@ async function downloadPdf() {
 
   if (isRekapActive()) {
     params.set('mode', 'rekap');
-    params.set('year', rekapActiveYear());
+    // "Semua Data" -> server mengeluarkan tabel SEMUA tahun, satu halaman per
+    // tahun. Kalau di sini dikirim satu tahun saja (dulu begitu), PDF-nya cuma
+    // memuat tahun terbaru padahal grafiknya lintas tahun.
+    params.set('year', filterMode === 'all' ? 'all' : rekapActiveYear());
   } else {
     params.set('mode', 'series');
     params.set('well', (KEY_TO_COLNAME[currentKey] || '').toLowerCase());

@@ -147,35 +147,48 @@ module.exports = async (req, res) => {
     }
 
     if (mode === 'rekap') {
-      const years = yearsInRows(allRows, 'Bulan');
-      const activeYear = pickYear(years, year);
-      const yearRows = allRows.filter(r => r.Bulan.startsWith(`${activeYear}-`));
-      const byMonth = {};
-      yearRows.forEach(r => { byMonth[Number(r.Bulan.slice(5, 7))] = r; });
-      const monthTotals = new Array(12).fill(0);
-      const monthHas = new Array(12).fill(false);
-      const tableRows = source.columns.map(col => {
-        const values = MONTHS_SHORT.map((_, i) => {
-          const r = byMonth[i + 1];
-          const v = r ? r[col.csv] : null;
-          if (v !== null && v !== undefined) { monthTotals[i] += v; monthHas[i] = true; }
-          return fmtNum(v);
+      // Satu section = satu tahun = satu halaman (buildTablePdf selalu memulai
+      // halaman baru tiap section).
+      const bikinSectionTahun = (activeYear) => {
+        const yearRows = allRows.filter(r => r.Bulan.startsWith(`${activeYear}-`));
+        const byMonth = {};
+        yearRows.forEach(r => { byMonth[Number(r.Bulan.slice(5, 7))] = r; });
+        const monthTotals = new Array(12).fill(0);
+        const monthHas = new Array(12).fill(false);
+        const tableRows = source.columns.map(col => {
+          const values = MONTHS_SHORT.map((_, i) => {
+            const r = byMonth[i + 1];
+            const v = r ? r[col.csv] : null;
+            if (v !== null && v !== undefined) { monthTotals[i] += v; monthHas[i] = true; }
+            return fmtNum(v);
+          });
+          return [col.label, ...values];
         });
-        return [col.label, ...values];
-      });
-      const totalRow = monthTotals.map((t, i) => fmtNum(monthHas[i] ? t : null));
-      tableRows.push(['Jumlah', ...totalRow]);
-      pdfBytes = await bikinPdf({
-        landscape: true,
-        sections: [{
+        const totalRow = monthTotals.map((t, i) => fmtNum(monthHas[i] ? t : null));
+        tableRows.push(['Jumlah', ...totalRow]);
+        return {
           title: 'Data Historis Pengambilan Air Baku — Rekapitulasi',
           subtitle: `Perumda Tirta Manuntung — Sumber Air Baku  |  ${source.label}  |  Tahun ${activeYear}  |  Satuan m³`,
           columns: [{ header: 'Instalasi', weight: 1.6 }, ...MONTHS_SHORT.map(m => ({ header: m, weight: 1 }))],
           rows: tableRows,
           totalRowIndex: tableRows.length - 1
-        }]
+        };
+      };
+
+      const years = yearsInRows(allRows, 'Bulan');
+      // year=all -> chip "Semua Data" di halaman: tabelnya ikut semua tahun,
+      // bukan cuma tahun terbaru. Dulu parameter tahun selalu diisi satu tahun,
+      // jadi PDF-nya cuma memuat satu halaman padahal grafiknya lintas tahun.
+      const semuaTahun = String(year || '').toLowerCase() === 'all';
+      const tahunDipakai = semuaTahun ? years : [pickYear(years, year)];
+
+      pdfBytes = await bikinPdf({
+        landscape: true,
+        sections: tahunDipakai.map(bikinSectionTahun)
       });
-      filename = `rekapitulasi_${dataType}_${activeYear}.pdf`;
+      filename = semuaTahun
+        ? `rekapitulasi_${dataType}_semua-tahun.pdf`
+        : `rekapitulasi_${dataType}_${tahunDipakai[0]}.pdf`;
     }
   } else if (source.kind === 'wide-single') {
     const { dateKey, rows: allRows } = await fetchWideSingleRows(source);
