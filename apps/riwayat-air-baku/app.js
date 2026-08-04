@@ -611,13 +611,45 @@ function rekapYRange(values) {
   return { min: Math.max(0, min), max };
 }
 
-function rekapChartConfig({ values, label }, responsive) {
+// Seri yang digambar grafik rekap, mengikuti chip tahun persis seperti
+// tampilan lain:
+//   chip tahun     -> 12 bulan tahun itu, diambil dari totalRow tabel pivot
+//                     di bawahnya, jadi grafik dan tabel mustahil beda angka.
+//   "Semua Data"   -> seluruh bulan lintas tahun.
+//
+// Tabelnya sendiri tidak bisa ikut "Semua Data" -- bentuknya pivot instalasi
+// x 12 bulan, jadi cuma muat satu tahun dan tetap menampilkan tahun terbaru.
+// Keterangan di bawah judul grafik menyebutkan hal ini supaya tidak dikira
+// tabelnya yang salah.
+function rekapSeries() {
+  const rk = currentRekap();
+  if (filterMode === 'all') {
+    const baris = rk.data.slice().sort((a, b) => a.date - b.date);
+    const labels = [];
+    const values = [];
+    baris.forEach(r => {
+      let jumlah = 0;
+      let ada = false;
+      rk.wells.forEach(w => {
+        const v = r.values[w.colName];
+        if (v !== null && v !== undefined) { jumlah += v; ada = true; }
+      });
+      labels.push(dateStrDisplay(r.date));
+      values.push(ada ? jumlah : null);
+    });
+    return { labels, values, lintasTahun: true };
+  }
+  const { totalRow } = rekapPivotForYear(rk, rekapActiveYear());
+  return { labels: MONTHS_ID.slice(), values: totalRow, lintasTahun: false };
+}
+
+function rekapChartConfig({ labels, values, label }, responsive) {
   const accent = '#0B5566';
   const { min, max } = rekapYRange(values);
   return {
     type: 'bar',
     data: {
-      labels: MONTHS_ID.slice(),
+      labels,
       datasets: [{
         label,
         data: values,
@@ -645,29 +677,33 @@ function rekapChartConfig({ values, label }, responsive) {
 function renderRekapChart() {
   const rk = currentRekap();
   const year = rekapActiveYear();
-  const { totalRow } = rekapPivotForYear(rk, year);
+  const series = rekapSeries();
+  const { values, lintasTahun } = series;
 
-  const { min } = rekapYRange(totalRow);
+  const { min } = rekapYRange(values);
+  const periode = lintasTahun
+    ? `seluruh riwayat (${rk.unit}) — tabel di bawah tetap menampilkan tahun ${year}, karena bentuknya cuma muat satu tahun.`
+    : `tahun ${year} (${rk.unit}) — sama dengan baris "Jumlah" di tabel bawah.`;
   document.getElementById('rekapChartGroup').textContent = rk.categoryLabel;
   document.getElementById('rekapChartNote').textContent =
-    `Total seluruh instalasi per bulan, tahun ${year} (${rk.unit}) — sama dengan baris "Jumlah" di tabel bawah.` +
+    `Total seluruh instalasi per bulan, ${periode}` +
     (min ? ` Sumbu Y mulai dari ${fmtNum(min)}, bukan nol, supaya selisih antar bulan terlihat.` : '');
 
   const ctx = document.getElementById('rekapChart').getContext('2d');
   if (rekapChart) rekapChart.destroy();
   rekapChart = new Chart(ctx, rekapChartConfig(
-    { values: totalRow, label: `Jumlah — ${rk.categoryLabel}` }, true
+    { ...series, label: `Jumlah — ${rk.categoryLabel}` }, true
   ));
 
-  const valid = totalRow.filter(v => v !== null && v !== undefined);
+  const valid = values.filter(v => v !== null && v !== undefined);
   const jumlah = valid.reduce((a, b) => a + b, 0);
   const rata = valid.length ? Math.round(jumlah / valid.length) : null;
   document.getElementById('rekapStatsRow').innerHTML = `
-    <div class="stat"><div class="k">Total setahun</div><div class="v">${fmtNum(valid.length ? jumlah : null)} ${rk.unit}</div></div>
+    <div class="stat"><div class="k">${lintasTahun ? 'Total keseluruhan' : 'Total setahun'}</div><div class="v">${fmtNum(valid.length ? jumlah : null)} ${rk.unit}</div></div>
     <div class="stat"><div class="k">Rata-rata / bulan</div><div class="v">${fmtNum(rata)} ${rk.unit}</div></div>
     <div class="stat"><div class="k">Bulan tertinggi</div><div class="v">${fmtNum(valid.length ? Math.max(...valid) : null)} ${rk.unit}</div></div>
     <div class="stat"><div class="k">Bulan terendah</div><div class="v">${fmtNum(valid.length ? Math.min(...valid) : null)} ${rk.unit}</div></div>
-    <div class="stat"><div class="k">Bulan tercatat</div><div class="v">${valid.length} / 12</div></div>
+    <div class="stat"><div class="k">Bulan tercatat</div><div class="v">${lintasTahun ? `${valid.length} bulan` : `${valid.length} / 12`}</div></div>
   `;
 }
 
@@ -675,7 +711,11 @@ function renderRekapView() {
   setViewMode('rekap');
   const rk = currentRekap();
   const year = rekapActiveYear();
-  rangeLabelEl.textContent = `Tahun ${year}` + (filterMode === 'all' ? ' (terbaru)' : '');
+  // Saat "Semua Data": grafiknya lintas tahun, tabelnya tetap tahun terbaru.
+  // Labelnya menyebut keduanya supaya tidak dikira tabelnya yang tidak ikut.
+  rangeLabelEl.textContent = filterMode === 'all'
+    ? `Semua Data (tabel: tahun ${year})`
+    : `Tahun ${year}`;
 
   const { wellRows, totalRow } = rekapPivotForYear(rk, year);
   renderRekapChart();
@@ -789,11 +829,16 @@ function downloadRekapExcel() {
 // ikut terkirim, unduhannya lewat POST + blob, bukan lagi mengarahkan alamat
 // browser seperti dulu.
 // ---------------------------------------------------------------------------
-// Grafik rekap untuk PDF digambar ULANG di kanvas lepas berukuran tetap
-// (3,4:1), bukan mengambil kanvas di layar. Kalau mengambil yang di layar,
-// bentuknya ikut lebar jendela: unduhan dari HP menghasilkan grafik jangkung
-// yang memakan setengah halaman lanskap. Datanya sama persis dengan yang
-// tampil -- sama-sama totalRow tahun aktif.
+// Grafik rekap untuk PDF digambar ULANG di kanvas lepas, tidak mengambil yang
+// di layar. Dua alasan:
+//   1. Isinya SELALU 12 bulan tahun aktif, sebaris dengan tabelnya. Kalau di
+//      layar chip-nya sedang "Semua Data", grafiknya lintas tahun -- sementara
+//      subjudul PDF rekap dan tabelnya cuma menyebut satu tahun. Grafik lintas
+//      tahun di bawah subjudul itu menyesatkan buat orang yang cuma menerima
+//      PDF-nya.
+//   2. Ukurannya jadi tetap (3,4:1), tidak ikut lebar jendela. Tanpa ini,
+//      unduhan dari HP menghasilkan grafik jangkung yang memakan setengah
+//      halaman lanskap.
 const PDF_CHART_W = 1100;
 const PDF_CHART_H = 320;
 
@@ -804,7 +849,8 @@ function grafikRekapPngPdf() {
   canvas.width = PDF_CHART_W;
   canvas.height = PDF_CHART_H;
   const c = new Chart(canvas.getContext('2d'), rekapChartConfig({
-    values: totalRow, label: `Jumlah — ${rk.categoryLabel}`
+    labels: MONTHS_ID.slice(), values: totalRow,
+    label: `Jumlah — ${rk.categoryLabel}`
   }, false));
   try {
     c.update('none');
