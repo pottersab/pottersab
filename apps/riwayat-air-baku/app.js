@@ -621,41 +621,57 @@ function rekapYRange(values) {
 // x 12 bulan, jadi cuma muat satu tahun dan tetap menampilkan tahun terbaru.
 // Keterangan di bawah judul grafik menyebutkan hal ini supaya tidak dikira
 // tabelnya yang salah.
-function rekapSeries() {
-  const rk = currentRekap();
-  if (filterMode === 'all') {
-    const baris = rk.data.slice().sort((a, b) => a.date - b.date);
-    const labels = [];
-    const values = [];
-    baris.forEach(r => {
-      let jumlah = 0;
-      let ada = false;
-      rk.wells.forEach(w => {
-        const v = r.values[w.colName];
-        if (v !== null && v !== undefined) { jumlah += v; ada = true; }
-      });
-      labels.push(dateStrDisplay(r.date));
-      values.push(ada ? jumlah : null);
+// Total seluruh instalasi per bulan untuk SEMUA tahun, urut waktu. Dipakai dua
+// kali: sebagai seri "Semua Data", dan sebagai dasar rentang sumbu Y.
+function rekapBarisTotal(rk) {
+  return rk.data.slice().sort((a, b) => a.date - b.date).map(r => {
+    let jumlah = 0;
+    let ada = false;
+    rk.wells.forEach(w => {
+      const v = r.values[w.colName];
+      if (v !== null && v !== undefined) { jumlah += v; ada = true; }
     });
-    return { labels, values, lintasTahun: true };
-  }
-  const { totalRow } = rekapPivotForYear(rk, rekapActiveYear());
-  return { labels: MONTHS_ID.slice(), values: totalRow, lintasTahun: false };
+    return { date: r.date, value: ada ? jumlah : null };
+  });
 }
 
-function rekapChartConfig({ labels, values, label }, responsive) {
+function rekapSeries(rk, semuaBulan) {
+  if (filterMode === 'all') {
+    return {
+      type: 'line',
+      labels: semuaBulan.map(r => dateStrDisplay(r.date)),
+      values: semuaBulan.map(r => r.value),
+      lintasTahun: true
+    };
+  }
+  const { totalRow } = rekapPivotForYear(rk, rekapActiveYear());
+  return { type: 'bar', labels: MONTHS_ID.slice(), values: totalRow, lintasTahun: false };
+}
+
+// Batang untuk satu tahun (12 titik, tingginya enak dibandingkan antar bulan),
+// garis untuk seluruh riwayat (puluhan titik -- kalau dibatangkan jadi terlalu
+// rapat, dan yang dicari di situ trennya, bukan nilai per bulan).
+//
+// `skala` datang dari luar, bukan dihitung dari `values`, karena rentangnya
+// dikunci sama untuk semua tahun -- lihat renderRekapChart.
+function rekapChartConfig({ type, labels, values, label, skala }, responsive) {
   const accent = '#0B5566';
-  const { min, max } = rekapYRange(values);
+  const garis = type === 'line';
   return {
-    type: 'bar',
+    type,
     data: {
       labels,
       datasets: [{
         label,
         data: values,
         borderColor: accent,
-        backgroundColor: accent + 'CC',
-        borderWidth: 2, borderRadius: 4
+        backgroundColor: garis ? accent + '22' : accent + 'CC',
+        fill: garis,
+        tension: garis ? 0.25 : 0,
+        pointRadius: 0,
+        spanGaps: garis,
+        borderWidth: 2,
+        borderRadius: garis ? 0 : 4
       }]
     },
     options: {
@@ -665,7 +681,7 @@ function rekapChartConfig({ labels, values, label }, responsive) {
       scales: {
         x: { ticks: { maxTicksLimit: 12, font: { family: 'IBM Plex Mono', size: 10 } }, grid: { display: false } },
         y: {
-          beginAtZero: false, min, max,
+          beginAtZero: false, min: skala.min, max: skala.max,
           ticks: { font: { family: 'IBM Plex Mono', size: 11 }, callback: v => fmtNum(v) },
           grid: { color: '#E3EEF0' }
         }
@@ -677,22 +693,32 @@ function rekapChartConfig({ labels, values, label }, responsive) {
 function renderRekapChart() {
   const rk = currentRekap();
   const year = rekapActiveYear();
-  const series = rekapSeries();
+  const semuaBulan = rekapBarisTotal(rk);
+  const series = rekapSeries(rk, semuaBulan);
   const { values, lintasTahun } = series;
 
-  const { min } = rekapYRange(values);
+  // Rentang sumbu dihitung dari SELURUH tahun, bukan dari tahun yang sedang
+  // tampil. Kalau tiap tahun punya sumbunya sendiri, batang setinggi setengah
+  // grafik di 2021 dan di 2025 bisa mewakili angka yang jauh berbeda -- orang
+  // membandingkan tinggi batang antar tab tanpa membaca ulang sumbunya. Dengan
+  // dikunci, tinggi batang berarti hal yang sama di semua tahun.
+  //
+  // Harganya: tahun yang rentangnya sempit tidak dizoom sendiri, jadi
+  // batangnya lebih rata daripada kalau sumbunya per tahun.
+  const skala = rekapYRange(semuaBulan.map(r => r.value));
+
   const periode = lintasTahun
     ? `seluruh riwayat (${rk.unit}) — tabel di bawah tetap menampilkan tahun ${year}, karena bentuknya cuma muat satu tahun.`
     : `tahun ${year} (${rk.unit}) — sama dengan baris "Jumlah" di tabel bawah.`;
   document.getElementById('rekapChartGroup').textContent = rk.categoryLabel;
   document.getElementById('rekapChartNote').textContent =
     `Total seluruh instalasi per bulan, ${periode}` +
-    (min ? ` Sumbu Y mulai dari ${fmtNum(min)}, bukan nol, supaya selisih antar bulan terlihat.` : '');
+    (skala.min ? ` Sumbu Y ${fmtNum(skala.min)}–${fmtNum(skala.max)}, dikunci sama untuk semua tahun (tidak mulai dari nol) supaya tinggi batang bisa dibandingkan antar tahun.` : '');
 
   const ctx = document.getElementById('rekapChart').getContext('2d');
   if (rekapChart) rekapChart.destroy();
   rekapChart = new Chart(ctx, rekapChartConfig(
-    { ...series, label: `Jumlah — ${rk.categoryLabel}` }, true
+    { ...series, skala, label: `Jumlah — ${rk.categoryLabel}` }, true
   ));
 
   const valid = values.filter(v => v !== null && v !== undefined);
@@ -849,7 +875,10 @@ function grafikRekapPngPdf() {
   canvas.width = PDF_CHART_W;
   canvas.height = PDF_CHART_H;
   const c = new Chart(canvas.getContext('2d'), rekapChartConfig({
-    labels: MONTHS_ID.slice(), values: totalRow,
+    type: 'bar', labels: MONTHS_ID.slice(), values: totalRow,
+    // Sumbu terkunci yang sama dengan di layar, jadi PDF tahun yang berbeda
+    // pun bisa ditaruh bersebelahan dan tinggi batangnya tetap sebanding.
+    skala: rekapYRange(rekapBarisTotal(rk).map(r => r.value)),
     label: `Jumlah — ${rk.categoryLabel}`
   }, false));
   try {
