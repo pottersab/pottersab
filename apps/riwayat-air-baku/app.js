@@ -806,7 +806,7 @@ function updateAdminButton() {
 // ---------------------------------------------------------------------------
 // AKSES DATA VITAL — banner "terkunci" + form "Minta Akses" + polling status
 // + auto-unlock setelah admin approve lewat email + auto re-lock setelah
-// token 1 jam habis. Site-wide: token disimpan di localStorage (key
+// token 4 jam habis. Site-wide: token disimpan di localStorage (key
 // vizAccessToken/vizAccessExpiresAt/vizRequestId) supaya sama dan otomatis
 // dikenali oleh apps/library/app.js juga.
 // ---------------------------------------------------------------------------

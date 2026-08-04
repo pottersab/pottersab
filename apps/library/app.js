@@ -881,7 +881,7 @@ function updateAdminButton() {
 // ---------------------------------------------------------------------------
 // AKSES DATA VITAL — banner "terkunci" + form "Minta Akses" + polling status
 // + auto-unlock setelah admin approve lewat email + auto re-lock setelah
-// token 1 jam habis. Site-wide: SATU token global (bukan per grup lagi),
+// token 4 jam habis. Site-wide: SATU token global (bukan per grup lagi),
 // disimpan di localStorage dengan key yang sama dengan
 // apps/riwayat-air-baku/app.js -- approval dari halaman itu otomatis
 // dikenali di sini juga, dan sebaliknya.

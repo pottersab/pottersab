@@ -4,7 +4,7 @@ const { pool, ensureVizTables } = require('../../lib/db');
 const { SECRET_KEY } = require('../../lib/auth');
 const { ACCESS_GROUP_LABELS } = require('../../lib/visualization/columns');
 
-const ONE_HOUR_MS = 60 * 60 * 1000;
+const ACCESS_DURATION_MS = 4 * 60 * 60 * 1000;
 
 // Nama peminta datang dari formulir publik di halaman data -- siapa pun bisa
 // mengisinya dengan apa saja. Halaman ini dibuka admin dari tautan email dan
@@ -64,8 +64,8 @@ module.exports = async (req, res) => {
     return res.status(200).send(page('Sudah disetujui', `Permintaan dari ${escapeHtml(request.requested_by)} sudah disetujui sebelumnya.`, true));
   }
 
-  const token = jwt.sign({ requestId: Number(id), scope: 'viz-access' }, SECRET_KEY, { expiresIn: '1h' });
-  const expiresAt = new Date(Date.now() + ONE_HOUR_MS);
+  const token = jwt.sign({ requestId: Number(id), scope: 'viz-access' }, SECRET_KEY, { expiresIn: '4h' });
+  const expiresAt = new Date(Date.now() + ACCESS_DURATION_MS);
 
   await pool.query(
     `UPDATE access_requests SET status = 'approved', token = $1, token_expires_at = $2, approved_at = now() WHERE id = $3`,
@@ -75,7 +75,7 @@ module.exports = async (req, res) => {
   const groupLabel = ACCESS_GROUP_LABELS[request.data_type] || request.data_type;
   return res.status(200).send(page(
     'Akses disetujui',
-    `Permintaan dari <b>${escapeHtml(request.requested_by)}</b> (diminta dari halaman <b>${escapeHtml(groupLabel)}</b>) sudah disetujui. Akses ini berlaku selama 1 jam untuk SEMUA data &amp; contoh isi surat di seluruh portal (Data Pengambilan Air Baku, Data Waduk dan Sumur, Generator SPD, Berita Acara, dan Surat Permohonan), tidak cuma yang diminta. Halaman yang tadi dibuka peminta akan otomatis ter-update.`,
+    `Permintaan dari <b>${escapeHtml(request.requested_by)}</b> (diminta dari halaman <b>${escapeHtml(groupLabel)}</b>) sudah disetujui. Akses ini berlaku selama 4 jam untuk SEMUA data &amp; contoh isi surat di seluruh portal (Data Pengambilan Air Baku, Data Waduk dan Sumur, Generator SPD, Berita Acara, dan Surat Permohonan), tidak cuma yang diminta. Halaman yang tadi dibuka peminta akan otomatis ter-update.`,
     true
   ));
 };
