@@ -668,7 +668,9 @@ function rekapSeries(rk, semuaBulan) {
 //
 // `skala` datang dari luar, bukan dihitung dari `values`, karena rentangnya
 // dikunci sama untuk semua tahun -- lihat renderRekapChart.
-function rekapChartConfig({ type, labels, values, label, skala }, responsive) {
+// `judul` cuma dipakai versi PDF: keterangan itu ikut tercetak DI DALAM
+// gambarnya, jadi tidak bisa terpisah dari grafiknya waktu berkasnya beredar.
+function rekapChartConfig({ type, labels, values, label, skala, judul }, responsive) {
   const accent = '#0B5566';
   const garis = type === 'line';
   return {
@@ -691,7 +693,14 @@ function rekapChartConfig({ type, labels, values, label, skala }, responsive) {
     options: {
       responsive, maintainAspectRatio: false,
       animation: responsive ? undefined : false,
-      plugins: { legend: { display: false } },
+      plugins: {
+        legend: { display: false },
+        title: judul ? {
+          display: true, text: judul, align: 'start',
+          color: '#4C6870', font: { family: 'Inter', size: 13, weight: '500' },
+          padding: { top: 0, bottom: 10 }
+        } : { display: false }
+      },
       scales: {
         x: { ticks: { maxTicksLimit: 12, font: { family: 'IBM Plex Mono', size: 10 } }, grid: { display: false } },
         y: {
@@ -874,30 +883,35 @@ function downloadRekapExcel() {
 // browser seperti dulu.
 // ---------------------------------------------------------------------------
 // Grafik rekap untuk PDF digambar ULANG di kanvas lepas, tidak mengambil yang
-// di layar. Dua alasan:
-//   1. Isinya SELALU 12 bulan tahun aktif, sebaris dengan tabelnya. Kalau di
-//      layar chip-nya sedang "Semua Data", grafiknya lintas tahun -- sementara
-//      subjudul PDF rekap dan tabelnya cuma menyebut satu tahun. Grafik lintas
-//      tahun di bawah subjudul itu menyesatkan buat orang yang cuma menerima
-//      PDF-nya.
-//   2. Ukurannya jadi tetap (3,4:1), tidak ikut lebar jendela. Tanpa ini,
-//      unduhan dari HP menghasilkan grafik jangkung yang memakan setengah
-//      halaman lanskap.
+// di layar, walaupun ISINYA sama dengan yang tampil. Alasannya ukuran: kanvas
+// lepas dipatok 3,4:1, sementara yang di layar ikut lebar jendela -- unduhan
+// dari HP tanpa ini menghasilkan grafik jangkung yang memakan setengah halaman
+// lanskap.
+//
+// Waktu chip-nya "Semua Data", grafiknya garis lintas tahun sementara tabel di
+// PDF tetap satu tahun (bentuk pivot cuma muat segitu) dan subjudulnya menyebut
+// tahun itu saja. Supaya tidak terbaca sebagai tabel yang salah, keterangan
+// cakupannya ditulis DI DALAM gambar grafiknya -- ikut ke mana pun berkasnya
+// diteruskan, tidak bisa terpisah seperti kalau ditaruh di badan halaman.
 const PDF_CHART_W = 1100;
 const PDF_CHART_H = 320;
 
 function grafikRekapPngPdf() {
   const rk = currentRekap();
-  const { totalRow } = rekapPivotForYear(rk, rekapActiveYear());
+  const semuaBulan = rekapBarisTotal(rk);
+  const series = rekapSeries(rk, semuaBulan);
   const canvas = document.createElement('canvas');
   canvas.width = PDF_CHART_W;
   canvas.height = PDF_CHART_H;
   const c = new Chart(canvas.getContext('2d'), rekapChartConfig({
-    type: 'bar', labels: MONTHS_ID.slice(), values: totalRow,
+    ...series,
     // Sumbu terkunci yang sama dengan di layar, jadi PDF tahun yang berbeda
     // pun bisa ditaruh bersebelahan dan tinggi batangnya tetap sebanding.
-    skala: { ...rekapYRange(rekapBarisTotal(rk).map(r => r.value), rk.tickStep), step: rk.tickStep },
-    label: `Jumlah — ${rk.categoryLabel}`
+    skala: { ...rekapYRange(semuaBulan.map(r => r.value), rk.tickStep), step: rk.tickStep },
+    label: `Jumlah — ${rk.categoryLabel}`,
+    judul: series.lintasTahun
+      ? `Grafik: seluruh riwayat ${series.labels[0]} – ${series.labels[series.labels.length - 1]}  ·  tabel di bawah: tahun ${rekapActiveYear()}`
+      : null
   }, false));
   try {
     c.update('none');
