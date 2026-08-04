@@ -1,0 +1,25 @@
+/* ===========================================================================
+   GELOMBANG BAWAH HALAMAN — SATU SUMBER KEBENARAN
+   ---------------------------------------------------------------------------
+   Elemen dekoratif ".hero-wave" dipasang di tiap halaman tepat sebelum
+   <footer>, di zona berlatar terang (var(--mist) dari halaman masing-masing).
+   Markup-nya (3 lapis <svg>) tetap diulang per halaman -- sama seperti pola
+   footer di berkas ini -- tapi gaya visualnya tinggal di sini supaya ubah
+   tinggi/warna cukup satu tempat, bukan di 8 berkas.
+
+   var(--mist) dibaca dari :root milik masing-masing halaman; urutan <link>
+   tidak berpengaruh karena custom property di-resolve lewat DOM, bukan lewat
+   berkas mana yang dimuat lebih dulu. Fallback #DCE9EF dipasang untuk jaga-
+   jaga kalau suatu saat dipakai di halaman yang belum mendefinisikan --mist.
+   =========================================================================== */
+
+.hero-wave{
+  position:relative;left:50%;right:50%;width:100vw;
+  margin-left:-50vw;margin-right:-50vw;margin-top:8px;
+  height:150px;overflow:hidden;pointer-events:none;
+}
+.hero-wave svg{position:absolute;bottom:0;left:0;width:100%;height:100%}
+.hero-wave .w0{fill:#EAF6F7;opacity:.7}
+.hero-wave .w1{fill:var(--mist,#DCE9EF);opacity:.9}
+.hero-wave .w2{fill:#C9E6EA}
+@media(min-width:1024px){.hero-wave{height:210px}}
