@@ -81,12 +81,12 @@
     target: 'manggar',
     installation: 'gunung_sari',
     category: 'debit',
-    grid: [],          // hasil parse mentah, termasuk baris judul
-    adaJudul: true,
-    mapping: [],       // per indeks kolom: '' | 'tanggal' | 'bulan' | <fieldKey> | 'well:<nama>:<statis|dinamis|->'
+    grid: [],          // isi tabel, satu larik per baris (tanpa baris judul)
+    adaJudul: false,
+    mapping: [],       // arti tiap kolom: '' | 'tanggal' | 'bulan' | <fieldKey> | 'well:<nama>:<statis|dinamis|->'
     wells: [],
     existing: null,    // Map tanggal/bulan -> nilai lama
-    memuat: false,
+    blokTerakhir: null, // tempelan terakhir, untuk tombol "putar"
     pesan: ''
   };
 
@@ -98,9 +98,15 @@
   // atau mengetik ulang, jadi pemisahnya ditebak: tab kalau ada, kalau tidak
   // titik-koma, kalau tidak koma, terakhir spasi ganda.
   function tebakPemisah(teks) {
+    // Tab menang mutlak kalau ada. Tempelan dari Excel SELALU bertab, dan
+    // tanpa aturan ini "9,63<tab>6,82" akan terbaca dengan pemisah koma
+    // (koma muncul lebih sering daripada tab) sehingga 9,63 pecah jadi 9
+    // dan 63 -- angka desimal Indonesia rusak diam-diam.
+    if (teks.indexOf('\t') >= 0) return '\t';
+
     var baris = teks.split(/\r?\n/).filter(function (b) { return b.trim() !== ''; }).slice(0, 5);
     if (baris.length === 0) return '\t';
-    var kandidat = ['\t', ';', ',', '  '];
+    var kandidat = [';', ',', '  '];
     var terbaik = '\t', skorTerbaik = 0;
     kandidat.forEach(function (sep) {
       var jml = baris.map(function (b) { return b.split(sep).length; });
@@ -346,6 +352,20 @@
     return Math.abs(Number(a) - Number(b)) < 1e-9;
   }
 
+  // Tabel selalu menyisakan baris kosong di bawah supaya enak diketik --
+  // baris itu tidak ikut dinilai, kalau tidak pratinjau akan penuh "baris
+  // ditolak" palsu. Nomor baris asli dibawa serta supaya pesan penolakan
+  // menunjuk ke baris yang benar-benar terlihat di tabel.
+  function barisTerisi() {
+    var out = [];
+    state.grid.forEach(function (r, i) {
+      if (r.some(function (c) { return String(c === undefined ? '' : c).trim() !== ''; })) {
+        out.push({ sel: r, no: i + 1 });
+      }
+    });
+    return out;
+  }
+
   function susunHarian() {
     var t = TARGETS[state.target];
     var idxTanggal = state.mapping.indexOf('tanggal');
@@ -355,9 +375,9 @@
       if (fld) kolomField.push({ i: i, fld: fld });
     });
 
-    var isi = state.adaJudul ? state.grid.slice(1) : state.grid.slice();
     var baris = [];
-    isi.forEach(function (r, n) {
+    barisTerisi().forEach(function (x) {
+      var r = x.sel;
       var tgl = idxTanggal >= 0 ? parseTanggal(r[idxTanggal]) : null;
       var nilai = {}, adaIsi = false;
       kolomField.forEach(function (k) {
@@ -370,7 +390,7 @@
       else if (!tgl) alasan = 'Tanggal tidak terbaca: "' + (r[idxTanggal] || '') + '"';
       else if (!adaIsi) alasan = 'Semua nilai kosong';
 
-      baris.push({ no: n + 1, kunci: tgl, mentahKunci: idxTanggal >= 0 ? r[idxTanggal] : '', nilai: nilai, alasan: alasan });
+      baris.push({ no: x.no, kunci: tgl, mentahKunci: idxTanggal >= 0 ? r[idxTanggal] : '', nilai: nilai, alasan: alasan });
     });
     return { baris: baris, kolomField: kolomField };
   }
@@ -385,9 +405,9 @@
       }
     });
 
-    var isi = state.adaJudul ? state.grid.slice(1) : state.grid.slice();
     var baris = [];
-    isi.forEach(function (r, n) {
+    barisTerisi().forEach(function (x) {
+      var r = x.sel;
       var bln = idxBulan >= 0 ? parseBulan(r[idxBulan]) : null;
       var nilai = {}, adaIsi = false;
       kolomWell.forEach(function (k) {
@@ -406,7 +426,7 @@
       else if (!bln) alasan = 'Bulan tidak terbaca: "' + (r[idxBulan] || '') + '"';
       else if (!adaIsi) alasan = 'Semua nilai kosong';
 
-      baris.push({ no: n + 1, kunci: bln, mentahKunci: idxBulan >= 0 ? r[idxBulan] : '', nilai: nilai, alasan: alasan });
+      baris.push({ no: x.no, kunci: bln, mentahKunci: idxBulan >= 0 ? r[idxBulan] : '', nilai: nilai, alasan: alasan });
     });
     return { baris: baris, kolomWell: kolomWell };
   }
@@ -465,16 +485,21 @@
       '.im-step-num{display:inline-grid;place-items:center;width:20px;height:20px;border-radius:50%;background:var(--primary);color:#fff;font-size:11px}',
       '.im-target-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px}',
       '.im-target-row select{padding:8px 10px;border:1px solid var(--line-muted);border-radius:9px;font-size:13px;font-family:"Inter",sans-serif;background:#fff;color:var(--ink)}',
-      '.im-paste{width:100%;min-height:130px;padding:12px;border:1.5px dashed var(--line-muted);border-radius:12px;font-family:"IBM Plex Mono",monospace;font-size:12.5px;line-height:1.5;color:var(--ink);background:#FCFEFE;resize:vertical}',
-      '.im-paste:focus{outline:none;border-color:var(--primary-light);background:#fff}',
+      '.im-hint{font-size:12.5px;color:var(--ink-soft);margin:0 0 10px;line-height:1.55}',
       '.im-tools{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px}',
-      '.im-check{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--ink-soft)}',
-      '.im-map-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px}',
-      '.im-map-item{border:1px solid var(--line-muted);border-radius:10px;padding:9px 11px;background:#fff}',
-      '.im-map-item .im-head{font-family:"IBM Plex Mono",monospace;font-size:11.5px;color:var(--primary);font-weight:600;margin-bottom:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
-      '.im-map-item .im-contoh{font-size:10.5px;color:var(--ink-soft);margin-bottom:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
-      '.im-map-item select{width:100%;padding:7px 8px;border:1px solid var(--line-muted);border-radius:8px;font-size:12.5px;font-family:"Inter",sans-serif;background:#fff;color:var(--ink)}',
-      '.im-map-item.im-off{opacity:.55}',
+
+      // Tabel isian. Judul kolomnya berupa menu pilihan, jadi kolom bisa
+      // ditukar artinya tanpa langkah terpisah.
+      '.im-grid-wrap{border:1px solid var(--line-muted);border-radius:10px;overflow:auto;max-height:460px;background:#fff}',
+      '.im-grid{border-collapse:separate;border-spacing:0;width:100%}',
+      '.im-grid thead th{position:sticky;top:0;z-index:2;background:var(--primary-pale);padding:6px;border-bottom:1px solid var(--line-muted);white-space:nowrap}',
+      '.im-grid thead th select{width:100%;min-width:130px;padding:6px 7px;border:1px solid var(--line-muted);border-radius:7px;font-size:12px;font-family:"Space Grotesk",sans-serif;font-weight:600;background:#fff;color:var(--primary)}',
+      '.im-grid th.im-rownum,.im-grid td.im-rownum{width:34px;min-width:34px;text-align:right;padding:0 8px;background:#F4F9FA;color:var(--ink-soft);font-size:10.5px;font-family:"IBM Plex Mono",monospace;position:sticky;left:0;z-index:1;border-right:1px solid var(--line-muted)}',
+      '.im-grid thead th.im-rownum{z-index:3}',
+      '.im-grid td{padding:0;border-bottom:1px solid #EDF3F4}',
+      '.im-cell{width:100%;min-width:110px;border:none;padding:7px 9px;font-family:"IBM Plex Mono",monospace;font-size:12.5px;color:var(--ink);background:transparent}',
+      '.im-cell:focus{outline:2px solid var(--primary-light);outline-offset:-2px;background:#F7FDFD}',
+      '.im-cell:disabled{background:#F4F6F7;color:var(--ink-soft)}',
       '.im-summary{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}',
       '.im-badge{font-family:"Space Grotesk",sans-serif;font-size:12px;font-weight:700;padding:6px 12px;border-radius:999px}',
       '.im-badge.baru{background:#E3F5EA;color:#1E6E45}',
@@ -532,14 +557,130 @@
     }).join('');
   }
 
-  function contohHeader() {
+  // ==========================================================================
+  // GRID — kolomnya sudah berlabel sesuai tujuan, jadi tidak ada lagi langkah
+  // "cocokkan kolom" tersendiri: judul tiap kolom ITU SENDIRI menu pilihannya.
+  // Yang perlu dilakukan cuma klik satu sel lalu Ctrl+V.
+  // ==========================================================================
+  var BARIS_AWAL = 12;
+  var BARIS_CADANGAN = 3; // selalu sisakan baris kosong di bawah
+
+  function kolomBawaan() {
     var t = TARGETS[state.target];
     if (t.jenis === 'harian') {
-      return 'Tanggal\t' + t.fields.map(function (f) { return f.label; }).join('\t');
+      return ['tanggal'].concat(t.fields.map(function (f) { return f.key; }));
     }
-    if (state.wells.length === 0) return 'Bulan\t…';
-    if (state.category === 'debit') return 'Bulan\t' + state.wells.join('\t');
-    return 'Bulan\t' + state.wells.map(function (w) { return w + '_Statis\t' + w + '_Dinamis'; }).join('\t');
+    var out = ['bulan'];
+    state.wells.forEach(function (w) {
+      if (state.category === 'debit') out.push('well:' + w + ':-');
+      else { out.push('well:' + w + ':statis'); out.push('well:' + w + ':dinamis'); }
+    });
+    return out;
+  }
+
+  function barisKosong(n) {
+    var r = [];
+    for (var i = 0; i < n; i++) r.push('');
+    return r;
+  }
+
+  function siapkanGrid() {
+    state.mapping = kolomBawaan();
+    state.grid = [];
+    for (var i = 0; i < BARIS_AWAL; i++) state.grid.push(barisKosong(state.mapping.length));
+    state.adaJudul = false; // grid tidak pernah menyimpan baris judul
+    state.blokTerakhir = null;
+  }
+
+  function barisKosongSemua(r) {
+    return state.grid[r].every(function (c) { return String(c).trim() === ''; });
+  }
+
+  // Jaga selalu ada beberapa baris kosong di bawah supaya tidak perlu menekan
+  // "tambah baris" saat mengetik berurutan.
+  function pastikanBarisCadangan() {
+    var kosong = 0;
+    for (var r = state.grid.length - 1; r >= 0 && barisKosongSemua(r); r--) kosong++;
+    while (kosong < BARIS_CADANGAN) { state.grid.push(barisKosong(state.mapping.length)); kosong++; }
+  }
+
+  function adaIsi() {
+    return state.grid.some(function (_, r) { return !barisKosongSemua(r); });
+  }
+
+  function tambahHari(iso, n) {
+    var p = iso.split('-').map(Number);
+    var d = new Date(p[0], p[1] - 1, p[2] + n);
+    return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
+  }
+  function tambahBulan(ym, n) {
+    var p = ym.split('-').map(Number);
+    var d = new Date(p[0], p[1] - 1 + n, 1);
+    return d.getFullYear() + '-' + pad2(d.getMonth() + 1);
+  }
+
+  // Sering datanya cuma satu kolom angka berurutan (sebulan penuh NTU) tanpa
+  // kolom tanggal. Isi satu tanggal awal, tombol ini melanjutkan ke bawah
+  // sejauh masih ada baris berisi.
+  function isiTanggalTurun() {
+    var harian = TARGETS[state.target].jenis === 'harian';
+    var c = state.mapping.indexOf(harian ? 'tanggal' : 'bulan');
+    if (c < 0) { state.pesan = 'Kolom ' + (harian ? 'tanggal' : 'bulan') + ' tidak ada di tabel.'; return; }
+
+    var mulai = null, mulaiRow = -1;
+    for (var r = 0; r < state.grid.length; r++) {
+      var v = harian ? parseTanggal(state.grid[r][c]) : parseBulan(state.grid[r][c]);
+      if (v) { mulai = v; mulaiRow = r; break; }
+    }
+    if (!mulai) {
+      state.pesan = 'Isi dulu ' + (harian ? 'tanggal' : 'bulan') + ' pertama di salah satu baris, baru tombol ini bisa melanjutkannya ke bawah.';
+      return;
+    }
+
+    for (var r2 = mulaiRow; r2 < state.grid.length; r2++) {
+      var berisi = state.grid[r2].some(function (v2, i) { return i !== c && String(v2).trim() !== ''; });
+      if (!berisi) break; // berhenti di baris kosong pertama, jangan mengarang tanggal
+      state.grid[r2][c] = harian ? tambahHari(mulai, r2 - mulaiRow) : tambahBulan(mulai, r2 - mulaiRow);
+    }
+    state.pesan = '';
+  }
+
+  // Tempelkan satu blok sel (hasil parse) ke grid mulai dari (r0, c0).
+  function tempelBlok(r0, c0, blok) {
+    if (!blok || blok.length === 0) return;
+
+    // Kalau baris pertama tempelan ternyata judul kolom, pakai untuk menyetel
+    // ulang arti kolom -- supaya urutan kolom di Excel yang berbeda dari
+    // urutan bawaan tabel tetap mendarat di tempat yang benar -- lalu baris
+    // itu dibuang, bukan ditulis sebagai data.
+    if (deteksiAdaJudul(blok)) {
+      var tebakan = tebakMapping(blok[0]);
+      tebakan.forEach(function (m, i) {
+        var c = c0 + i;
+        if (!m || c >= state.mapping.length) return;
+        // Satu arti cuma boleh dipakai satu kolom.
+        state.mapping = state.mapping.map(function (lama, j) { return (lama === m && j !== c) ? '' : lama; });
+        state.mapping[c] = m;
+      });
+      blok = blok.slice(1);
+    }
+
+    var lebarTerpakai = 0;
+    blok.forEach(function (r) { lebarTerpakai = Math.max(lebarTerpakai, r.length); });
+    var kelebihan = Math.max(0, c0 + lebarTerpakai - state.mapping.length);
+
+    while (state.grid.length < r0 + blok.length) state.grid.push(barisKosong(state.mapping.length));
+    blok.forEach(function (baris, i) {
+      baris.forEach(function (sel, j) {
+        var c = c0 + j;
+        if (c < state.mapping.length) state.grid[r0 + i][c] = sel;
+      });
+    });
+
+    pastikanBarisCadangan();
+    state.pesan = kelebihan > 0
+      ? 'Tempelan lebih lebar ' + kelebihan + ' kolom dari tabel — kolom paling kanan diabaikan. Kalau kolomnya penting, tempel ulang mulai dari kolom yang tepat.'
+      : '';
   }
 
   function render(panel) {
@@ -567,14 +708,16 @@
       '</div>' +
 
       '<div class="im-step">' +
-        '<div class="im-step-title"><span class="im-step-num">2</span> Tempel data (Ctrl+V) atau unggah berkas</div>' +
-        '<textarea class="im-paste" id="imPaste" spellcheck="false" placeholder="Blok sel di Excel → Ctrl+C → klik di sini → Ctrl+V.&#10;&#10;Bisa juga langsung diketik, satu baris per tanggal, kolom dipisah Tab.&#10;&#10;Contoh susunan kolom:&#10;' + esc(contohHeader()) + '"></textarea>' +
+        '<div class="im-step-title"><span class="im-step-num">2</span> Isi tabel</div>' +
+        '<p class="im-hint">Blok sel di Excel → <b>Ctrl+C</b> → klik satu sel di bawah → <b>Ctrl+V</b>. Boleh sekolom saja, boleh sebagian kolom — kolom yang tidak diisi tidak akan tersentuh. Bisa juga diketik langsung; Enter turun satu baris, Tab pindah ke kanan.</p>' +
+        '<div class="im-grid-wrap" id="imGridWrap"></div>' +
         '<div class="im-tools">' +
+          '<button class="tbtn" id="imBtnRows">+ 10 baris</button>' +
+          '<button class="tbtn" id="imBtnFillDate">Isi ' + (t.jenis === 'harian' ? 'tanggal' : 'bulan') + ' berurutan</button>' +
           '<button class="tbtn" id="imBtnFile">Unggah CSV / XLSX…</button>' +
           '<input type="file" id="imFile" accept=".csv,.tsv,.txt,.xlsx,.xls" style="display:none">' +
-          '<button class="tbtn" id="imBtnTranspose" title="Tukar baris dan kolom">Putar tabel ⇄</button>' +
-          '<button class="tbtn danger" id="imBtnClear">Bersihkan</button>' +
-          '<label class="im-check"><input type="checkbox" id="imHeader"' + (state.adaJudul ? ' checked' : '') + '> Baris pertama = judul kolom</label>' +
+          '<button class="tbtn" id="imBtnTranspose" title="Untuk data yang tersusun mendatar: tanggal di baris atas, bukan di kolom kiri">Putar tempelan terakhir ⇄</button>' +
+          '<button class="tbtn danger" id="imBtnClear">Kosongkan tabel</button>' +
         '</div>' +
       '</div>' +
 
@@ -582,58 +725,126 @@
 
     document.getElementById('imTarget').onchange = function (e) {
       state.target = e.target.value;
-      resetData();
       gantiTujuan(panel);
     };
     if (t.jenis === 'sumur') {
-      document.getElementById('imInst').onchange = function (e) { state.installation = e.target.value; resetData(); gantiTujuan(panel); };
-      document.getElementById('imCat').onchange = function (e) { state.category = e.target.value; resetData(); gantiTujuan(panel); };
+      document.getElementById('imInst').onchange = function (e) { state.installation = e.target.value; gantiTujuan(panel); };
+      document.getElementById('imCat').onchange = function (e) { state.category = e.target.value; gantiTujuan(panel); };
     }
 
-    var ta = document.getElementById('imPaste');
-    ta.addEventListener('paste', function (ev) {
-      // Ambil teks tempelan langsung supaya bisa diproses seketika tanpa
-      // menunggu textarea ter-update, dan supaya tab di dalam sel tidak
-      // memindahkan fokus.
-      var teks = (ev.clipboardData || window.clipboardData).getData('text');
-      if (!teks) return;
-      ev.preventDefault();
-      ta.value = teks;
-      terimaTeks(teks, panel);
-    });
-    ta.addEventListener('change', function () { terimaTeks(ta.value, panel); });
-    ta.addEventListener('blur', function () { if (ta.value.trim() && state.grid.length === 0) terimaTeks(ta.value, panel); });
-
+    document.getElementById('imBtnRows').onclick = function () {
+      for (var i = 0; i < 10; i++) state.grid.push(barisKosong(state.mapping.length));
+      renderGrid(panel);
+      renderAfter(panel);
+    };
+    document.getElementById('imBtnFillDate').onclick = function () {
+      isiTanggalTurun();
+      renderGrid(panel);
+      renderAfter(panel);
+    };
     document.getElementById('imBtnFile').onclick = function () { document.getElementById('imFile').click(); };
     document.getElementById('imFile').onchange = function (e) { if (e.target.files[0]) bacaBerkas(e.target.files[0], panel); };
+
+    // Data yang tersusun mendatar (tanggal berderet di baris atas) cukup
+    // ditempel biasa lalu ditekan tombol ini -- tempelan terakhir dipasang
+    // ulang dalam keadaan terputar, tanpa perlu menyalin ulang dari Excel.
     document.getElementById('imBtnTranspose').onclick = function () {
-      if (state.grid.length === 0) return;
-      state.grid = transpose(state.grid);
-      state.adaJudul = deteksiAdaJudul(state.grid);
-      state.mapping = tebakMapping(state.grid[0] || []);
-      renderAfter(panel);
+      var b = state.blokTerakhir;
+      if (!b) { state.pesan = 'Belum ada tempelan untuk diputar.'; renderAfter(panel); return; }
+      siapkanGrid();
+      terimaBlok(0, 0, transpose(b.blok), panel);
     };
     document.getElementById('imBtnClear').onclick = function () {
-      resetData();
-      document.getElementById('imPaste').value = '';
-      renderAfter(panel);
-    };
-    document.getElementById('imHeader').onchange = function (e) {
-      state.adaJudul = e.target.checked;
-      // Cuma tebak ulang saat baris pertama BARU dinyatakan sebagai judul.
-      // Kalau centang dilepas, baris pertama itu data -- menebak arti kolom
-      // dari deretan angka cuma akan mengacak pilihan yang sudah benar.
-      if (state.adaJudul) state.mapping = tebakMapping(state.grid[0] || []);
+      siapkanGrid();
+      renderGrid(panel);
       renderAfter(panel);
     };
 
+    renderGrid(panel);
     renderAfter(panel);
   }
 
-  function resetData() {
-    state.grid = [];
-    state.mapping = [];
-    state.pesan = '';
+  // --- Tabel isian ----------------------------------------------------------
+  function renderGrid(panel) {
+    var wrap = document.getElementById('imGridWrap');
+    if (!wrap) return;
+
+    var head = '<tr><th class="im-rownum"></th>' + state.mapping.map(function (m, c) {
+      return '<th><select class="im-colsel" data-c="' + c + '">' + opsiUntukKolom(m) + '</select></th>';
+    }).join('') + '</tr>';
+
+    var body = state.grid.map(function (row, r) {
+      return '<tr><td class="im-rownum">' + (r + 1) + '</td>' + state.mapping.map(function (m, c) {
+        return '<td><input class="im-cell" data-r="' + r + '" data-c="' + c + '" value="' +
+          esc(row[c] === undefined ? '' : row[c]) + '"' + (m === '' ? ' disabled' : '') + '></td>';
+      }).join('') + '</tr>';
+    }).join('');
+
+    wrap.innerHTML = '<table class="im-grid"><thead>' + head + '</thead><tbody>' + body + '</tbody></table>';
+
+    wrap.querySelectorAll('.im-colsel').forEach(function (sel) {
+      sel.onchange = function () {
+        var c = Number(sel.getAttribute('data-c'));
+        var v = sel.value;
+        if (v) state.mapping = state.mapping.map(function (m, j) { return (m === v && j !== c) ? '' : m; });
+        state.mapping[c] = v;
+        renderGrid(panel);
+        renderAfter(panel);
+      };
+    });
+
+    // Pendengar dipasang SEKALI di pembungkusnya (bukan di tiap sel), karena
+    // isi tabel digambar ulang berkali-kali -- kalau dipasang tiap render,
+    // satu ketukan tombol akan terproses berulang kali.
+    if (wrap.dataset.terpasang) return;
+    wrap.dataset.terpasang = '1';
+
+    // Mengetik cuma memperbarui state + pratinjau; tabelnya sendiri TIDAK
+    // digambar ulang, supaya kursor tidak lompat di tengah pengetikan.
+    wrap.addEventListener('input', function (ev) {
+      var el = ev.target;
+      if (!el.classList.contains('im-cell')) return;
+      var r = Number(el.getAttribute('data-r')), c = Number(el.getAttribute('data-c'));
+      state.grid[r][c] = el.value;
+
+      // Tumbuhkan tabel begitu baris terakhir mulai terisi, supaya mengetik
+      // berurutan tidak pernah mentok. Ini satu-satunya keadaan tabel digambar
+      // ulang saat mengetik, jadi kursor dikembalikan ke sel yang sama.
+      if (r >= state.grid.length - 1 && el.value.trim() !== '') {
+        pastikanBarisCadangan();
+        renderGrid(panel);
+        var lagi = wrap.querySelector('.im-cell[data-r="' + r + '"][data-c="' + c + '"]');
+        if (lagi) { lagi.focus(); lagi.setSelectionRange(lagi.value.length, lagi.value.length); }
+      }
+      renderAfter(panel);
+    });
+
+    wrap.addEventListener('keydown', function (ev) {
+      var el = ev.target;
+      if (!el.classList.contains('im-cell')) return;
+      if (ev.key !== 'Enter' && ev.key !== 'ArrowDown' && ev.key !== 'ArrowUp') return;
+      ev.preventDefault();
+      var r = Number(el.getAttribute('data-r')), c = Number(el.getAttribute('data-c'));
+      var tujuan = wrap.querySelector('.im-cell[data-r="' + (ev.key === 'ArrowUp' ? r - 1 : r + 1) + '"][data-c="' + c + '"]');
+      if (tujuan) { tujuan.focus(); tujuan.select(); }
+    });
+
+    wrap.addEventListener('paste', function (ev) {
+      var el = ev.target;
+      if (!el.classList.contains('im-cell')) return;
+      var teks = (ev.clipboardData || window.clipboardData).getData('text');
+      if (!teks || !teks.trim()) return;
+      ev.preventDefault();
+      var blok = parseDelimited(teks, tebakPemisah(teks));
+      terimaBlok(Number(el.getAttribute('data-r')), Number(el.getAttribute('data-c')), blok, panel);
+    });
+  }
+
+  function terimaBlok(r0, c0, blok, panel) {
+    state.blokTerakhir = { r0: r0, c0: c0, blok: blok };
+    tempelBlok(r0, c0, blok);
+    renderGrid(panel);
+    renderAfter(panel);
   }
 
   async function gantiTujuan(panel) {
@@ -642,23 +853,15 @@
       state.wells = [];
       try { await muatWells(); } catch (err) { state.pesan = 'Gagal memuat daftar sumur: ' + err.message; }
     }
+    siapkanGrid();
     render(panel);
     await muatExisting();
     renderAfter(panel);
   }
 
-  function terimaTeks(teks, panel) {
-    if (!teks || !teks.trim()) { resetData(); renderAfter(panel); return; }
-    var sep = tebakPemisah(teks);
-    state.grid = parseDelimited(teks, sep);
-    state.adaJudul = deteksiAdaJudul(state.grid);
-    state.mapping = tebakMapping(state.grid[0] || []);
-    state.pesan = '';
-    renderAfter(panel);
-  }
-
   function bacaBerkas(file, panel) {
     var nama = file.name.toLowerCase();
+
     if (/\.xlsx?$/.test(nama)) {
       if (typeof XLSX === 'undefined') {
         state.pesan = 'Pembaca XLSX belum termuat. Coba muat ulang halaman, atau simpan berkasnya sebagai CSV.';
@@ -671,18 +874,15 @@
           var wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
           var ws = wb.Sheets[wb.SheetNames[0]];
           // raw:false -> tanggal keluar sudah terformat, tidak jadi serial.
-          var rows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: false, defval: '' });
-          state.grid = rows
+          var rows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: false, defval: '' })
             .map(function (r) { return r.map(function (c) { return String(c === null || c === undefined ? '' : c).trim(); }); })
             .filter(function (r) { return r.some(function (c) { return c !== ''; }); });
-          state.adaJudul = deteksiAdaJudul(state.grid);
-          state.mapping = tebakMapping(state.grid[0] || []);
-          state.pesan = '';
-          document.getElementById('imPaste').value = '(dari berkas: ' + file.name + ')';
+          siapkanGrid();
+          terimaBlok(0, 0, rows, panel);
         } catch (err) {
           state.pesan = 'Gagal membaca berkas: ' + err.message;
+          renderAfter(panel);
         }
-        renderAfter(panel);
       };
       fr.readAsArrayBuffer(file);
       return;
@@ -690,32 +890,32 @@
 
     var fr2 = new FileReader();
     fr2.onload = function (e) {
-      document.getElementById('imPaste').value = '(dari berkas: ' + file.name + ')';
-      terimaTeks(e.target.result, panel);
+      var teks = e.target.result;
+      siapkanGrid();
+      terimaBlok(0, 0, parseDelimited(teks, tebakPemisah(teks)), panel);
     };
     fr2.readAsText(file);
   }
 
-  // --- Langkah 3 & 4 --------------------------------------------------------
+  // --- Langkah 3: pratinjau & simpan ---------------------------------------
   function renderAfter(panel) {
     var after = document.getElementById('imAfter');
     if (!after) return;
 
-    var alert = state.pesan ? '<div class="im-alert err">' + esc(state.pesan) + '</div>' : '';
+    var alert = state.pesan ? '<div class="im-alert warn">' + esc(state.pesan) + '</div>' : '';
 
-    if (state.grid.length === 0) {
+    var t = TARGETS[state.target];
+    if (t.jenis === 'sumur' && state.wells.length === 0) {
+      after.innerHTML = alert + '<div class="im-alert warn">Belum ada sumur terdaftar untuk instalasi ini. Daftarkan dulu lewat tab <b>Sumur Dalam</b> di menu utama, baru datanya bisa diisi di sini.</div>';
+      return;
+    }
+
+    if (!adaIsi()) {
       after.innerHTML = alert;
       return;
     }
 
-    var t = TARGETS[state.target];
-    if (t.jenis === 'sumur' && state.wells.length === 0) {
-      after.innerHTML = alert + '<div class="im-alert warn">Belum ada sumur terdaftar untuk instalasi ini. Daftarkan dulu lewat tab <b>Sumur Dalam</b> di menu utama, baru datanya bisa diimpor.</div>';
-      return;
-    }
-
-    after.innerHTML = alert + renderMapping() + renderPratinjau();
-    pasangHandlerMapping(panel);
+    after.innerHTML = alert + renderPratinjau();
 
     var btn = document.getElementById('imBtnSimpan');
     if (btn) btn.onclick = function () { simpan(panel); };
@@ -744,54 +944,6 @@
       });
     }
     return opsi.join('');
-  }
-
-  function renderMapping() {
-    var judul = state.grid[0] || [];
-    var contohBaris = state.adaJudul ? (state.grid[1] || []) : (state.grid[0] || []);
-    var jmlKolom = Math.max.apply(null, state.grid.map(function (r) { return r.length; }));
-
-    var items = [];
-    for (var i = 0; i < jmlKolom; i++) {
-      var namaKolom = state.adaJudul && judul[i] ? judul[i] : 'Kolom ' + (i + 1);
-      var terpilih = state.mapping[i] || '';
-      items.push(
-        '<div class="im-map-item' + (terpilih === '' ? ' im-off' : '') + '">' +
-          '<div class="im-head" title="' + esc(namaKolom) + '">' + esc(namaKolom) + '</div>' +
-          '<div class="im-contoh">contoh: ' + esc(contohBaris[i] || '—') + '</div>' +
-          '<select data-kolom="' + i + '">' + opsiUntukKolom(terpilih) + '</select>' +
-        '</div>'
-      );
-    }
-
-    var takTerpetakan = state.adaJudul
-      ? judul.filter(function (h, i) { return h && !state.mapping[i]; })
-      : [];
-
-    return '<div class="im-step">' +
-      '<div class="im-step-title"><span class="im-step-num">3</span> Cocokkan kolom</div>' +
-      (takTerpetakan.length > 0
-        ? '<div class="im-alert warn">Kolom yang belum dikenali dan akan dilewati: <b>' + esc(takTerpetakan.join(', ')) + '</b>. Tentukan sendiri lewat menu di bawah kalau memang perlu diimpor.</div>'
-        : '') +
-      '<div class="im-map-grid">' + items.join('') + '</div>' +
-    '</div>';
-  }
-
-  function pasangHandlerMapping(panel) {
-    document.querySelectorAll('.im-map-item select').forEach(function (sel) {
-      sel.onchange = function () {
-        var i = Number(sel.getAttribute('data-kolom'));
-        var v = sel.value;
-        // Satu arti cuma boleh dipakai satu kolom -- kalau dipilih ulang di
-        // kolom lain, yang lama otomatis dilepas supaya tidak ada dua kolom
-        // "Tanggal" yang saling menimpa diam-diam.
-        if (v) {
-          state.mapping = state.mapping.map(function (m) { return m === v ? '' : m; });
-        }
-        state.mapping[i] = v;
-        renderAfter(panel);
-      };
-    });
   }
 
   function renderPratinjau() {
@@ -862,7 +1014,7 @@
     var bisaSimpan = siap.length > 0 && (nBaru + nTimpa) > 0;
 
     return '<div class="im-step">' +
-      '<div class="im-step-title"><span class="im-step-num">4</span> Periksa lalu simpan</div>' +
+      '<div class="im-step-title"><span class="im-step-num">3</span> Periksa lalu simpan</div>' +
       '<div class="im-summary">' +
         '<span class="im-badge baru">' + nBaru + ' nilai baru</span>' +
         '<span class="im-badge timpa">' + nTimpa + ' menimpa nilai lama</span>' +
@@ -995,6 +1147,9 @@
       if (TARGETS[state.target].jenis === 'sumur' && state.wells.length === 0) {
         try { await muatWells(); } catch (err) { state.pesan = 'Gagal memuat daftar sumur: ' + err.message; }
       }
+      // Isi tabel dipertahankan saat pindah tab lalu balik lagi -- tabel baru
+      // cuma disiapkan kalau memang belum pernah ada.
+      if (state.grid.length === 0) siapkanGrid();
       render(panel);
       if (state.existing === null) {
         await muatExisting();
