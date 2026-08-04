@@ -53,6 +53,10 @@ const DATA_SOURCES = [
     dateColumn: 'Bulan',
     rekapKey: 'ap_rekap',
     rekapCategoryLabel: 'Air Permukaan (AP)',
+    // Jarak antar garis bantu sumbu Y di grafik rekap. Disetel per kategori,
+    // bukan dihitung otomatis, karena besaran AP dan ATD beda jauh dan angka
+    // yang enak dibaca ditentukan kebiasaan orang yang memakainya.
+    rekapTickStep: 250000,
     columns: {
       Teritip: { key: 'ap_teritip', label: 'Debit AP — Teritip', unit: 'm³', color: 'primary', hasGauge: true },
       Kampung_Damai: { key: 'ap_kampung_damai', label: 'Debit AP — Kampung Damai', unit: 'm³', color: 'primary', hasGauge: true },
@@ -66,6 +70,7 @@ const DATA_SOURCES = [
     dateColumn: 'Bulan',
     rekapKey: 'atd_rekap',
     rekapCategoryLabel: 'Air Tanah Dalam (ATD)',
+    rekapTickStep: 25000,
     columns: {
       Kampung_Damai: { key: 'atd_kampung_damai', label: 'Debit ATD — Kampung Damai', unit: 'm³', color: 'primary', hasGauge: true },
       Gunung_Sari: { key: 'atd_gunung_sari', label: 'Debit ATD — Gunung Sari', unit: 'm³', color: 'primary', hasGauge: true },
@@ -181,6 +186,7 @@ function buildSourceDatasets(source, header, rows) {
       label: 'Rekapitulasi',
       categoryLabel: source.rekapCategoryLabel,
       unit: 'm³',
+      tickStep: source.rekapTickStep,
       wells: wellsForRekap,
       data: rekapRows
     };
@@ -590,12 +596,20 @@ function langkahPembulatan(acuan) {
   return Math.pow(10, Math.max(Math.floor(Math.log10(n)) - 1, 0));
 }
 
-function rekapYRange(values) {
+// `langkahDipaksa` = jarak garis bantu yang disetel di DATA_SOURCES
+// (rekapTickStep). Kalau ada, dia yang jadi langkah pembulatan sekaligus,
+// bukan sekadar dipasang sebagai stepSize di Chart.js. Harus begitu: Chart.js
+// mengabaikan stepSize kalau rentangnya tidak habis dibagi angka itu, lalu
+// diam-diam membagi rata sendiri -- batas 1.100.000-1.700.000 dengan step
+// 250.000 keluarnya malah berjarak 300.000, dan 130.000-200.000 dengan step
+// 25.000 keluar 23.333. Dengan batasnya ikut dibulatkan ke kelipatan step,
+// tiap garis bantu dijamin jatuh di angka bulat dan jaraknya persis.
+function rekapYRange(values, langkahDipaksa) {
   const valid = values.filter(v => v !== null && v !== undefined);
   if (!valid.length) return {};
   const dataMin = Math.min(...valid);
   const dataMax = Math.max(...valid);
-  const langkah = langkahPembulatan(dataMax);
+  const langkah = langkahDipaksa || langkahPembulatan(dataMax);
 
   let min = Math.floor(dataMin / langkah) * langkah;
   let max = Math.ceil(dataMax / langkah) * langkah;
@@ -682,7 +696,11 @@ function rekapChartConfig({ type, labels, values, label, skala }, responsive) {
         x: { ticks: { maxTicksLimit: 12, font: { family: 'IBM Plex Mono', size: 10 } }, grid: { display: false } },
         y: {
           beginAtZero: false, min: skala.min, max: skala.max,
-          ticks: { font: { family: 'IBM Plex Mono', size: 11 }, callback: v => fmtNum(v) },
+          ticks: {
+            stepSize: skala.step,
+            font: { family: 'IBM Plex Mono', size: 11 },
+            callback: v => fmtNum(v)
+          },
           grid: { color: '#E3EEF0' }
         }
       }
@@ -705,7 +723,7 @@ function renderRekapChart() {
   //
   // Harganya: tahun yang rentangnya sempit tidak dizoom sendiri, jadi
   // batangnya lebih rata daripada kalau sumbunya per tahun.
-  const skala = rekapYRange(semuaBulan.map(r => r.value));
+  const skala = { ...rekapYRange(semuaBulan.map(r => r.value), rk.tickStep), step: rk.tickStep };
 
   const periode = lintasTahun
     ? `seluruh riwayat (${rk.unit}) — tabel di bawah tetap menampilkan tahun ${year}, karena bentuknya cuma muat satu tahun.`
@@ -878,7 +896,7 @@ function grafikRekapPngPdf() {
     type: 'bar', labels: MONTHS_ID.slice(), values: totalRow,
     // Sumbu terkunci yang sama dengan di layar, jadi PDF tahun yang berbeda
     // pun bisa ditaruh bersebelahan dan tinggi batangnya tetap sebanding.
-    skala: rekapYRange(rekapBarisTotal(rk).map(r => r.value)),
+    skala: { ...rekapYRange(rekapBarisTotal(rk).map(r => r.value), rk.tickStep), step: rk.tickStep },
     label: `Jumlah — ${rk.categoryLabel}`
   }, false));
   try {
