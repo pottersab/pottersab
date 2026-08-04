@@ -134,7 +134,7 @@ function doLogout(){
   <div class="menu-main" id="menuMain"></div>
   <!-- Sub menu: instalasi di dalam kategori yang aktif -->
   <div class="menu-sub" id="menuSub"></div>
-  <!-- Menu agregat: Jumlah (Total) & Rekapitulasi, dipisah dari daftar instalasi -->
+  <!-- Menu agregat: Rekapitulasi, dipisah dari daftar instalasi -->
   <div class="menu-category" id="menuAgg"></div>
 
   <div class="lock-banner" id="lockBanner" style="display:none;">
@@ -196,6 +196,21 @@ function doLogout(){
         <thead><tr id="tableHead"></tr></thead>
         <tbody id="tableBody"></tbody>
       </table>
+    </div>
+
+    <!-- Grafik jumlah kategori, tampil di dalam Rekapitulasi. Dulu ini tab
+         "Jumlah (Total)" yang berdiri sendiri; digabung ke sini karena
+         angkanya memang baris "Jumlah" di tabel pivot di bawahnya. -->
+    <div id="rekapChartWrap" style="display:none;">
+      <div class="rekap-chart-head">
+        <div class="rekap-chart-title">
+          Grafik Jumlah — <span id="rekapChartGroup"></span>
+          <small id="rekapChartNote"></small>
+        </div>
+      </div>
+      <div class="rekap-chart-box"><canvas id="rekapChart"></canvas></div>
+      <div class="stats-row" id="rekapStatsRow"></div>
+      <hr class="rekap-divider">
     </div>
 
     <div class="table-scroll rekap-scroll" id="rekapWrap" style="display:none;">

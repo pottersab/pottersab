@@ -3,9 +3,15 @@
    --------------------------------------------------------------------------
    Pola & tampilan sama dengan app "Library" (apps/library) — menu utama ->
    sub menu -> grafik+gauge -> stat cards -> tabel. Bedanya: sumbernya
-   monthly (bukan harian), ada submenu "Rekapitulasi" (tabel pivot instalasi
-   x bulan per tahun), dan dua tombol unduh (PDF untuk tamu, Excel khusus
-   admin).
+   monthly (bukan harian), ada submenu "Rekapitulasi" (grafik jumlah + tabel
+   pivot instalasi x bulan per tahun), dan dua tombol unduh (PDF untuk tamu,
+   Excel khusus admin).
+
+   Dulu "Jumlah (Total)" adalah tab tersendiri di sebelah Rekapitulasi, dengan
+   seri sendiri lintas tahun. Tab itu sudah dihapus: angkanya memang baris
+   "Jumlah" di tabel pivot, jadi yang tersisa cuma diagram batang 12 bulan di
+   atas tabel itu — satu halaman untuk grafik, statistik, dan tabel. Periodenya
+   ikut chip tahun, sama seperti grafik di tampilan seri per instalasi.
 
    Data asli disimpan di Postgres (bukan lagi CSV statis / Google Sheets),
    dan hanya dikeluarkan oleh /api/visualization/data kalau ada akses valid
@@ -30,8 +36,8 @@
 // KONFIGURASI MENU (menu utama -> sub menu)
 // ---------------------------------------------------------------------------
 const GROUPS = [
-  { key: 'ap', label: 'Air Permukaan (AP)', wellTabs: ['ap_teritip', 'ap_kampung_damai', 'ap_batu_ampar', 'ap_km12', 'ap_gunung_tembak'], aggTabs: ['ap_total', 'ap_rekap'] },
-  { key: 'atd', label: 'Air Tanah Dalam (ATD)', wellTabs: ['atd_kampung_damai', 'atd_gunung_sari', 'atd_prapatan', 'atd_zamp', 'atd_kampung_baru_ulu'], aggTabs: ['atd_total', 'atd_rekap'] }
+  { key: 'ap', label: 'Air Permukaan (AP)', wellTabs: ['ap_teritip', 'ap_kampung_damai', 'ap_batu_ampar', 'ap_km12', 'ap_gunung_tembak'], aggTabs: ['ap_rekap'] },
+  { key: 'atd', label: 'Air Tanah Dalam (ATD)', wellTabs: ['atd_kampung_damai', 'atd_gunung_sari', 'atd_prapatan', 'atd_zamp', 'atd_kampung_baru_ulu'], aggTabs: ['atd_rekap'] }
 ];
 
 function allTabsOf(group) {
@@ -45,8 +51,6 @@ const DATA_SOURCES = [
   {
     groupKey: 'ap',
     dateColumn: 'Bulan',
-    totalKey: 'ap_total',
-    totalLabel: 'Jumlah — Air Permukaan (AP)',
     rekapKey: 'ap_rekap',
     rekapCategoryLabel: 'Air Permukaan (AP)',
     columns: {
@@ -60,8 +64,6 @@ const DATA_SOURCES = [
   {
     groupKey: 'atd',
     dateColumn: 'Bulan',
-    totalKey: 'atd_total',
-    totalLabel: 'Jumlah — Air Tanah Dalam (ATD)',
     rekapKey: 'atd_rekap',
     rekapCategoryLabel: 'Air Tanah Dalam (ATD)',
     columns: {
@@ -91,7 +93,6 @@ DATA_SOURCES.forEach(source => {
     KEY_LABEL_LOOKUP[cfg.key] = cfg.label.replace(/^Debit (AP|ATD) — /, '');
     KEY_TO_COLNAME[cfg.key] = colName;
   });
-  if (source.totalKey) KEY_LABEL_LOOKUP[source.totalKey] = 'Jumlah (Total)';
   if (source.rekapKey) KEY_LABEL_LOOKUP[source.rekapKey] = 'Rekapitulasi';
 });
 
@@ -167,32 +168,6 @@ function buildSourceDatasets(source, header, rows) {
     wellsForRekap.push({ colName, label: cfg.label.replace(/^Debit (AP|ATD) — /, '') });
   }
 
-  // Dataset "Jumlah" (total semua instalasi dalam kategori ini)
-  if (source.totalKey) {
-    const dateSet = new Map();
-    Object.values(perColSeries).forEach(series => {
-      series.forEach(r => {
-        const t = r.date.getTime();
-        if (!dateSet.has(t)) dateSet.set(t, { date: r.date, sum: 0, any: false });
-        const entry = dateSet.get(t);
-        if (r.value !== null && r.value !== undefined) { entry.sum += r.value; entry.any = true; }
-      });
-    });
-    const totalSeries = [...dateSet.values()]
-      .sort((a, b) => a.date - b.date)
-      .map(e => ({ date: e.date, value: e.any ? e.sum : null }));
-    const totalDs = {
-      label: source.totalLabel, unit: 'm³', type: 'daily', color: 'rain',
-      real: true, data: totalSeries
-    };
-    const [mn, mx] = minMax(totalSeries);
-    if (isFinite(mn) && isFinite(mx)) {
-      totalDs.minHist = Math.floor(mn - Math.abs(mn) * 0.02);
-      totalDs.maxHist = Math.ceil(mx + Math.abs(mx) * 0.02);
-    }
-    datasets[source.totalKey] = totalDs;
-  }
-
   // Tabel "Rekapitulasi" (pivot instalasi x bulan, per tahun)
   if (source.rekapKey) {
     const rekapRows = rows.map(r => {
@@ -265,6 +240,7 @@ let currentKey = 'ap_teritip';
 let filterMode = 'all';
 let selectedYear = null;
 let chart;
+let rekapChart;
 let isAdmin = false;
 
 let vizToken = null;
@@ -411,7 +387,8 @@ function onDatasetChanged() {
 
   if (isRekapActive()) {
     const rk = currentRekap();
-    note.innerHTML = `Rekapitulasi bulanan (Januari—Desember) tiap instalasi ${rk.categoryLabel} dalam satu tahun (satuan ${rk.unit}). Sel kosong berarti data belum tercatat pada bulan tersebut. Pilih tahun di atas untuk berpindah periode.`;
+    note.innerHTML = `Rekapitulasi bulanan (Januari—Desember) tiap instalasi ${rk.categoryLabel} dalam satu tahun (satuan ${rk.unit}). Sel kosong berarti data belum tercatat pada bulan tersebut. Pilih tahun di atas untuk berpindah periode. Grafik di atas tabel adalah baris <b>Jumlah</b> — angkanya sama persis.` +
+      (locked ? ' <b>Nilai yang tampil sekarang adalah data CONTOH, bukan data asli.</b>' : '');
   } else {
     const ds = currentDataset();
     note.innerHTML = `Data bulanan (satuan ${ds.unit}). Sel kosong berarti data belum tercatat pada bulan tersebut, bukan nol.` +
@@ -498,6 +475,7 @@ function setViewMode(mode) {
   document.getElementById('statsRow').style.display = mode === 'chart' ? 'flex' : 'none';
   document.getElementById('tableWrap').style.display = mode === 'chart' ? 'block' : 'none';
   document.getElementById('rekapWrap').style.display = mode === 'rekap' ? 'block' : 'none';
+  document.getElementById('rekapChartWrap').style.display = mode === 'rekap' ? 'block' : 'none';
 }
 
 function renderChartView() {
@@ -582,6 +560,96 @@ function rekapPivotForYear(rk, year) {
   return { wellRows, totalRow };
 }
 
+// Grafik "Jumlah" di dalam Rekapitulasi: diagram batang 12 bulan tahun aktif,
+// nilainya diambil LANGSUNG dari totalRow tabel pivot di bawahnya, jadi grafik
+// dan tabel mustahil beda angka. Periodenya ikut chip tahun seperti grafik di
+// tampilan lain -- tidak ada saklar lingkup sendiri.
+// Sumbu Y grafik rekap sengaja TIDAK mulai dari nol. Total sebulan ada di
+// kisaran jutaan m³ sementara selisih antar bulannya cuma ratusan ribu, jadi
+// kalau dasarnya nol semua batang terlihat sama tinggi dan naik-turunnya
+// hilang -- padahal justru itu yang dicari orang waktu membuka rekap.
+//
+// Konsekuensinya batang jadi terpotong, dan panjang batang tidak lagi
+// sebanding dengan nilainya. Itu sebabnya keterangan di bawah judul grafik
+// menyebutkan dasar sumbunya secara eksplisit: yang membaca harus tahu bahwa
+// batang dua kali lebih tinggi bukan berarti airnya dua kali lebih banyak.
+//
+// Ruang lega 12% dari rentang di atas dan di bawah supaya batang tertinggi
+// tidak mentok atap dan yang terendah masih kelihatan batangnya.
+const REKAP_Y_PADDING = 0.12;
+
+function rekapYRange(values) {
+  const valid = values.filter(v => v !== null && v !== undefined);
+  if (!valid.length) return {};
+  const min = Math.min(...valid);
+  const max = Math.max(...valid);
+  // Satu bulan tercatat, atau semua bulan kebetulan sama persis: rentangnya
+  // nol, jadi lega-nya dihitung dari nilainya sendiri supaya min tidak sama
+  // dengan max (Chart.js tidak bisa menggambar sumbu tanpa rentang).
+  const lega = (max - min) * REKAP_Y_PADDING || Math.abs(max) * 0.05 || 1;
+  return { min: Math.max(0, Math.floor(min - lega)), max: Math.ceil(max + lega) };
+}
+
+function rekapChartConfig({ values, label }, responsive) {
+  const accent = '#0B5566';
+  const { min, max } = rekapYRange(values);
+  return {
+    type: 'bar',
+    data: {
+      labels: MONTHS_ID.slice(),
+      datasets: [{
+        label,
+        data: values,
+        borderColor: accent,
+        backgroundColor: accent + 'CC',
+        borderWidth: 2, borderRadius: 4
+      }]
+    },
+    options: {
+      responsive, maintainAspectRatio: false,
+      animation: responsive ? undefined : false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { maxTicksLimit: 12, font: { family: 'IBM Plex Mono', size: 10 } }, grid: { display: false } },
+        y: {
+          beginAtZero: false, min, max,
+          ticks: { font: { family: 'IBM Plex Mono', size: 11 }, callback: v => fmtNum(v) },
+          grid: { color: '#E3EEF0' }
+        }
+      }
+    }
+  };
+}
+
+function renderRekapChart() {
+  const rk = currentRekap();
+  const year = rekapActiveYear();
+  const { totalRow } = rekapPivotForYear(rk, year);
+
+  const { min } = rekapYRange(totalRow);
+  document.getElementById('rekapChartGroup').textContent = rk.categoryLabel;
+  document.getElementById('rekapChartNote').textContent =
+    `Total seluruh instalasi per bulan, tahun ${year} (${rk.unit}) — sama dengan baris "Jumlah" di tabel bawah.` +
+    (min ? ` Sumbu Y mulai dari ${fmtNum(min)}, bukan nol, supaya selisih antar bulan terlihat.` : '');
+
+  const ctx = document.getElementById('rekapChart').getContext('2d');
+  if (rekapChart) rekapChart.destroy();
+  rekapChart = new Chart(ctx, rekapChartConfig(
+    { values: totalRow, label: `Jumlah — ${rk.categoryLabel}` }, true
+  ));
+
+  const valid = totalRow.filter(v => v !== null && v !== undefined);
+  const jumlah = valid.reduce((a, b) => a + b, 0);
+  const rata = valid.length ? Math.round(jumlah / valid.length) : null;
+  document.getElementById('rekapStatsRow').innerHTML = `
+    <div class="stat"><div class="k">Total setahun</div><div class="v">${fmtNum(valid.length ? jumlah : null)} ${rk.unit}</div></div>
+    <div class="stat"><div class="k">Rata-rata / bulan</div><div class="v">${fmtNum(rata)} ${rk.unit}</div></div>
+    <div class="stat"><div class="k">Bulan tertinggi</div><div class="v">${fmtNum(valid.length ? Math.max(...valid) : null)} ${rk.unit}</div></div>
+    <div class="stat"><div class="k">Bulan terendah</div><div class="v">${fmtNum(valid.length ? Math.min(...valid) : null)} ${rk.unit}</div></div>
+    <div class="stat"><div class="k">Bulan tercatat</div><div class="v">${valid.length} / 12</div></div>
+  `;
+}
+
 function renderRekapView() {
   setViewMode('rekap');
   const rk = currentRekap();
@@ -589,6 +657,7 @@ function renderRekapView() {
   rangeLabelEl.textContent = `Tahun ${year}` + (filterMode === 'all' ? ' (terbaru)' : '');
 
   const { wellRows, totalRow } = rekapPivotForYear(rk, year);
+  renderRekapChart();
 
   const head = document.getElementById('rekapHead');
   head.innerHTML = `<th>Instalasi</th>` + MONTHS_ID.map(m => `<th>${m}</th>`).join('');
@@ -699,9 +768,46 @@ function downloadRekapExcel() {
 // ikut terkirim, unduhannya lewat POST + blob, bukan lagi mengarahkan alamat
 // browser seperti dulu.
 // ---------------------------------------------------------------------------
+// Grafik rekap untuk PDF digambar ULANG di kanvas lepas berukuran tetap
+// (3,4:1), bukan mengambil kanvas di layar. Kalau mengambil yang di layar,
+// bentuknya ikut lebar jendela: unduhan dari HP menghasilkan grafik jangkung
+// yang memakan setengah halaman lanskap. Datanya sama persis dengan yang
+// tampil -- sama-sama totalRow tahun aktif.
+const PDF_CHART_W = 1100;
+const PDF_CHART_H = 320;
+
+function grafikRekapPngPdf() {
+  const rk = currentRekap();
+  const { totalRow } = rekapPivotForYear(rk, rekapActiveYear());
+  const canvas = document.createElement('canvas');
+  canvas.width = PDF_CHART_W;
+  canvas.height = PDF_CHART_H;
+  const c = new Chart(canvas.getContext('2d'), rekapChartConfig({
+    values: totalRow, label: `Jumlah — ${rk.categoryLabel}`
+  }, false));
+  try {
+    c.update('none');
+    c.draw();
+    return c.toBase64Image('image/png', 1);
+  } finally {
+    c.destroy();
+  }
+}
+
 function grafikPng() {
-  // Tampilan Rekapitulasi tidak punya grafik, cuma tabel pivot.
-  if (isRekapActive() || !chart) return null;
+  // Dua tampilan sama-sama punya grafik sekarang: seri per instalasi
+  // (#mainChart) dan Rekapitulasi (#rekapChart).
+  if (isRekapActive()) {
+    if (!rekapChart) return null;
+    try {
+      return grafikRekapPngPdf();
+    } catch (err) {
+      console.error('Grafik rekap gagal diambil, PDF diunduh tanpa grafik', err);
+      return null;
+    }
+  }
+  const c = chart;
+  if (!c) return null;
   try {
     // Jangan langsung toBase64Image(). Chart.js menggambar lewat animation
     // frame, jadi isi canvas bisa belum ada (PNG putih polos) atau masih di
@@ -709,9 +815,9 @@ function grafikPng() {
     //   update('none') -> tetapkan geometri elemen ke nilai akhir, tanpa animasi
     //   draw()         -> lukis nilai itu SEKARANG, tidak menunggu frame
     // Dua-duanya sinkron dan tidak mengubah data yang ditampilkan.
-    chart.update('none');
-    chart.draw();
-    return chart.toBase64Image('image/png', 1);
+    c.update('none');
+    c.draw();
+    return c.toBase64Image('image/png', 1);
   } catch (err) {
     console.error('Grafik gagal diambil, PDF diunduh tanpa grafik', err);
     return null;
@@ -731,7 +837,6 @@ async function downloadPdf() {
     return;
   }
 
-  const source = SOURCE_BY_GROUP[currentGroup];
   const params = new URLSearchParams();
   params.set('dataType', currentGroup);
   params.set('token', token);
@@ -739,9 +844,6 @@ async function downloadPdf() {
   if (isRekapActive()) {
     params.set('mode', 'rekap');
     params.set('year', rekapActiveYear());
-  } else if (currentKey === source.totalKey) {
-    params.set('mode', 'total');
-    if (filterMode === 'year' && selectedYear) params.set('year', selectedYear);
   } else {
     params.set('mode', 'series');
     params.set('well', (KEY_TO_COLNAME[currentKey] || '').toLowerCase());

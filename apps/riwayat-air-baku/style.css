@@ -244,6 +244,24 @@ tbody tr:hover{background:var(--primary-pale);}
 }
 .rekap-total-row td:first-child{background:var(--primary-pale);}
 
+/* --- Rekapitulasi: grafik jumlah di atas tabel pivot --- */
+.rekap-chart-head{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  flex-wrap:wrap;margin-bottom:12px;
+}
+.rekap-chart-title{
+  font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:15px;color:var(--primary);
+}
+.rekap-chart-title small{
+  display:block;font-family:'Inter',sans-serif;font-weight:400;font-size:11.5px;
+  color:var(--ink-soft);margin-top:2px;
+}
+.rekap-chart-box{height:250px;}
+/* Kartu statistik di bawah grafik rekap dibagi rata selebar panel, beda dengan
+   .stats-row di tampilan seri yang cukup mengambil lebar isinya sendiri. */
+#rekapStatsRow .stat{flex:1;}
+.rekap-divider{border:none;border-top:1px dashed var(--line-muted);margin:22px 0 0;}
+
 /* --- Rekapitulasi (tabel pivot instalasi x bulan) --- */
 .rekap-year-block{margin-bottom:28px;}
 .rekap-year-title{
