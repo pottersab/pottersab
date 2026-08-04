@@ -564,6 +564,7 @@ function rekapPivotForYear(rk, year) {
 // nilainya diambil LANGSUNG dari totalRow tabel pivot di bawahnya, jadi grafik
 // dan tabel mustahil beda angka. Periodenya ikut chip tahun seperti grafik di
 // tampilan lain -- tidak ada saklar lingkup sendiri.
+//
 // Sumbu Y grafik rekap sengaja TIDAK mulai dari nol. Total sebulan ada di
 // kisaran jutaan m³ sementara selisih antar bulannya cuma ratusan ribu, jadi
 // kalau dasarnya nol semua batang terlihat sama tinggi dan naik-turunnya
@@ -574,20 +575,40 @@ function rekapPivotForYear(rk, year) {
 // menyebutkan dasar sumbunya secara eksplisit: yang membaca harus tahu bahwa
 // batang dua kali lebih tinggi bukan berarti airnya dua kali lebih banyak.
 //
-// Ruang lega 12% dari rentang di atas dan di bawah supaya batang tertinggi
-// tidak mentok atap dan yang terendah masih kelihatan batangnya.
-const REKAP_Y_PADDING = 0.12;
+// Batas sumbu dibulatkan ke angka bulat, bukan ke nilai data mentah -- label
+// sumbu seperti "1.213.947" tidak ada gunanya dibaca. Langkah pembulatannya
+// satu tingkat di bawah besaran nilainya:
+//
+//   AP,  data 1.260.066 - 1.644.385 -> ratusan ribu -> 1.200.000 - 1.700.000
+//   ATD, data   153.525 -   188.734 -> puluhan ribu ->   150.000 -   190.000
+//
+// Diturunkan dari jumlah digit, jadi aturan yang sama berlaku sendirinya untuk
+// besaran lain kalau suatu saat ada instalasi yang jauh lebih kecil/besar.
+function langkahPembulatan(acuan) {
+  const n = Math.abs(acuan);
+  if (!isFinite(n) || n === 0) return 1;
+  return Math.pow(10, Math.max(Math.floor(Math.log10(n)) - 1, 0));
+}
 
 function rekapYRange(values) {
   const valid = values.filter(v => v !== null && v !== undefined);
   if (!valid.length) return {};
-  const min = Math.min(...valid);
-  const max = Math.max(...valid);
-  // Satu bulan tercatat, atau semua bulan kebetulan sama persis: rentangnya
-  // nol, jadi lega-nya dihitung dari nilainya sendiri supaya min tidak sama
-  // dengan max (Chart.js tidak bisa menggambar sumbu tanpa rentang).
-  const lega = (max - min) * REKAP_Y_PADDING || Math.abs(max) * 0.05 || 1;
-  return { min: Math.max(0, Math.floor(min - lega)), max: Math.ceil(max + lega) };
+  const dataMin = Math.min(...valid);
+  const dataMax = Math.max(...valid);
+  const langkah = langkahPembulatan(dataMax);
+
+  let min = Math.floor(dataMin / langkah) * langkah;
+  let max = Math.ceil(dataMax / langkah) * langkah;
+
+  // Pembulatan itu sendiri yang memberi ruang lega, jadi tidak perlu lagi
+  // ditambah persentase. Tapi kalau nilainya kebetulan jatuh pas di kelipatan
+  // -- termasuk kasus semua bulan sama persis, yang rentangnya nol -- batasnya
+  // digeser satu langkah supaya batang terendah tidak rata dengan dasar dan
+  // yang tertinggi tidak menempel atap.
+  if (min === dataMin) min -= langkah;
+  if (max === dataMax) max += langkah;
+
+  return { min: Math.max(0, min), max };
 }
 
 function rekapChartConfig({ values, label }, responsive) {
