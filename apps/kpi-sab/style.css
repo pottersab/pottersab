@@ -67,23 +67,14 @@ h1{
   position:relative;overflow:hidden;
   background:var(--surface);border:1px solid var(--line-muted);border-radius:var(--radius);
   padding:22px;display:flex;flex-direction:column;gap:10px;
-  min-height:232px; /* semua kartu sama tingginya -- lihat catatan di bawah */
   transition:transform .18s,box-shadow .18s,border-color .18s;
 }
-/* Semua kartu hub dibuat SAMA UKURAN tanpa mengganggu bentuk aslinya:
-   - deskripsi dibatasi 3 baris (lebih panjang di-potong dengan elipsis);
-   - paragraf TIDAK ikut membesar (flex-grow 0) supaya teks tetap rapat dengan
-     tag di bawahnya (tidak ada lubang kosong di tengah kartu);
-   - tombol "Buka laporan" ditempel ke bawah lewat margin-top:auto, jadi ruang
-     sisa yang muncul karena tinggi minimum jatuh DI BAWAH tag (bukan di tengah
-     kartu), persis pola kartu beranda. */
+/* Kartu hub kembali ke tata letak normal: tinggi alami mengikuti isi, dan grid
+   (minmax 280px) otomatis menyamakan tinggi semua kartu dalam satu baris.
+   Tombol di bawah teks, tanpa ruang kosong yang dipaksakan. */
 .hub-card:hover{transform:translateY(-3px);box-shadow:0 12px 28px rgba(14,42,50,.10);border-color:#BFD8E0;}
 .hub-card h3{font-family:'Space Grotesk',sans-serif;font-size:17px;font-weight:700;margin:0;}
-.hub-card p{
-  font-size:13.5px;color:var(--ink-soft);margin:0;flex:0 1 auto;
-  display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;
-}
-.hub-card .open{margin-top:auto;}
+.hub-card p{font-size:13.5px;color:var(--ink-soft);flex:1;margin:0;}
 .hub-glow{
   position:absolute;top:-50px;right:-50px;width:170px;height:170px;
   border-radius:50%;filter:blur(10px);opacity:.5;pointer-events:none;z-index:0;
