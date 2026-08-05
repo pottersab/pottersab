@@ -1,7 +1,7 @@
 const { pool, ensureVizTables, ensureKpiTables } = require('../../lib/db');
 const { requireAdmin } = require('../../lib/auth');
 const { DATASETS } = require('../../lib/visualization/columns');
-const { saveDebitAwal, saveMeta, saveApatdMeta, savePengambilanTarget, savePengambilanMeta, saveKualitasElevasi, saveKualitasMeta } = require('../../lib/visualization/kpi');
+const { saveDebitAwal, saveMeta, saveApatdMeta, savePengambilanTarget, savePengambilanMeta, saveKualitasElevasi, saveKualitasMeta, saveKpi192Meta } = require('../../lib/visualization/kpi');
 
 function toNumOrNull(v) {
   if (v === undefined || v === null || v === '') return null;
@@ -127,6 +127,14 @@ module.exports = async (req, res) => {
     if (kind === 'kualitas_meta') {
       await ensureKpiTables();
       await saveKualitasMeta(req.body);
+      return res.status(200).json({ success: true });
+    }
+    if (kind === 'kpi_192_meta') {
+      // Keterangan & Penandatangan KPI 19.2 Evaluasi Hasil Monitoring --
+      // tabel sendiri (kpi_192_meta), labelnya beda dari KPI lain
+      // ("Mengetahui/ Menyetujui" / "Dibuat Oleh"), lihat kpi.js.
+      await ensureKpiTables();
+      await saveKpi192Meta(req.body);
       return res.status(200).json({ success: true });
     }
 

@@ -368,6 +368,32 @@ td.elev-cell{text-align:center;padding:4px 6px;}
 .elev-tag.on{background:var(--good-pale);color:var(--good);}
 .elev-tag.off{background:var(--bg);color:var(--ink-faint);}
 
+/* --- 19.2 Evaluasi Hasil Monitoring: tabel 4 blok jadwal (NO/URAIAN/
+   RENCANA/REALISASI/KETERANGAN), KETERANGAN dipecah per berita acara. --- */
+table.mon-table{min-width:900px;}
+table.mon-table thead th{min-width:0;white-space:normal;}
+table.mon-table td.name{
+  white-space:normal;text-align:center;font-weight:700;
+  font-size:13px;line-height:1.4;vertical-align:middle;padding:8px 9px;
+}
+table.mon-table td.tgl{
+  text-align:center;font-family:'IBM Plex Mono',monospace;font-size:12.5px;
+  color:var(--ink-soft);font-weight:600;padding:6px 8px;vertical-align:middle;
+}
+table.mon-table td.ke{
+  padding:9px 12px;font-size:13px;line-height:1.5;color:var(--ink);
+  font-family:'Inter',sans-serif;vertical-align:middle;background:var(--surface);
+}
+table.mon-table td.ke-ba{
+  padding:5px 12px;font-size:12px;color:var(--ink-faint);
+  font-family:'IBM Plex Mono',monospace;vertical-align:middle;border-top:1px dashed var(--line-muted);
+}
+table.mon-table td.ke-empty{
+  text-align:center;color:var(--ink-faint);
+  background:repeating-linear-gradient(45deg,transparent 0 5px,var(--bg) 5px 10px);
+}
+table.mon-table tr.mon-block td.no{font-size:14px;color:var(--ink);}
+
 /* ===== Navbar bersama PTMB (disalin dari apps/riwayat-air-baku/style.css) ===== */
 .ptmb-navbar{
   position:sticky; top:0; z-index:999;

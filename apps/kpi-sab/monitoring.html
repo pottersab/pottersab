@@ -11,7 +11,7 @@
 <link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png">
 <script defer src="/assets/js/pwa.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>KPI Sumber Air Baku — Portal Internal SAB</title>
+<title>19.2 Evaluasi Hasil Monitoring — KPI Sumber Air Baku</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
@@ -117,73 +117,89 @@ function doLogout(){
   <header class="top">
     <div>
       <div class="brand">Perumda Tirta Manuntung — Sumber Air Baku</div>
-      <h1>KPI Sumber Air Baku</h1>
+      <h1>19.2 Evaluasi Hasil Monitoring <span id="statusBadge"></span></h1>
     </div>
-    <div class="top-note">Rekap KPI bulanan sub divisi Sumber Air. Pilih jenis laporan di bawah.</div>
+    <div class="top-note">Jadwal rutin monitoring pipa transmisi &amp; service pompa sumur per bulan. Tanggal RENCANA/REALISASI mengikuti aturan minggu ke-2/4; isi KETERANGAN terisi otomatis dari Berita Acara (Riwayat Pekerjaan SAB).</div>
   </header>
 
-  <div class="hub-grid">
-    <div class="hub-card">
-      <span class="hub-glow"></span>
-      <span class="hub-ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3s6 6 6 10a6 6 0 0 1-12 0c0-4 6-10 6-10z"/></svg></span>
-      <h3>18.2 Pengukuran Debit Sumur</h3>
-      <p>Ratio efisiensi debit tiap sumur per IPA, dibanding kapasitas pompa (Debit Awal). IPA/No. Sumur dan Real terisi otomatis dari Data Waduk &amp; Sumur.</p>
-      <div class="tag-row"><span class="tag">Bulanan</span><span class="tag">Isi otomatis</span></div>
-      <a class="open" href="ukur-debit.html">Buka laporan</a>
+  <div class="lock-banner" id="lockBanner" style="display:none;">
+    <div class="lock-banner-text">
+      🔒 Yang ditampilkan sekarang adalah <b>data contoh</b>, bukan data asli — data ini vital bagi perusahaan.
+      <span id="lockStatusText"></span>
+    </div>
+    <button type="button" class="dl-btn" id="requestAccessBtn">Minta Akses</button>
+  </div>
+
+  <div class="access-modal-overlay" id="accessModalOverlay" style="display:none;">
+    <div class="access-modal">
+      <h3>Minta Akses Data Asli</h3>
+      <p class="hint">Diminta dari halaman: <b>KPI 19.2 Evaluasi Hasil Monitoring</b>. Isi nama kamu — admin akan menerima notifikasi lewat email dan kamu bisa chat admin lewat WhatsApp jika kebutuhan mendesak, jangan tutup jendela ini sampai akses diberikan.</p>
+      <label for="accessNamaInput">Nama</label>
+      <input type="text" id="accessNamaInput" placeholder="Nama kamu">
+      <label for="accessAlasanInput">Keperluan (opsional)</label>
+      <textarea id="accessAlasanInput" placeholder="Contoh: untuk laporan bulanan"></textarea>
+      <div class="access-modal-actions">
+        <button type="button" class="btn-ghost" id="accessModalCancel">Batal</button>
+        <button type="button" class="dl-btn" id="accessModalSubmit">Kirim Permintaan</button>
+      </div>
+      <button type="button" class="btn-whatsapp" id="accessModalWhatsapp">💬 Chat Admin via WhatsApp</button>
+      <div class="status-msg" id="accessModalStatus"></div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <div class="field">
+      <label>Bulan</label>
+      <select id="monthSelect"></select>
     </div>
 
-    <div class="hub-card">
-      <span class="hub-glow"></span>
-      <span class="hub-ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20V10M18 20V4M6 20v-4"/></svg></span>
-      <h3>18.3a Monitoring Debit AP &amp; ATD</h3>
-      <p>Debit bulanan per instalasi Air Permukaan (AP) dan Air Tanah Dalam (ATD), dengan JUMLAH per kelompok. Terisi otomatis dari Data Pengambilan Air Baku.</p>
-      <div class="tag-row"><span class="tag">Bulanan</span><span class="tag">Isi otomatis</span></div>
-      <a class="open" href="apatd.html">Buka laporan</a>
-    </div>
+    <div class="spacer"></div>
 
-    <div class="hub-card">
-      <span class="hub-glow"></span>
-      <span class="hub-ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 15l4-5 3 3 5-7"/></svg></span>
-      <h3>18.3b Pengambilan Air Baku</h3>
-      <p>Anggaran vs Realisasi bulanan Air Permukaan &amp; Air Tanah Dalam. Realisasi otomatis dari Data Pengambilan Air Baku, Anggaran mengikuti jumlah hari dalam bulan (diatur admin).</p>
-      <div class="tag-row"><span class="tag">Bulanan</span><span class="tag">Isi otomatis</span></div>
-      <a class="open" href="pengambilan.html">Buka laporan</a>
-    </div>
+    <button class="dl-btn dl-btn-admin" id="downloadBtn">🔒 Unduh Excel (Admin)</button>
+  </div>
 
-    <div class="hub-card">
-      <span class="hub-glow"></span>
-      <span class="hub-ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.69s5 5.5 5 9.31a5 5 0 0 1-10 0c0-3.81 5-9.31 5-9.31z"/><path d="M9 15a3 3 0 0 0 3 3"/></svg></span>
-      <h3>18.4 Laporan Kualitas Air Baku</h3>
-      <p>Level, Kekeruhan (NTU) &amp; PH bulanan Waduk Manggar &amp; Teritip, terisi otomatis dari Data Air Baku. Status pintu air elevasi 3/5/7 diatur harian lewat panel di halaman ini.</p>
-      <div class="tag-row"><span class="tag">Bulanan</span><span class="tag">Isi otomatis</span><span class="tag">Panel harian</span></div>
-      <a class="open" href="kualitas.html">Buka laporan</a>
-    </div>
+  <div class="legend">
+    <span><i class="swatch sw-web"></i> KETERANGAN — otomatis dari Berita Acara (Riwayat Pekerjaan SAB)</span>
+    <span><i class="swatch sw-empty"></i> Belum ada berita acara di rentang tanggal</span>
+  </div>
 
-    <div class="hub-card">
-      <span class="hub-glow"></span>
-      <span class="hub-ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3v5h5"/><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M9 13l2 2 4-4"/></svg></span>
-      <h3>19.2 Evaluasi Hasil Monitoring</h3>
-      <p>Jadwal rutin monitoring Pipa Transmisi &amp; Service Pompa Sumur per bulan (minggu ke-2/4). RENCANA/REALISASI otomatis dari aturan hari, KETERANGAN terisi otomatis dari Berita Acara Pekerjaan SAB.</p>
-      <div class="tag-row"><span class="tag">Bulanan</span><span class="tag">Isi otomatis</span><span class="tag">Dari Berita Acara</span></div>
-      <a class="open" href="monitoring.html">Buka laporan</a>
-    </div>
+  <div id="locTables"></div>
 
-    <div class="hub-card soon">
-      <span class="hub-glow"></span>
-      <span class="hub-ic" style="background:var(--ink-faint)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20V10M18 20V4M6 20v-4"/></svg></span>
-      <h3>Isian KPI berikutnya</h3>
-      <p>Laporan KPI Sumber Air lain akan ditambahkan di sini, dengan pola yang sama seperti 18.2, 18.3a, 18.3b, 18.4 &amp; 19.2.</p>
-      <div class="tag-row"><span class="tag">Segera</span></div>
-      <a class="open" href="#" onclick="return false;">Belum tersedia</a>
+  <div class="footgrid">
+    <div class="card">
+      <h3>Penandatangan</h3>
+      <div class="signblock">
+        <div class="placeline">
+          <span>Balikpapan,</span>
+          <input type="text" id="signDate">
+        </div>
+        <div class="signcol">
+          <div class="signitem">
+            <div class="fixed-label">Mengetahui/ Menyetujui</div>
+            <input class="role-input" id="role1" placeholder="Jabatan">
+            <div class="signature-space"></div>
+            <input class="name" id="name1">
+          </div>
+          <div class="signitem">
+            <div class="fixed-label">Dibuat Oleh</div>
+            <input class="role-input" id="role2" placeholder="Jabatan">
+            <div class="signature-space"></div>
+            <input class="name" id="name2">
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 
   <div class="page-footer-note">
-    <a href="../../index.html?page=dev">&larr; Kembali ke Development</a>
+    <a href="index.html">&larr; Kembali ke KPI Sumber Air Baku</a>
   </div>
 
 </div>
 
+<div class="toast" id="toast"></div>
+
+<script defer src="monitoring.js"></script>
 <script defer src="../../assets/js/nav-badge.js"></script>
 </body>
 </html>

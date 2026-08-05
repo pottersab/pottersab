@@ -1,11 +1,11 @@
-const { ensureVizTables, ensureKpiTables } = require('../../lib/db');
+const { ensureVizTables, ensureKpiTables, ensurePekerjaanTable } = require('../../lib/db');
 const { requireAdmin } = require('../../lib/auth');
 const { DATASETS, isValidDataType } = require('../../lib/visualization/columns');
 const { checkVizAccess } = require('../../lib/visualization/viz-auth');
 const { buildDummyRows, buildDummyWideSingleRows, buildDummySumurDebitRows, buildDummySumurLevelRows } = require('../../lib/visualization/dummy');
 const { fetchRealRows, fetchWideSingleRows, fetchSumurWells, fetchSumurDebitRows, fetchSumurLevelRows } = require('../../lib/visualization/repo');
 const { logViewerAction } = require('../../lib/visualization/access-log');
-const { getKpiUkurDebitData, buildKpiExcelWorkbook, getKpiApatdData, buildKpiApatdExcelWorkbook, getKpiPengambilanData, buildKpiPengambilanExcelWorkbook, getKpiKualitasData, buildKpiKualitasExcelWorkbook } = require('../../lib/visualization/kpi');
+const { getKpiUkurDebitData, buildKpiExcelWorkbook, getKpiApatdData, buildKpiApatdExcelWorkbook, getKpiPengambilanData, buildKpiPengambilanExcelWorkbook, getKpiKualitasData, buildKpiKualitasExcelWorkbook, getKpi192Data, buildKpi192ExcelWorkbook } = require('../../lib/visualization/kpi');
 
 module.exports = async (req, res) => {
   if (req.method !== 'GET') {
@@ -110,6 +110,32 @@ module.exports = async (req, res) => {
     const buffer = await buildKpiKualitasExcelWorkbook(result);
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename="18.4 Laporan Kualitas Air Baku ${result.bulan}.xlsx"`);
+    return res.status(200).send(Buffer.from(buffer));
+  }
+
+  // KPI 19.2 Evaluasi Hasil Monitoring -- daftar berita acara (pekerjaan)
+  // per jadwal bulanan, bukan laporan angka. Ditangani terpisah juga, sama
+  // seperti KPI lain; datanya dari tabel `pekerjaan` (lihat
+  // lib/visualization/kpi.js). Lihat catatan tentang batas 12 Serverless
+  // Function di kpi.js -- makanya digabung ke berkas ini.
+  if (dataType === 'kpi_19_2') {
+    await ensureKpiTables();
+    await ensurePekerjaanTable();
+    const access = await checkVizAccess(req);
+    const result = await getKpi192Data(access, req.query.bulan);
+    return res.status(200).json(result);
+  }
+
+  if (dataType === 'kpi_19_2_xlsx') {
+    await ensureKpiTables();
+    await ensurePekerjaanTable();
+    const user = requireAdmin(req, res);
+    if (!user) return;
+    const result = await getKpi192Data({ granted: true, kind: 'admin' }, req.query.bulan);
+    if (req.query.tanggal) result.meta.signPlaceDate = req.query.tanggal;
+    const buffer = await buildKpi192ExcelWorkbook(result);
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="19.2 Evaluasi Hasil Monitoring ${result.monthTitle}.xlsx"`);
     return res.status(200).send(Buffer.from(buffer));
   }
 
