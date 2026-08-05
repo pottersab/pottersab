@@ -20,9 +20,8 @@
       .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
   }
   function monthIndexesFor(period) { return period === 0 ? [0, 1, 2, 3, 4, 5] : [6, 7, 8, 9, 10, 11]; }
-  function monthLabel(mi) {
-    return MONTHS[mi] + ' ' + (mi < 6 ? state.tahun : (Number(state.tahun) - 1));
-  }
+  // Dua blok dalam TAHUN yang sama (0-5 Jan-Jun, 6-11 Jul-Des).
+  function monthLabel(mi) { return MONTHS[mi] + ' ' + state.tahun; }
 
   // ------------------------------------------------------------------
   // MUAT DATA
@@ -100,7 +99,7 @@
 
     document.getElementById("tableFoot").innerHTML =
       'Rencana = tanggal jadwal rutin (Selasa/Senin minggu ke-2/4). Realisasi = terisi otomatis jika ada Berita Acara bulan itu, "-" jika belum. ' +
-      'Periode: Januari–Juni ' + state.tahun + ' dan Juli–Desember ' + (Number(state.tahun) - 1) + '.';
+      'Bulan yang belum tiba dikosongkan. Periode: Januari–Juni ' + state.tahun + ' dan Juli–Desember ' + state.tahun + '.';
   }
 
   // ------------------------------------------------------------------
