@@ -70,16 +70,17 @@
 
   function itemRows(g, idxs) {
     var html = '';
-    var rowspan = g.items.length * 2;
-    g.items.forEach(function (it, j) {
-      var rows = [[it.renc, 'Renc', it.rencDates], [it.real, 'Real', it.realDates]];
-      rows.forEach(function (row) {
+    var rowspan = g.blocks.length * 2;
+    g.blocks.forEach(function (block, bi) {
+      [['Renc', block.rencDates], ['Real', block.realDates]].forEach(function (row, ri) {
         html += '<tr>';
-        if (j === 0 && row[1] === 'Renc') html += '<td class="no" rowspan="' + rowspan + '">' + g.no + '</td>';
-        html += '<td class="name">' + esc(row[0]) + '</td>';
-        html += '<td class="rr ' + (row[1] === 'Renc' ? 'renc' : 'real') + '">' + row[1] + '</td>';
+        if (bi === 0 && ri === 0) {
+          html += '<td class="no" rowspan="' + rowspan + '">' + g.no + '</td>';
+          html += '<td class="name" rowspan="' + rowspan + '">' + esc(g.label) + '</td>';
+        }
+        html += '<td class="rr ' + (row[0] === 'Renc' ? 'renc' : 'real') + '">' + row[0] + '</td>';
         idxs.forEach(function (mi) {
-          var v = row[2][mi];
+          var v = row[1][mi];
           var isDash = v === '-' || v === '';
           html += '<td class="dt' + (isDash ? ' dash' : '') + '">' + (v ? esc(v) : '—') + '</td>';
         });
