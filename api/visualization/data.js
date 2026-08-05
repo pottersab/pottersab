@@ -5,7 +5,7 @@ const { checkVizAccess } = require('../../lib/visualization/viz-auth');
 const { buildDummyRows, buildDummyWideSingleRows, buildDummySumurDebitRows, buildDummySumurLevelRows } = require('../../lib/visualization/dummy');
 const { fetchRealRows, fetchWideSingleRows, fetchSumurWells, fetchSumurDebitRows, fetchSumurLevelRows } = require('../../lib/visualization/repo');
 const { logViewerAction } = require('../../lib/visualization/access-log');
-const { getKpiUkurDebitData, buildKpiExcelWorkbook, getKpiApatdData, buildKpiApatdExcelWorkbook, getKpiPengambilanData, buildKpiPengambilanExcelWorkbook, getKpiKualitasData, buildKpiKualitasExcelWorkbook, getKpi192Data, buildKpi192ExcelWorkbook, getKpiLevelSumurData, buildKpiLevelSumurExcelWorkbook } = require('../../lib/visualization/kpi');
+const { getKpiUkurDebitData, buildKpiExcelWorkbook, getKpiApatdData, buildKpiApatdExcelWorkbook, getKpiPengambilanData, buildKpiPengambilanExcelWorkbook, getKpiKualitasData, buildKpiKualitasExcelWorkbook, getKpi192Data, buildKpi192ExcelWorkbook, getKpiLevelSumurData, buildKpiLevelSumurExcelWorkbook, getKpiLevelStatisDinamisData, buildKpiLevelStatisDinamisExcelWorkbook } = require('../../lib/visualization/kpi');
 
 module.exports = async (req, res) => {
   if (req.method !== 'GET') {
@@ -161,6 +161,30 @@ module.exports = async (req, res) => {
     const buffer = await buildKpiLevelSumurExcelWorkbook(result);
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename="18.1A Pengukuran Level Sumur ${result.year}.xlsx"`);
+    return res.status(200).send(Buffer.from(buffer));
+  }
+
+  // KPI 18.1b Pengukuran Statis-Dinamis -- nilai SWL (statis) & DWL (dinamis)
+  // per sumur per bulan, dari sumur_level_readings (lihat kpi.js). Ditangani
+  // terpisah juga, sama seperti KPI lain (batas 12 Serverless Function).
+  if (dataType === 'kpi_18_1b') {
+    await ensureKpiTables();
+    await ensureVizTables();
+    const access = await checkVizAccess(req);
+    const result = await getKpiLevelStatisDinamisData(access, req.query.tahun);
+    return res.status(200).json(result);
+  }
+
+  if (dataType === 'kpi_18_1b_xlsx') {
+    await ensureKpiTables();
+    await ensureVizTables();
+    const user = requireAdmin(req, res);
+    if (!user) return;
+    const result = await getKpiLevelStatisDinamisData({ granted: true, kind: 'admin' }, req.query.tahun);
+    if (req.query.tanggal) result.meta.signPlaceDate = req.query.tanggal;
+    const buffer = await buildKpiLevelStatisDinamisExcelWorkbook(result);
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="18.1B Pengukuran Statis Dinamis ${result.year}.xlsx"`);
     return res.status(200).send(Buffer.from(buffer));
   }
 

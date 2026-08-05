@@ -398,6 +398,17 @@ table.mon-table tr.mon-block td.no{font-size:14px;color:var(--ink);}
    jumlah sumur) -- pakai kelas .kpi yang sama dengan 18.3b. --- */
 table.kpi td .cellnum{font-family:'IBM Plex Mono',monospace;font-size:13px;}
 
+/* --- 18.1b Pengukuran Statis-Dinamis: tabel BULAN/SWL/DWL per bulan
+   (SWL = Statis, DWL = Dinamis, meter). --- */
+table.sd-table{min-width:1150px;}
+table.sd-table td.name{white-space:normal;text-align:left;font-size:13px;padding:6px 9px;vertical-align:middle;font-weight:600;}
+table.sd-table td.bulan{text-align:center;font-size:11px;color:var(--ink-soft);font-family:'IBM Plex Mono',monospace;padding:4px 6px;white-space:nowrap;}
+table.sd-table td.sdv{text-align:center;font-family:'IBM Plex Mono',monospace;font-size:13px;padding:5px 8px;}
+table.sd-table td.sdv.web{background:var(--primary-pale);color:var(--primary);font-weight:700;}
+table.sd-table td.sdv.edit{background:var(--edit-pale);color:var(--edit-ink);font-weight:700;}
+table.sd-table td.empty{background:repeating-linear-gradient(45deg,transparent 0 5px,var(--bg) 5px 10px);}
+table.sd-table tr.grouphead td{white-space:nowrap;}
+
 /* Panel "Daftar Sumur & Status Aktif" -- cuma sumur AKTIF yang jadi ANGG. */
 .well-card{margin-bottom:20px;}
 .well-hint{font-size:12.5px;color:var(--ink-soft);line-height:1.5;margin:0 0 14px;}
