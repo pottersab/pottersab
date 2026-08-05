@@ -217,20 +217,37 @@
   }
 
   function renderStats() {
-    var totalWell = 0, totalAwal = 0, pcts = [];
+    var totalWell = 0, pcts = [];
     var idxs = monthIndexesFor(currentPeriod);
     var groups = state.groups;
     groups.forEach(function (g) { g.wells.forEach(function (w) {
-      totalWell++; totalAwal += (w.awal || 0);
+      totalWell++;
       idxs.forEach(function (mi) { if (w.real[mi] !== null && w.awal !== null) pcts.push(w.real[mi] / w.awal * 100); });
     }); });
     var avgPct = pcts.length ? pcts.reduce(function (a, b) { return a + b; }, 0) / pcts.length : 0;
     var cls = avgPct >= 95 ? "good" : (avgPct >= 85 ? "warn" : "");
+
+    // Kapasitas Realisasi: total Real seluruh sumur untuk bulan TERAKHIR yang
+    // sudah ada datanya di periode yang sedang ditampilkan -- bukan Debit Awal
+    // (kapasitas pompa) yang selalu sama tiap bulan, tapi realisasi sesuai
+    // bulan berjalan.
+    var realisasiMonth = null, totalRealisasi = 0;
+    for (var k = idxs.length - 1; k >= 0; k--) {
+      var mi = idxs[k];
+      var any = groups.some(function (g) { return g.wells.some(function (w) { return w.real[mi] !== null; }); });
+      if (any) {
+        realisasiMonth = mi;
+        groups.forEach(function (g) { g.wells.forEach(function (w) { if (w.real[mi] !== null) totalRealisasi += w.real[mi]; }); });
+        break;
+      }
+    }
+
     var stat = document.getElementById("statRow");
     stat.innerHTML =
       '<div class="stat"><div class="k">IPA</div><div class="v">' + groups.length + '</div></div>' +
       '<div class="stat"><div class="k">Total sumur</div><div class="v">' + totalWell + '</div></div>' +
-      '<div class="stat"><div class="k">Kapasitas total</div><div class="v">' + fmt(totalAwal, 0) + ' m³/jam</div></div>' +
+      '<div class="stat"><div class="k">Kapasitas Realisasi' + (realisasiMonth !== null ? ' (' + MONTHS[realisasiMonth] + ')' : '') + '</div><div class="v">' +
+        (realisasiMonth !== null ? fmt(totalRealisasi, 0) + ' m³/jam' : '–') + '</div></div>' +
       '<div class="stat"><div class="k">Rata-rata efisiensi</div><div class="v ' + cls + '">' + (pcts.length ? fmt(avgPct, 1) + '%' : '–') + '</div></div>';
   }
 
@@ -372,131 +389,39 @@
   });
 
   // ------------------------------------------------------------------
-  // UNDUH EXCEL — format persis 18.2 Ukur Debit.xlsx, dibangun di browser
-  // pakai SheetJS (sama seperti tombol Unduh Excel di halaman viz lain).
+  // UNDUH EXCEL — dibangun di SERVER (exceljs), bukan di browser. Library
+  // SheetJS gratis yang jalan di browser tidak bisa menulis border/font sama
+  // sekali (sudah dicoba, hasilnya polos) -- garis kotak & Times New Roman
+  // di file ini butuh exceljs, dan itu cuma jalan di Node, bukan di browser.
   // ------------------------------------------------------------------
-  function colLetter(n) {
-    var s = ""; while (n > 0) { var m = (n - 1) % 26; s = String.fromCharCode(65 + m) + s; n = Math.floor((n - 1) / 26); } return s;
-  }
-  function monthColsXlsx(i) { var base = 4 + i * 3; return { real: base, pm: base + 1, pct: base + 2 }; }
-
-  function buildYearWorkbook() {
-    var wb = XLSX.utils.book_new();
-    var ws = {};
-    var merges = [];
-    function set(addr, v, opts) {
-      var cell = { v: v };
-      if (opts && opts.f) { cell.f = opts.f; delete cell.v; }
-      if (opts && opts.z) cell.z = opts.z;
-      ws[addr] = cell;
-    }
-    function addr(c, r) { return colLetter(c) + r; }
-
-    function block(rowOffset, monthNames, judulBulan, monthBase) {
-      var R = function (r) { return r + rowOffset; };
-      set('A' + R(1), 'PERUSAHAAN UMUM DAERAH TIRTA MANUNTUNG');
-      set('A' + R(2), 'KOTA BALIKPAPAN');
-      set('A' + R(4), ' 18.2 PENGUKURAN DEBIT SUMUR'); merges.push({ s: { r: R(4) - 1, c: 0 }, e: { r: R(4) - 1, c: 20 } });
-      set('A' + R(5), judulBulan); merges.push({ s: { r: R(5) - 1, c: 0 }, e: { r: R(5) - 1, c: 20 } });
-
-      merges.push({ s: { r: R(7) - 1, c: 0 }, e: { r: R(9) - 1, c: 0 } }); set('A' + R(7), 'NO');
-      merges.push({ s: { r: R(7) - 1, c: 1 }, e: { r: R(9) - 1, c: 1 } }); set('B' + R(7), 'IPA/ NO.SUMUR');
-      set('C' + R(7), 'DEBIT'); set('C' + R(8), 'AWAL'); set('C' + R(9), 'M3/H');
-
-      monthNames.forEach(function (mn, i) {
-        var cc = monthColsXlsx(i);
-        merges.push({ s: { r: R(7) - 1, c: cc.real - 1 }, e: { r: R(7) - 1, c: cc.pct - 1 } });
-        set(addr(cc.real, R(7)), mn);
-        set(addr(cc.real, R(8)), 'REAL');
-        merges.push({ s: { r: R(8) - 1, c: cc.pm - 1 }, e: { r: R(8) - 1, c: cc.pct - 1 } });
-        set(addr(cc.pm, R(8)), 'RATIO EFFISIENSI');
-        set(addr(cc.pm, R(9)), '±'); set(addr(cc.pct, R(9)), '%');
-      });
-
-      var r = R(10);
-      var jumlahRows = [];
-      state.groups.forEach(function (g) {
-        set('A' + r, g.no || (state.groups.indexOf(g) + 1)); set('B' + r, g.ipa);
-        r++;
-        var firstWell = r;
-        g.wells.forEach(function (w) {
-          set('B' + r, w.name);
-          set('C' + r, w.awal, { z: '0.00' });
-          monthNames.forEach(function (mn, i) {
-            var cc = monthColsXlsx(i);
-            var v = w.real[monthBase + i];
-            if (v !== null && v !== undefined) set(addr(cc.real, r), v, { z: '0.00' });
-            set(addr(cc.pm, r), null, { f: 'IF(' + addr(cc.real, r) + '="","",' + addr(cc.real, r) + '-C' + r + ')', z: '0.00' });
-            set(addr(cc.pct, r), null, { f: 'IF(' + addr(cc.real, r) + '="","",' + addr(cc.real, r) + '/C' + r + '*100)', z: '0.00' });
-          });
-          r++;
-        });
-        var lastWell = r - 1;
-        set('B' + r, 'JUMLAH');
-        set('C' + r, null, { f: 'SUM(C' + firstWell + ':C' + lastWell + ')', z: '0.00' });
-        monthNames.forEach(function (mn, i) {
-          var cc = monthColsXlsx(i);
-          set(addr(cc.real, r), null, { f: 'IF(COUNT(' + addr(cc.real, firstWell) + ':' + addr(cc.real, lastWell) + ')=0,"",SUM(' + addr(cc.real, firstWell) + ':' + addr(cc.real, lastWell) + '))', z: '0.00' });
-        });
-        jumlahRows.push(r);
-        r++;
-      });
-
-      var rataRow = r;
-      set('B' + rataRow, 'RATA RATA');
-      monthNames.forEach(function (mn, i) {
-        var cc = monthColsXlsx(i);
-        set(addr(cc.pct, rataRow), null, { f: 'IF(COUNT(' + addr(cc.pct, R(10)) + ':' + addr(cc.pct, rataRow - 1) + ')=0,"",AVERAGE(' + addr(cc.pct, R(10)) + ':' + addr(cc.pct, rataRow - 1) + '))', z: '0.00' });
-      });
-      r++;
-
-      var meta = state.meta[monthBase === 0 ? '1' : '2'];
-      var ketHeaderRow = r; set('B' + ketHeaderRow, 'Keterangan :'); r++;
-      (meta.keterangan || []).forEach(function (k) { set('B' + r, '~ ' + k); r++; });
-      var lastKetRow = r - 1;
-      if (lastKetRow < ketHeaderRow) lastKetRow = ketHeaderRow;
-
-      merges.push({ s: { r: lastKetRow - 1, c: 17 }, e: { r: lastKetRow - 1, c: 19 } });
-      set('R' + lastKetRow, meta.signPlaceDate || '');
-      var dibuatRow = lastKetRow + 1;
-      merges.push({ s: { r: dibuatRow - 1, c: 17 }, e: { r: dibuatRow - 1, c: 19 } });
-      set('R' + dibuatRow, 'Dibuat oleh');
-      var roleRow = dibuatRow + 1;
-      merges.push({ s: { r: roleRow - 1, c: 3 }, e: { r: roleRow - 1, c: 5 } });
-      set('D' + roleRow, meta.roleLeft || 'Mengetahui/Menyetujui :');
-      merges.push({ s: { r: roleRow - 1, c: 17 }, e: { r: roleRow, c: 19 } });
-      set('R' + roleRow, meta.roleRight || '');
-      var roleLeftRow = roleRow + 1;
-      merges.push({ s: { r: roleLeftRow - 1, c: 3 }, e: { r: roleLeftRow - 1, c: 5 } });
-      set('D' + roleLeftRow, '');
-      var nameRow = roleLeftRow + 5;
-      merges.push({ s: { r: nameRow - 1, c: 2 }, e: { r: nameRow, c: 6 } });
-      set('C' + nameRow, meta.nameLeft || '');
-      merges.push({ s: { r: nameRow - 1, c: 17 }, e: { r: nameRow - 1, c: 19 } });
-      set('R' + nameRow, meta.nameRight || '');
-
-      return nameRow + 2;
-    }
-
-    var next = block(0, MONTHS.slice(0, 6), 'BULAN : Januari - Juni ' + state.year, 0);
-    var lastRow = block(next + 1, MONTHS.slice(6, 12), 'BULAN : Juli - Desember ' + state.year, 6);
-
-    ws['!ref'] = 'A1:U' + Math.max(lastRow - 1, 1);
-    ws['!merges'] = merges;
-    ws['!cols'] = [4, 30, 12, 11, 11, 12, 13, 10, 12, 10, 11, 14, 11, 9, 12, 11, 9, 10, 11, 10, 11].map(function (w) { return { wch: w }; });
-    XLSX.utils.book_append_sheet(wb, ws, '18.2 UKUR DEBIT SUMUR');
-    return wb;
-  }
-
-  document.getElementById("downloadBtn").addEventListener("click", function () {
+  document.getElementById("downloadBtn").addEventListener("click", async function () {
     if (!isAdmin) {
       alert('Unduh Excel khusus admin. Silakan login admin terlebih dahulu.');
       window.location.href = '../../login.html?redirect=' + encodeURIComponent('apps/kpi-sab/ukur-debit.html');
       return;
     }
-    if (typeof XLSX === 'undefined') { toast('Pustaka Excel belum siap, coba lagi sebentar.'); return; }
-    var wb = buildYearWorkbook();
-    XLSX.writeFile(wb, '18.2 Ukur Debit ' + state.year + '.xlsx');
+    var btn = document.getElementById('downloadBtn');
+    var oldText = btn.textContent;
+    btn.disabled = true; btn.textContent = 'Menyiapkan Excel...';
+    try {
+      var token = currentAccessToken();
+      var res = await fetch('/api/visualization/data?dataType=kpi_ukur_debit_xlsx&tahun=' + encodeURIComponent(state.year), {
+        headers: { 'Authorization': 'Bearer ' + token }
+      });
+      if (!res.ok) {
+        var d = await res.json().catch(function () { return {}; });
+        throw new Error(d.error || ('HTTP ' + res.status));
+      }
+      var blob = await res.blob();
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url; a.download = '18.2 Ukur Debit ' + state.year + '.xlsx';
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      toast('Gagal mengunduh Excel: ' + err.message);
+    }
+    btn.disabled = false; btn.textContent = oldText;
   });
 
   // ------------------------------------------------------------------

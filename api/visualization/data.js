@@ -1,10 +1,11 @@
 const { ensureVizTables, ensureKpiTables } = require('../../lib/db');
+const { requireAdmin } = require('../../lib/auth');
 const { DATASETS, isValidDataType } = require('../../lib/visualization/columns');
 const { checkVizAccess } = require('../../lib/visualization/viz-auth');
 const { buildDummyRows, buildDummyWideSingleRows, buildDummySumurDebitRows, buildDummySumurLevelRows } = require('../../lib/visualization/dummy');
 const { fetchRealRows, fetchWideSingleRows, fetchSumurWells, fetchSumurDebitRows, fetchSumurLevelRows } = require('../../lib/visualization/repo');
 const { logViewerAction } = require('../../lib/visualization/access-log');
-const { getKpiUkurDebitData } = require('../../lib/visualization/kpi');
+const { getKpiUkurDebitData, buildKpiExcelWorkbook } = require('../../lib/visualization/kpi');
 
 module.exports = async (req, res) => {
   if (req.method !== 'GET') {
@@ -24,6 +25,21 @@ module.exports = async (req, res) => {
     const access = await checkVizAccess(req);
     const result = await getKpiUkurDebitData(access, req.query.tahun);
     return res.status(200).json(result);
+  }
+
+  // Unduh Excel -- admin-only (sama seperti tombol Unduh Excel di halaman viz
+  // lain), dibangun di server dengan exceljs supaya border/font-nya benar-benar
+  // tertulis (build SheetJS gratis yang jalan di browser tidak bisa menulis
+  // gaya sel sama sekali, lihat catatan di lib/visualization/kpi.js).
+  if (dataType === 'kpi_ukur_debit_xlsx') {
+    await ensureKpiTables();
+    const user = requireAdmin(req, res);
+    if (!user) return;
+    const result = await getKpiUkurDebitData({ granted: true, kind: 'admin' }, req.query.tahun);
+    const buffer = await buildKpiExcelWorkbook(result);
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="18.2 Ukur Debit ${result.year}.xlsx"`);
+    return res.status(200).send(Buffer.from(buffer));
   }
 
   if (!isValidDataType(dataType)) {
