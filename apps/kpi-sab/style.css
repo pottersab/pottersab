@@ -326,29 +326,47 @@ table.kpi td.angg input{color:var(--edit-ink);font-weight:700;}
 .dl-btn-admin.enabled{background:var(--primary);opacity:1;cursor:pointer;}
 .dl-btn-admin.enabled:hover{background:var(--ink);}
 
-/* --- Panel "Status Pintu Air — Elevasi (Harian)" (18.4 Laporan Kualitas Air
-   Baku): pilih bulan + tabel harian dengan toggle ON/OFF per elevasi per
-   lokasi, admin-editable langsung (bukan lewat panel Pengaturan seperti
-   target-grid di atas -- di sini tiap SEL punya switch sendiri). --- */
-.elevasi-controls{display:flex;align-items:center;gap:10px;margin-bottom:12px;}
-.elevasi-controls label{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-soft);font-weight:600;}
-.elevasi-controls select{
-  font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:600;
-  padding:7px 10px;border-radius:8px;border:1px solid var(--line-muted);
-  background:var(--bg);color:var(--ink);cursor:pointer;
+/* --- 18.4 Laporan Kualitas Air Baku: tabel HARIAN per lokasi (Manggar &
+   Teritip), status pintu elevasi 3/5/7 diklik langsung di baris tanggalnya. --- */
+.legend .sw-on{background:var(--good);border:1.5px solid var(--good);}
+.legend .sw-off{background:var(--bg);border:1.5px solid var(--ink-faint);}
+
+.elev-hint{
+  background:var(--primary-pale);border:1px solid #BFD8E0;border-radius:10px;
+  padding:11px 15px;margin-bottom:16px;font-size:12.5px;color:var(--ink-soft);line-height:1.5;
 }
-table.elevasi-table{border-collapse:separate;border-spacing:0;width:100%;min-width:520px;font-family:'IBM Plex Mono',monospace;}
-table.elevasi-table thead th{
-  background:var(--bg);border-bottom:1px solid var(--line-muted);border-right:1px solid var(--line-muted);
-  padding:6px 8px;font-size:10.5px;font-weight:700;color:var(--ink-soft);
-  text-transform:uppercase;letter-spacing:.04em;text-align:center;white-space:nowrap;font-family:'Inter',sans-serif;
+.elev-hint b{color:var(--primary);}
+
+.loc-card{margin-bottom:20px;}
+.loc-head{
+  padding:11px 16px;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:13.5px;
+  color:var(--primary);background:var(--primary-pale);border-bottom:1px solid var(--line-muted);
 }
-table.elevasi-table tbody td{border-bottom:1px solid var(--line-muted);border-right:1px solid var(--line-muted);padding:6px 8px;text-align:center;}
-table.elevasi-table td.no{color:var(--ink-faint);font-weight:600;width:70px;}
-table.elevasi-table td.elevasi-cell{display:table-cell;}
-.switch.small{width:30px;height:17px;margin:0 auto;}
-.switch.small::after{width:13px;height:13px;}
-.switch.small.on::after{left:15px;}
+table.kual-table{min-width:560px;}
+table.kual-table thead tr.r1 th{top:0;}
+table.kual-table thead tr.r2 th{top:auto;}
+table.kual-table thead th .unit{font-weight:500;font-size:9px;text-transform:none;color:var(--ink-faint);}
+table.kual-table td.no{text-align:center;color:var(--ink-soft);font-weight:600;font-family:'IBM Plex Mono',monospace;}
+table.kual-table .cellnum{font-family:'IBM Plex Mono',monospace;font-size:13px;}
+table.kual-table td.real .cellwrap{justify-content:center;}
+table.kual-table td.real .cellwrap.empty{background:repeating-linear-gradient(45deg,transparent 0 5px,var(--bg) 5px 10px);}
+
+td.elev-cell{text-align:center;padding:4px 6px;}
+.elev-btn{
+  min-width:44px;border:none;border-radius:7px;padding:4px 10px;cursor:pointer;
+  font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:11.5px;letter-spacing:.03em;
+  transition:filter .12s,transform .05s;
+}
+.elev-btn:hover{filter:brightness(1.06);}
+.elev-btn:active{transform:scale(.96);}
+.elev-btn.on{background:var(--good);color:#fff;}
+.elev-btn.off{background:#E7EDEF;color:var(--ink-faint);}
+.elev-tag{
+  display:inline-block;min-width:44px;border-radius:7px;padding:4px 10px;
+  font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:11.5px;letter-spacing:.03em;
+}
+.elev-tag.on{background:var(--good-pale);color:var(--good);}
+.elev-tag.off{background:var(--bg);color:var(--ink-faint);}
 
 /* ===== Navbar bersama PTMB (disalin dari apps/riwayat-air-baku/style.css) ===== */
 .ptmb-navbar{

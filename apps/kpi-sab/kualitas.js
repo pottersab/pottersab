@@ -1,12 +1,9 @@
 (function () {
   "use strict";
 
-  var MONTHS = ["JANUARI", "FEBRUARI", "MARET", "APRIL", "MEI", "JUNI", "JULI", "AGUSTUS", "SEPTEMBER", "OKTOBER", "NOVEMBER", "DESEMBER"];
-  var ELEVASI_LIST = [3, 5, 7];
+  var MONTHS_TITLE = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
 
   var state = null;      // respons terakhir dari /api/visualization/data?dataType=kpi_kualitas
-  var currentPeriod = 0; // 0 = Jan-Jun, 1 = Jul-Des (potongan tampilan dari 12 bulan yg sudah dimuat)
-  var currentElevasiMonth = new Date().getMonth(); // index bulan yang sedang ditampilkan di panel harian
   var printMode = true;
   var isAdmin = false;
 
@@ -21,155 +18,153 @@
     if (n === null || n === undefined || isNaN(n)) return "";
     return n.toLocaleString("id-ID", { minimumFractionDigits: d, maximumFractionDigits: d });
   }
-  function monthIndexesFor(period) { return period === 0 ? [0, 1, 2, 3, 4, 5] : [6, 7, 8, 9, 10, 11]; }
-  function daysInMonth(year, monthIndex) { return new Date(Number(year), monthIndex + 1, 0).getDate(); }
-  function pad2(n) { return n < 10 ? "0" + n : "" + n; }
+  function monthLabel(ym) {
+    var p = ym.split('-'); return MONTHS_TITLE[Number(p[1]) - 1] + ' ' + p[0];
+  }
 
   // ------------------------------------------------------------------
   // MUAT DATA
   // ------------------------------------------------------------------
-  async function fetchApiData(tahun) {
+  async function fetchApiData(bulan) {
     var headers = {};
     var token = currentAccessToken();
     if (token) headers['Authorization'] = 'Bearer ' + token;
-    var url = '/api/visualization/data?dataType=kpi_kualitas' + (tahun ? ('&tahun=' + encodeURIComponent(tahun)) : '');
+    var url = '/api/visualization/data?dataType=kpi_kualitas' + (bulan ? ('&bulan=' + encodeURIComponent(bulan)) : '');
     var res = await fetch(url, { headers: headers });
     if (!res.ok) throw new Error('Gagal memuat data (HTTP ' + res.status + ')');
     return res.json();
   }
 
   function showLoadingState() {
-    document.getElementById('mainTable').innerHTML = '';
-    document.getElementById('tableFoot').textContent = 'Memuat data...';
+    document.getElementById('locTables').innerHTML = '<div style="padding:20px;color:var(--ink-faint);font-size:13px;">Memuat data…</div>';
   }
   function showErrorState(err) {
-    document.getElementById('tableFoot').textContent = 'Gagal memuat data: ' + err.message + ' — coba muat ulang halaman.';
+    document.getElementById('locTables').innerHTML = '<div style="padding:20px;color:var(--low);font-size:13px;">Gagal memuat data: ' + err.message + ' — coba muat ulang halaman.</div>';
   }
 
-  async function loadYear(tahun) {
+  async function loadMonth(bulan) {
     showLoadingState();
     try {
-      state = await fetchApiData(tahun);
+      state = await fetchApiData(bulan);
     } catch (err) {
       showErrorState(err);
       return;
     }
-    rebuildElevasiIndex();
-    currentPeriod = 0;
-    document.querySelectorAll('.tab').forEach(function (t, i) { t.classList.toggle('active', i === 0); });
-    var thisRealYear = String(new Date().getFullYear());
-    currentElevasiMonth = (String(state.year) === thisRealYear) ? new Date().getMonth() : 0;
     renderAll();
   }
 
-  async function reloadSameYear() {
+  async function reloadSameMonth() {
     try {
-      state = await fetchApiData(state.year);
+      state = await fetchApiData(state.bulan);
     } catch (err) {
       showErrorState(err);
       return;
     }
-    rebuildElevasiIndex();
     renderAll();
   }
 
   // ------------------------------------------------------------------
-  // TABEL UTAMA (ringkasan bulanan per lokasi)
+  // RENDER TABEL PER LOKASI (harian)
   // ------------------------------------------------------------------
-  function itemsForGroup(group) {
-    return [
-      { label: 'Level Waduk (m)', values: group.level, dec: 2 },
-      { label: 'Kekeruhan / NTU (rata-rata)', values: group.ntu, dec: 1 },
-      { label: 'PH Air Baku (rata-rata)', values: group.ph, dec: 2 },
-      { label: 'Elevasi 3 — Hari ON', values: group.elevasiHari[3], dec: 0, isHari: true },
-      { label: 'Elevasi 5 — Hari ON', values: group.elevasiHari[5], dec: 0, isHari: true },
-      { label: 'Elevasi 7 — Hari ON', values: group.elevasiHari[7], dec: 0, isHari: true }
-    ];
-  }
-
-  function buildHead(period) {
-    var idxs = monthIndexesFor(period);
-    var html = '<tr><th style="min-width:34px;">NO</th><th style="min-width:220px;">URAIAN</th>';
-    idxs.forEach(function (mi) { html += '<th class="month">' + MONTHS[mi] + '</th>'; });
-    return html + '</tr>';
-  }
-
-  function cellVal(item, mi) {
-    var v = item.values[mi];
+  function numCell(v, dec) {
     var hasData = v !== null && v !== undefined;
+    var val = hasData ? fmt(v, dec) : "";
     var cls = hasData ? "web" : "empty";
-    var val = hasData ? fmt(v, item.dec) : "";
     var hidePrint = (!hasData && printMode);
     return '<td class="real"><div class="cellwrap ' + cls + '">' +
-      '<input class="cell" type="text" value="' + val + '" readonly placeholder="' + (hidePrint ? '' : '—') + '"></div></td>';
+      '<span class="cellnum">' + (hasData ? val : (hidePrint ? '' : '—')) + '</span></div></td>';
   }
 
-  function renderGroup(html, group, idxs) {
-    var span = 2 + idxs.length - 1;
-    html += '<tr class="grouphead"><td colspan="' + (span + 1) + '" class="tag">' + group.label + '</td></tr>';
-    itemsForGroup(group).forEach(function (item, i) {
-      html += '<tr><td class="no">' + (i + 1) + '</td><td class="name">' + item.label + '</td>';
-      idxs.forEach(function (mi) { html += cellVal(item, mi); });
+  function elevCell(row, loc, elevasi, on) {
+    if (isAdmin) {
+      return '<td class="elev-cell"><button type="button" class="elev-btn ' + (on ? 'on' : 'off') + '" ' +
+        'data-date="' + row.tanggal + '" data-loc="' + loc + '" data-e="' + elevasi + '">' + (on ? 'ON' : 'OFF') + '</button></td>';
+    }
+    return '<td class="elev-cell"><span class="elev-tag ' + (on ? 'on' : 'off') + '">' + (on ? 'ON' : 'OFF') + '</span></td>';
+  }
+
+  function buildLocTable(locData) {
+    var html = '<div class="tablecard loc-card">';
+    html += '<div class="loc-head">' + locData.title + '</div>';
+    html += '<div class="scrollx"><table class="kpi kual-table"><thead>' +
+      '<tr class="r1">' +
+        '<th rowspan="2" style="min-width:70px;">TANGGAL</th>' +
+        '<th rowspan="2" style="min-width:74px;">LEVEL<br><span class="unit">(m)</span></th>' +
+        '<th colspan="3">ELEVASI</th>' +
+        '<th rowspan="2" style="min-width:64px;">NTU</th>' +
+        '<th rowspan="2" style="min-width:64px;">PH</th>' +
+      '</tr>' +
+      '<tr class="r2"><th>3</th><th>5</th><th>7</th></tr>' +
+      '</thead><tbody>';
+
+    locData.rows.forEach(function (row) {
+      html += '<tr>';
+      html += '<td class="no">' + row.d + '</td>';
+      html += numCell(row.level, 2);
+      html += elevCell(row, locData.key, 3, row.e3);
+      html += elevCell(row, locData.key, 5, row.e5);
+      html += elevCell(row, locData.key, 7, row.e7);
+      html += numCell(row.ntu, 2);
+      html += numCell(row.ph, 2);
       html += '</tr>';
     });
+
+    // Ringkasan
+    var s = locData.summary;
+    function sumRow(label, key) {
+      return '<tr class="avg"><td>' + label + '</td>' +
+        '<td><div class="cellwrap"><span class="cellnum">' + (s.level[key] !== null ? fmt(s.level[key], 2) : '') + '</span></div></td>' +
+        '<td></td><td></td><td></td>' +
+        '<td><div class="cellwrap"><span class="cellnum">' + (s.ntu[key] !== null ? fmt(s.ntu[key], 2) : '') + '</span></div></td>' +
+        '<td><div class="cellwrap"><span class="cellnum">' + (s.ph[key] !== null ? fmt(s.ph[key], 2) : '') + '</span></div></td></tr>';
+    }
+    html += sumRow('Rata rata', 'avg');
+    html += sumRow('Tertinggi', 'max');
+    html += sumRow('Terendah', 'min');
+
+    html += '</tbody></table></div></div>';
     return html;
   }
 
-  function renderTable() {
-    var table = document.getElementById("mainTable");
-    var idxs = monthIndexesFor(currentPeriod);
-    var html = "<thead>" + buildHead(currentPeriod) + "</thead><tbody>";
+  function renderTables() {
+    var wrap = document.getElementById('locTables');
+    wrap.innerHTML = state.locations.map(buildLocTable).join('');
 
-    state.groups.forEach(function (g) { html = renderGroup(html, g, idxs); });
-
-    html += '</tbody>';
-    table.innerHTML = html;
-
-    document.getElementById("tableFoot").innerHTML =
-      'Level/NTU/PH: <b>rata-rata harian</b> bulan itu, otomatis dari Data &amp; Visualisasi → Data Air Baku (Waduk Manggar/Teritip) · ' +
-      'Hari ON elevasi: jumlah hari pintu itu dibuka bulan itu, dihitung dari panel Status Pintu Air di bawah tabel.';
+    if (!isAdmin) return;
+    wrap.querySelectorAll('.elev-btn').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        toggleElevasi(btn.dataset.date, btn.dataset.loc, Number(btn.dataset.e), btn.classList.contains('on'));
+      });
+    });
   }
 
   function renderStats() {
-    var idxs = monthIndexesFor(currentPeriod);
-
-    // Level & rata-rata NTU bulan TERAKHIR yang sudah ada datanya di periode
-    // yang sedang ditampilkan, per lokasi (sama pola dengan app.js/apatd.js).
     var stat = document.getElementById("statRow");
     var html = '';
-    state.groups.forEach(function (g) {
-      var lastMonth = null;
-      for (var k = idxs.length - 1; k >= 0; k--) {
-        var mi = idxs[k];
-        if (g.level[mi] !== null || g.ntu[mi] !== null || g.ph[mi] !== null) { lastMonth = mi; break; }
-      }
-      html += '<div class="stat"><div class="k">Level ' + g.label + (lastMonth !== null ? ' (' + MONTHS[lastMonth] + ')' : '') + '</div><div class="v">' +
-        (lastMonth !== null && g.level[lastMonth] !== null ? fmt(g.level[lastMonth], 2) + ' m' : '–') + '</div></div>';
-      html += '<div class="stat"><div class="k">NTU ' + g.label + (lastMonth !== null ? ' (' + MONTHS[lastMonth] + ')' : '') + '</div><div class="v">' +
-        (lastMonth !== null && g.ntu[lastMonth] !== null ? fmt(g.ntu[lastMonth], 1) : '–') + '</div></div>';
+    state.locations.forEach(function (loc) {
+      html += '<div class="stat"><div class="k">Level ' + loc.label + '</div><div class="v">' +
+        (loc.summary.level.avg !== null ? fmt(loc.summary.level.avg, 2) + ' m' : '–') + '</div></div>';
+      html += '<div class="stat"><div class="k">NTU ' + loc.label + '</div><div class="v">' +
+        (loc.summary.ntu.avg !== null ? fmt(loc.summary.ntu.avg, 1) : '–') + '</div></div>';
     });
     stat.innerHTML = html;
   }
 
-  // ------------------------------------------------------------------
-  // PANEL STATUS PINTU AIR (ELEVASI, HARIAN) -- diedit langsung di sini,
-  // BUKAN lewat Input Massal. Bisa lebih dari satu elevasi ON bersamaan.
-  //
-  // state.elevasiDaily dari server SUDAH forward-fill: klik ON di suatu
-  // tanggal membuat status itu "menempel" ke semua tanggal berikutnya
-  // (termasuk bulan/tahun depan) sampai di-OFF-kan lagi -- BUKAN status
-  // per-hari yang berdiri sendiri. Karena satu klik bisa mengubah banyak
-  // bulan sekaligus, sesudah toggle kita muat ulang data (reloadSameYear)
-  // supaya tabel utama & panel ini konsisten dengan hasil forward-fill
-  // yang sebenarnya dihitung di server -- bukan disimulasikan di client.
-  // ------------------------------------------------------------------
-  var elevasiByDate = {};
-
-  function rebuildElevasiIndex() {
-    elevasiByDate = {};
-    (state.elevasiDaily || []).forEach(function (r) { elevasiByDate[r.Tanggal] = r; });
+  function renderElevHint() {
+    var el = document.getElementById('elevHint');
+    if (isAdmin) {
+      el.innerHTML = '💡 Klik status <b>ON/OFF</b> di kolom Elevasi untuk mengubah pintu air mulai tanggal itu — status <b>berlaku terus sampai diubah lagi</b> (termasuk bulan berikutnya), bukan hanya hari itu. Bisa lebih dari satu elevasi ON bersamaan.';
+      el.style.display = '';
+    } else {
+      el.style.display = 'none';
+    }
   }
 
+  // ------------------------------------------------------------------
+  // TOGGLE STATUS ELEVASI (carry-forward, disimpan sebagai log perubahan) --
+  // server yang menghitung forward-fill, jadi setelah simpan kita muat ulang
+  // bulan ini supaya seluruh tanggal setelahnya ikut konsisten.
+  // ------------------------------------------------------------------
   async function saveElevasiToggle(dateStr, loc, elevasi, on) {
     var token = currentAccessToken();
     var res = await fetch('/api/visualization/admin-input', {
@@ -180,65 +175,17 @@
     if (!res.ok) { var d = await res.json().catch(function () { return {}; }); throw new Error(d.error || ('HTTP ' + res.status)); }
   }
 
-  async function toggleElevasi(dateStr, loc, elevasi) {
+  async function toggleElevasi(dateStr, loc, elevasi, currentlyOn) {
     if (!isAdmin) return;
-    var row = elevasiByDate[dateStr];
-    var currentVal = row ? !!row[loc][elevasi] : false;
-    var newVal = !currentVal;
+    var newVal = !currentlyOn;
     try {
       await saveElevasiToggle(dateStr, loc, elevasi, newVal);
-      await reloadSameYear();
+      await reloadSameMonth();
       toast('Elevasi ' + elevasi + ' ' + (loc === 'manggar' ? 'Manggar' : 'Teritip') + ' ' + (newVal ? 'ON' : 'OFF') +
         ' mulai ' + dateStr + ' — berlaku terus sampai diubah lagi.');
     } catch (err) {
       toast('Gagal menyimpan: ' + err.message);
     }
-  }
-
-  function renderElevasiMonthSelect() {
-    var sel = document.getElementById('elevasiMonthSelect');
-    sel.innerHTML = MONTHS.map(function (mn, i) {
-      return '<option value="' + i + '"' + (i === currentElevasiMonth ? ' selected' : '') + '>' + mn + ' ' + state.year + '</option>';
-    }).join('');
-  }
-
-  function elevasiCell(dateStr, loc, elevasi) {
-    var row = elevasiByDate[dateStr];
-    var on = row ? !!row[loc][elevasi] : false;
-    var cls = 'switch small' + (on ? ' on' : '');
-    if (isAdmin) {
-      return '<td class="elevasi-cell"><div class="' + cls + '" data-date="' + dateStr + '" data-loc="' + loc + '" data-e="' + elevasi + '" role="button" aria-label="Toggle elevasi ' + elevasi + '"></div></td>';
-    }
-    return '<td class="elevasi-cell"><span class="pill ' + (on ? 'good' : 'dim') + '">' + (on ? 'ON' : 'OFF') + '</span></td>';
-  }
-
-  function renderElevasiTable() {
-    var table = document.getElementById('elevasiTable');
-    var days = daysInMonth(state.year, currentElevasiMonth);
-
-    var head = '<thead><tr><th rowspan="2" style="min-width:70px;">TANGGAL</th>' +
-      '<th colspan="3">WADUK MANGGAR</th><th colspan="3">WADUK TERITIP</th></tr>' +
-      '<tr>' + ELEVASI_LIST.map(function (e) { return '<th>E' + e + '</th>'; }).join('') +
-      ELEVASI_LIST.map(function (e) { return '<th>E' + e + '</th>'; }).join('') + '</tr></thead>';
-
-    var body = '<tbody>';
-    for (var d = 1; d <= days; d++) {
-      var dateStr = state.year + '-' + pad2(currentElevasiMonth + 1) + '-' + pad2(d);
-      body += '<tr><td class="no">' + d + '</td>';
-      ELEVASI_LIST.forEach(function (e) { body += elevasiCell(dateStr, 'manggar', e); });
-      ELEVASI_LIST.forEach(function (e) { body += elevasiCell(dateStr, 'teritip', e); });
-      body += '</tr>';
-    }
-    body += '</tbody>';
-
-    table.innerHTML = head + body;
-
-    if (!isAdmin) return;
-    table.querySelectorAll('.switch[data-date]').forEach(function (sw) {
-      sw.addEventListener('click', function () {
-        toggleElevasi(sw.dataset.date, sw.dataset.loc, Number(sw.dataset.e));
-      });
-    });
   }
 
   // ------------------------------------------------------------------
@@ -314,11 +261,11 @@
     });
   }
 
-  function renderYearSelect() {
-    var sel = document.getElementById("yearSelect");
-    var years = state.availableYears && state.availableYears.length ? state.availableYears : [state.year];
-    sel.innerHTML = years.map(function (y) {
-      return '<option value="' + y + '"' + (String(y) === String(state.year) ? ' selected' : '') + '>' + y + '</option>';
+  function renderMonthSelect() {
+    var sel = document.getElementById("monthSelect");
+    var months = state.availableMonths && state.availableMonths.length ? state.availableMonths : [state.bulan];
+    sel.innerHTML = months.map(function (ym) {
+      return '<option value="' + ym + '"' + (ym === state.bulan ? ' selected' : '') + '>' + monthLabel(ym) + '</option>';
     }).join("");
   }
 
@@ -328,12 +275,7 @@
       badge.innerHTML = '<span class="status-pill warn">Data Contoh (Terkunci)</span>';
       return;
     }
-    var filled = 0;
-    state.groups.forEach(function (g) {
-      ['level', 'ntu', 'ph'].forEach(function (k) { g[k].forEach(function (v) { if (v !== null) filled++; }); });
-    });
-    var cls = filled > 0 ? 'good' : 'warn';
-    badge.innerHTML = '<span class="status-pill ' + cls + '">Data Asli — Tahun ' + state.year + '</span>';
+    badge.innerHTML = '<span class="status-pill good">Data Asli — ' + monthLabel(state.bulan) + '</span>';
   }
 
   function updateLockBanner() {
@@ -350,14 +292,13 @@
   }
 
   function renderAll() {
-    renderYearSelect();
+    renderMonthSelect();
     renderStatusBadge();
     updateLockBanner();
     updateDownloadButton();
-    renderTable();
+    renderElevHint();
     renderStats();
-    renderElevasiMonthSelect();
-    renderElevasiTable();
+    renderTables();
     renderKet();
     renderSign();
   }
@@ -373,28 +314,15 @@
   // ------------------------------------------------------------------
   // EVENTS
   // ------------------------------------------------------------------
-  document.getElementById("yearSelect").addEventListener("change", function (e) {
-    loadYear(e.target.value);
-  });
-
-  document.getElementById("periodTabs").addEventListener("click", function (e) {
-    var b = e.target.closest(".tab"); if (!b) return;
-    document.querySelectorAll(".tab").forEach(function (t) { t.classList.remove("active"); });
-    b.classList.add("active");
-    currentPeriod = +b.dataset.period;
-    renderTable(); renderStats();
-  });
-
-  document.getElementById("elevasiMonthSelect").addEventListener("change", function (e) {
-    currentElevasiMonth = +e.target.value;
-    renderElevasiTable();
+  document.getElementById("monthSelect").addEventListener("change", function (e) {
+    loadMonth(e.target.value);
   });
 
   var printSwitch = document.getElementById("printSwitch");
   printSwitch.addEventListener("click", function () {
     printMode = !printMode;
     printSwitch.classList.toggle("on", printMode);
-    renderTable();
+    renderTables();
   });
 
   document.getElementById("addKet").addEventListener("click", function () {
@@ -411,7 +339,7 @@
     var oldHtml = btn.innerHTML;
     btn.innerHTML = '<span class="spin"></span> Menarik dari Data Air Baku…';
     btn.disabled = true;
-    await reloadSameYear();
+    await reloadSameMonth();
     btn.innerHTML = oldHtml;
     btn.disabled = false;
     fetching = false;
@@ -434,7 +362,7 @@
     try {
       var token = currentAccessToken();
       var tanggalTtd = document.getElementById('signDate').value;
-      var apiUrl = '/api/visualization/data?dataType=kpi_kualitas_xlsx&tahun=' + encodeURIComponent(state.year) +
+      var apiUrl = '/api/visualization/data?dataType=kpi_kualitas_xlsx&bulan=' + encodeURIComponent(state.bulan) +
         (tanggalTtd ? '&tanggal=' + encodeURIComponent(tanggalTtd) : '');
       var res = await fetch(apiUrl, {
         headers: { 'Authorization': 'Bearer ' + token }
@@ -446,7 +374,7 @@
       var blob = await res.blob();
       var url = URL.createObjectURL(blob);
       var a = document.createElement('a');
-      a.href = url; a.download = '18.4 Laporan Kualitas Air Baku ' + state.year + '.xlsx';
+      a.href = url; a.download = '18.4 Laporan Kualitas Air Baku ' + monthLabel(state.bulan) + '.xlsx';
       document.body.appendChild(a); a.click(); a.remove();
       URL.revokeObjectURL(url);
     } catch (err) {
@@ -541,7 +469,7 @@
         } catch (e) {}
         scheduleTokenExpiry();
         setAccessModalStatus('Akses disetujui! Memuat data asli...', 'ok');
-        await reloadSameYear();
+        await reloadSameMonth();
         closeAccessModal();
       } else if (data.status === 'expired' || data.status === 'not_found') {
         clearInterval(pollTimer); pollTimer = null;
@@ -558,7 +486,7 @@
     expiryTimer = setTimeout(function () {
       vizToken = null; vizTokenExpiresAt = null;
       try { localStorage.removeItem('vizAccessToken'); localStorage.removeItem('vizAccessExpiresAt'); } catch (e) {}
-      reloadSameYear();
+      reloadSameMonth();
     }, Math.max(ms, 0));
   }
 
@@ -599,7 +527,7 @@
     wireAccessControls();
     wireSignatureControls();
     restoreVizSession();
-    await loadYear(null);
+    await loadMonth(null);
   }
 
   init();

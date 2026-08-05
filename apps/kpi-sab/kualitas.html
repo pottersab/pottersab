@@ -119,7 +119,7 @@ function doLogout(){
       <div class="brand">Perumda Tirta Manuntung — Sumber Air Baku</div>
       <h1>18.4 Laporan Kualitas Air Baku <span id="statusBadge"></span></h1>
     </div>
-    <div class="top-note">Level/Kekeruhan (NTU)/PH bulanan Waduk Manggar &amp; Teritip, rata-rata otomatis dari Data Air Baku. Status pintu air elevasi 3/5/7 diatur lewat panel harian di bawah tabel.</div>
+    <div class="top-note">Laporan harian Level/Kekeruhan (NTU)/PH per bulan untuk Waduk Manggar &amp; Teritip, otomatis dari Data Air Baku. Status pintu air elevasi 3/5/7 diklik langsung di baris tanggalnya (khusus admin).</div>
   </header>
 
   <div class="lock-banner" id="lockBanner" style="display:none;">
@@ -149,16 +149,8 @@ function doLogout(){
 
   <div class="controls">
     <div class="field">
-      <label>Tahun</label>
-      <select id="yearSelect"></select>
-    </div>
-
-    <div class="field">
-      <label>Periode</label>
-      <div class="tabs" id="periodTabs">
-        <button class="tab active" data-period="0">Januari – Juni</button>
-        <button class="tab" data-period="1">Juli – Desember</button>
-      </div>
+      <label>Bulan</label>
+      <select id="monthSelect"></select>
     </div>
 
     <div class="spacer"></div>
@@ -174,29 +166,15 @@ function doLogout(){
   <div class="stats-row" id="statRow"></div>
 
   <div class="legend">
-    <span><i class="swatch sw-web"></i> Level/NTU/PH — rata-rata otomatis dari Data Air Baku (terkunci)</span>
-    <span><i class="swatch sw-web"></i> Hari ON elevasi — dihitung otomatis dari panel status pintu di bawah</span>
-    <span><i class="swatch sw-empty"></i> Belum ada data — menunggu bulan berjalan</span>
+    <span><i class="swatch sw-web"></i> Level/NTU/PH — otomatis harian dari Data Air Baku</span>
+    <span><i class="swatch sw-on"></i> Pintu elevasi ON (dibuka)</span>
+    <span><i class="swatch sw-off"></i> Pintu elevasi OFF (ditutup)</span>
+    <span><i class="swatch sw-empty"></i> Belum ada data</span>
   </div>
 
-  <div class="tablecard">
-    <div class="scrollx">
-      <table class="kpi" id="mainTable"></table>
-    </div>
-    <div class="tablefoot" id="tableFoot"></div>
-  </div>
+  <div class="elev-hint" id="elevHint"></div>
 
-  <div class="card target-card">
-    <h3>Status Pintu Air — Elevasi (Harian)</h3>
-    <div class="elevasi-controls">
-      <label for="elevasiMonthSelect">Bulan</label>
-      <select id="elevasiMonthSelect"></select>
-    </div>
-    <div class="scrollx">
-      <table class="kpi elevasi-table" id="elevasiTable"></table>
-    </div>
-    <div class="target-hint">Klik status ON/OFF untuk mengubah pintu elevasi mulai tanggal itu — status akan <b>berlaku terus (termasuk bulan &amp; tahun berikutnya)</b> sampai diubah lagi, bukan cuma untuk hari itu saja. Bisa lebih dari satu elevasi ON bersamaan (misal elevasi 5 dibuka kalau air di elevasi atas keruh). Perubahan langsung memperbarui ringkasan "Hari ON" di tabel utama. Khusus admin.</div>
-  </div>
+  <div id="locTables"></div>
 
   <div class="footgrid">
     <div class="card">

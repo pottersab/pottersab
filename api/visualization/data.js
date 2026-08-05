@@ -97,7 +97,7 @@ module.exports = async (req, res) => {
   if (dataType === 'kpi_kualitas') {
     await ensureKpiTables();
     const access = await checkVizAccess(req);
-    const result = await getKpiKualitasData(access, req.query.tahun);
+    const result = await getKpiKualitasData(access, req.query.bulan);
     return res.status(200).json(result);
   }
 
@@ -105,11 +105,11 @@ module.exports = async (req, res) => {
     await ensureKpiTables();
     const user = requireAdmin(req, res);
     if (!user) return;
-    const result = await getKpiKualitasData({ granted: true, kind: 'admin' }, req.query.tahun);
+    const result = await getKpiKualitasData({ granted: true, kind: 'admin' }, req.query.bulan);
     if (req.query.tanggal) result.meta.signPlaceDate = req.query.tanggal;
     const buffer = await buildKpiKualitasExcelWorkbook(result);
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', `attachment; filename="18.4 Laporan Kualitas Air Baku ${result.year}.xlsx"`);
+    res.setHeader('Content-Disposition', `attachment; filename="18.4 Laporan Kualitas Air Baku ${result.bulan}.xlsx"`);
     return res.status(200).send(Buffer.from(buffer));
   }
 
