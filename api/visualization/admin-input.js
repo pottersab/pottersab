@@ -1,7 +1,7 @@
 const { pool, ensureVizTables, ensureKpiTables } = require('../../lib/db');
 const { requireAdmin } = require('../../lib/auth');
 const { DATASETS } = require('../../lib/visualization/columns');
-const { saveDebitAwal, saveMeta, saveApatdMeta, savePengambilanTarget, savePengambilanMeta, saveKualitasElevasi, saveKualitasMeta, saveKpi192Meta, saveLevelSumurMeta, saveLevelStatisDinamisMeta, saveKpi18_5Values, saveKpi18_5Meta } = require('../../lib/visualization/kpi');
+const { saveDebitAwal, saveMeta, saveApatdMeta, savePengambilanTarget, savePengambilanMeta, saveKualitasElevasi, saveKualitasMeta, saveKpi192Meta, saveLevelSumurMeta, saveLevelStatisDinamisMeta, saveKpi18_5Values, saveKpi18_5Meta, saveKpi18_6Meta } = require('../../lib/visualization/kpi');
 
 function toNumOrNull(v) {
   if (v === undefined || v === null || v === '') return null;
@@ -173,6 +173,13 @@ module.exports = async (req, res) => {
       // label "Mengetahui/Menyetujui :" / "Direkap Oleh" (lihat kpi.js).
       await ensureKpiTables();
       await saveKpi18_5Meta(req.body);
+      return res.status(200).json({ success: true });
+    }
+    if (kind === 'kpi_18_6_meta') {
+      // Penandatangan KPI 18.6 Jadwal PM Terkendali -- tabel sendiri
+      // (kpi_18_6_meta), label "Mengetahui/ Menyetujui" (lihat kpi.js).
+      await ensureKpiTables();
+      await saveKpi18_6Meta(req.body);
       return res.status(200).json({ success: true });
     }
 

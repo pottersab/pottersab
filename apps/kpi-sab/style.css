@@ -422,6 +422,15 @@ table.peralatan-table td.real .cellwrap{background:var(--edit-pale);border-left:
 table.peralatan-table input.inpval{color:var(--edit-ink);font-weight:700;text-align:center;width:100%;}
 table.peralatan-table td.name{white-space:nowrap;font-size:12.5px;font-weight:600;}
 
+/* --- 18.6 Jadwal PM Terkendali: tanggal Rencana & Realisasi per bulan. --- */
+table.jadwal-table{min-width:1000px;}
+table.jadwal-table td.name{white-space:normal;font-size:12.5px;font-weight:600;padding:6px 9px;vertical-align:middle;}
+table.jadwal-table td.rr{text-align:center;font-family:'Space Grotesk',sans-serif;font-size:11px;font-weight:700;padding:4px 6px;vertical-align:middle;}
+table.jadwal-table td.rr.renc{color:var(--primary);}
+table.jadwal-table td.rr.real{color:var(--edit-ink);}
+table.jadwal-table td.dt{text-align:center;font-family:'IBM Plex Mono',monospace;font-size:12px;padding:6px 8px;white-space:nowrap;vertical-align:middle;}
+table.jadwal-table td.dt.dash{color:var(--ink-faint);}
+
 /* Panel "Daftar Sumur & Status Aktif" -- cuma sumur AKTIF yang jadi ANGG. */
 .well-card{margin-bottom:20px;}
 .well-hint{font-size:12.5px;color:var(--ink-soft);line-height:1.5;margin:0 0 14px;}

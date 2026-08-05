@@ -5,7 +5,7 @@ const { checkVizAccess } = require('../../lib/visualization/viz-auth');
 const { buildDummyRows, buildDummyWideSingleRows, buildDummySumurDebitRows, buildDummySumurLevelRows } = require('../../lib/visualization/dummy');
 const { fetchRealRows, fetchWideSingleRows, fetchSumurWells, fetchSumurDebitRows, fetchSumurLevelRows } = require('../../lib/visualization/repo');
 const { logViewerAction } = require('../../lib/visualization/access-log');
-const { getKpiUkurDebitData, buildKpiExcelWorkbook, getKpiApatdData, buildKpiApatdExcelWorkbook, getKpiPengambilanData, buildKpiPengambilanExcelWorkbook, getKpiKualitasData, buildKpiKualitasExcelWorkbook, getKpi192Data, buildKpi192ExcelWorkbook, getKpiLevelSumurData, buildKpiLevelSumurExcelWorkbook, getKpiLevelStatisDinamisData, buildKpiLevelStatisDinamisExcelWorkbook, getKpi18_5Data, buildKpi18_5ExcelWorkbook } = require('../../lib/visualization/kpi');
+const { getKpiUkurDebitData, buildKpiExcelWorkbook, getKpiApatdData, buildKpiApatdExcelWorkbook, getKpiPengambilanData, buildKpiPengambilanExcelWorkbook, getKpiKualitasData, buildKpiKualitasExcelWorkbook, getKpi192Data, buildKpi192ExcelWorkbook, getKpiLevelSumurData, buildKpiLevelSumurExcelWorkbook, getKpiLevelStatisDinamisData, buildKpiLevelStatisDinamisExcelWorkbook, getKpi18_5Data, buildKpi18_5ExcelWorkbook, getKpi18_6Data, buildKpi18_6ExcelWorkbook } = require('../../lib/visualization/kpi');
 
 module.exports = async (req, res) => {
   if (req.method !== 'GET') {
@@ -209,6 +209,29 @@ module.exports = async (req, res) => {
     const buffer = await buildKpi18_5ExcelWorkbook(result);
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename="18.5 Monitoring Kondisi Peralatan ${result.tahun}.xlsx"`);
+    return res.status(200).send(Buffer.from(buffer));
+  }
+
+  // KPI 18.6 Jadwal PM Terkendali -- tanggal Rencana/Realisasi per bulan,
+  // dihitung ulang dari 19.2 (lihat kpi.js). Ditangani terpisah juga.
+  if (dataType === 'kpi_18_6') {
+    await ensureKpiTables();
+    await ensurePekerjaanTable();
+    const access = await checkVizAccess(req);
+    const result = await getKpi18_6Data(access, req.query.tahun);
+    return res.status(200).json(result);
+  }
+
+  if (dataType === 'kpi_18_6_xlsx') {
+    await ensureKpiTables();
+    await ensurePekerjaanTable();
+    const user = requireAdmin(req, res);
+    if (!user) return;
+    const result = await getKpi18_6Data({ granted: true, kind: 'admin' }, req.query.tahun);
+    if (req.query.tanggal) result.meta.signPlaceDate = req.query.tanggal;
+    const buffer = await buildKpi18_6ExcelWorkbook(result);
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="18.6 Jadwal PM Terkendali ${result.tahun}.xlsx"`);
     return res.status(200).send(Buffer.from(buffer));
   }
 
