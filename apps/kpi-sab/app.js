@@ -3,81 +3,82 @@
 
   var MONTHS = ["JANUARI", "FEBRUARI", "MARET", "APRIL", "MEI", "JUNI", "JULI", "AGUSTUS", "SEPTEMBER", "OKTOBER", "NOVEMBER", "DESEMBER"];
 
-  // ---------------------------------------------------------------------
-  // DATA per tahun. 2026: Jan-Jun dari lampiran 18.2 Ukur Debit.xlsx, Juli
-  // dari data asli Portal SAB (Data Waduk & Sumur -> Sumur Dalam -> Debit
-  // Sumur), Agustus-Desember sengaja kosong (menunggu bulan berjalan).
-  // Tahun baru tinggal ditambah sebagai key baru di sini.
-  // ---------------------------------------------------------------------
-  var DATA_BY_YEAR = {
-    "2026": {
-      groups: [
-        { no: 1, ipa: "IPA GUNUNG SARI", wells: [
-          { name: "SUMUR 1", sub: "Dalam IPA", awal: 21, real: [21.5, 22, 21.5, 22.1, 21.47, 21.05, 21.00, null, null, null, null, null] },
-          { name: "SUMUR 2", sub: "Dalam IPA", awal: 77, real: [77.63, 75.12, 78.41, 77.65, 76.12, 77.41, 77.22, null, null, null, null, null] },
-          { name: "SUMUR 3", sub: "Dalam IPA", awal: 95, real: [110.36, 103.094, 110.36, 110.5, 108.55, 107.57, 106.52, null, null, null, null, null] },
-          { name: "SUMUR 4", sub: "Dalam IPA", awal: 95, real: [85.12, 82.63, 88.6, 92.56, 91.68, 91.78, 91.26, null, null, null, null, null] },
-          { name: "SUMUR 5", sub: "Reservoar Lama", awal: 60, real: [42.15, 40.14, 42.15, 41.23, 42.1, 42, 42.50, null, null, null, null, null] },
-          { name: "SUMUR 6 ( TLGS 2 )", sub: "Telaga Sari", awal: 95, real: [83.074, 81.5, 84.3, 86.1, 86.5, 85.85, 86.02, null, null, null, null, null] },
-          { name: "SUMUR 7 ( MTD )", sub: "Marthadinata", awal: 95, real: [80.52, 79.63, 80.59, 81.639, 80.678, 81.41, 81.98, null, null, null, null, null] }
-        ]},
-        { no: 2, ipa: "IPA KP. DAMAI", wells: [
-          { name: "SUMUR 1", sub: "Parkiran IPA", awal: 46, real: [37.74193548, 39, 37.67234043, 37.58445441, 34.82288828, 36.35974304, 34.21, null, null, null, null, null] },
-          { name: "SUMUR 2", sub: "Gas Chlor", awal: 60, real: [57.48387097, 57, 57, 56.73737374, 57, 78.26356589, 57.00, null, null, null, null, null] },
-          { name: "SUMUR 3 (TNGKI)", sub: "Terminal Tangki", awal: 46, real: [32.73387097, 33, 33, 32.91304348, 38.32697548, 69.36416185, 50.00, null, null, null, null, null] },
-          { name: "SUMUR 5 (PGG)", sub: "Penggalang", awal: 77, real: [75, 69.36607143, 74.5672043, 76.55057803, 80, 140.3884244, 76.00, null, null, null, null, null] }
-        ]},
-        { no: 3, ipa: "IPA PRAPATAN", wells: [
-          { name: "SUMUR 1", sub: "Puskesmas", awal: 95, real: [94.25311203, 84.90771558, 78.35535185, 78.95416667, 78.07201087, 86.21426012, 91.27, null, null, null, null, null] },
-          { name: "SUMUR 2", sub: "Dalam IPA", awal: 95, real: [81.30493577, 76.56030534, 70.29118361, 71.17361111, 72.22841604, 84.05159441, 89.54, null, null, null, null, null] },
-          { name: "SUMUR 3", sub: "Jl Pahala", awal: 60, real: [52.00546822, 59.47806354, 56.93717983, 48.91551182, 40.21889871, 44.73463485, 46.63, null, null, null, null, null] }
-        ]},
-        { no: 4, ipa: "IPA ZAMP", wells: [
-          { name: "SUMUR 2", sub: "Jl Belibis V", awal: 10, real: [9.920054201, 9.733931241, 9.429775281, 9.247552448, 11.26863572, 11.3125, 12.12, null, null, null, null, null] },
-          { name: "SUMUR 3", sub: "Koperasi PTMB", awal: 30, real: [29.6504065, 29.95814649, 28.84831461, 28.55804196, 31.5952381, 7.578703704, 5.62, null, null, null, null, null] }
-        ]},
-        { no: 5, ipa: "IPA KP BARU ULU", wells: [
-          { name: "SUMUR 1", sub: "Dalam Area IPA", awal: 60, real: [55.4516129, 56.06567164, 56.65860215, 57.28472222, 57.96370968, 50.81527778, 49.71, null, null, null, null, null] },
-          { name: "SUMUR 2", sub: "SMA 3", awal: 10, real: [9.436827957, 10.21044776, 9.752688172, 9.940194715, 9.866935484, 7.522222222, 7.36, null, null, null, null, null] },
-          { name: "SUMUR 3", sub: "Kantor LPM", awal: 46, real: [35.4574217, 40.04626866, 41.3243607, 39.79166667, 38.85887097, 38.00698324, 36.97, null, null, null, null, null] }
-        ]}
-      ],
-      keterangan: [
-        "Debit awal adalah Kapasitas Pompa",
-        "Sumur no 5 Gunung Sari diatur debit agar air tidak keruh",
-        "Sumur no 3 Kampung Baru diatur agar air tidak keruh",
-        "Sumur no 1 Kampung Damai diatur agar air tidak keruh",
-        "Sumur no 3 Prapatan dikurangi kapasitas pompa nya",
-        "Sumur no 3 Zamp mengalami kerusakan konstruksi"
-      ]
-    }
-  };
-
-  var currentYear = "2026";
-  var currentPeriod = 0; // 0 = Jan-Jun, 1 = Jul-Dec
+  var state = null;      // respons terakhir dari /api/visualization/kpi-ukur-debit
+  var currentPeriod = 0; // 0 = Jan-Jun, 1 = Jul-Des (potongan tampilan dari 12 bulan yg sudah dimuat)
   var printMode = true;
+  var isAdmin = false;
 
-  function state() { return DATA_BY_YEAR[currentYear]; }
+  // --- akses data asli: token JWT admin (localStorage) atau token viz-access
+  // hasil approve email -- pola & fungsi sama persis dengan apps/riwayat-air-baku,
+  // supaya sekali disetujui admin, berlaku juga di halaman KPI ini. ---
+  var vizToken = null, vizTokenExpiresAt = null, vizRequestId = null, vizRequestSecret = null;
+  var pollTimer = null, expiryTimer = null;
+
+  function currentAccessToken() { return localStorage.getItem('token') || vizToken || null; }
 
   function fmt(n, d) {
     if (n === null || n === undefined || isNaN(n)) return "";
     return n.toLocaleString("id-ID", { minimumFractionDigits: d, maximumFractionDigits: d });
   }
-
   function ratioClass(pct) {
     if (pct === null) return "dim";
     if (pct >= 95) return "good";
     if (pct >= 85) return "warn";
     return "bad";
   }
+  function monthIndexesFor(period) { return period === 0 ? [0, 1, 2, 3, 4, 5] : [6, 7, 8, 9, 10, 11]; }
+  function periodKeyFor(period) { return String(state.year) + '-' + (period === 0 ? '1' : '2'); }
 
-  function monthIndexesFor(period) {
-    return period === 0 ? [0, 1, 2, 3, 4, 5] : [6, 7, 8, 9, 10, 11];
+  // ------------------------------------------------------------------
+  // MUAT DATA
+  // ------------------------------------------------------------------
+  async function fetchApiData(tahun) {
+    var headers = {};
+    var token = currentAccessToken();
+    if (token) headers['Authorization'] = 'Bearer ' + token;
+    var url = '/api/visualization/kpi-ukur-debit' + (tahun ? ('?tahun=' + encodeURIComponent(tahun)) : '');
+    var res = await fetch(url, { headers: headers });
+    if (!res.ok) throw new Error('Gagal memuat data (HTTP ' + res.status + ')');
+    return res.json();
   }
 
+  function showLoadingState() {
+    document.getElementById('mainTable').innerHTML = '';
+    document.getElementById('tableFoot').textContent = 'Memuat data...';
+  }
+  function showErrorState(err) {
+    document.getElementById('tableFoot').textContent = 'Gagal memuat data: ' + err.message + ' — coba muat ulang halaman.';
+  }
+
+  async function loadYear(tahun) {
+    showLoadingState();
+    try {
+      state = await fetchApiData(tahun);
+    } catch (err) {
+      showErrorState(err);
+      return;
+    }
+    currentPeriod = 0;
+    document.querySelectorAll('.tab').forEach(function (t, i) { t.classList.toggle('active', i === 0); });
+    renderAll();
+  }
+
+  async function reloadSameYear() {
+    try {
+      state = await fetchApiData(state.year);
+    } catch (err) {
+      showErrorState(err);
+      return;
+    }
+    renderAll();
+  }
+
+  // ------------------------------------------------------------------
+  // RENDER
+  // ------------------------------------------------------------------
   function buildHead(period) {
     var idxs = monthIndexesFor(period);
-    var r1 = '<tr class="r1"><th rowspan="3" style="min-width:34px;">NO</th><th rowspan="3" style="min-width:168px;">IPA / NO. SUMUR</th><th rowspan="3" style="min-width:84px;">DEBIT AWAL<br>(m&sup3;/jam)</th>';
+    var r1 = '<tr class="r1"><th rowspan="3" style="min-width:34px;">NO</th><th rowspan="3" style="min-width:190px;">IPA / NO. SUMUR</th><th rowspan="3" style="min-width:84px;">DEBIT AWAL<br>(m&sup3;/jam)</th>';
     idxs.forEach(function (mi) { r1 += '<th class="month" colspan="3">' + MONTHS[mi] + '</th>'; });
     r1 += '</tr>';
     var r2 = '<tr class="r2">';
@@ -94,17 +95,16 @@
     var hasData = v !== null;
     var cls = hasData ? "web" : "empty";
     var val = hasData ? fmt(v, 2) : "";
-    var readonly = hasData ? "readonly" : "";
     return '<td class="real"><div class="cellwrap ' + cls + '">' +
-      '<input class="cell" type="text" value="' + val + '" ' + readonly +
-      ' data-role="real" placeholder="—"></div></td>';
+      '<input class="cell" type="text" value="' + val + '" readonly data-role="real" placeholder="—"></div></td>';
   }
 
   function cellRatio(well, mi, kind) {
     var real = well.real[mi];
-    var hasData = real !== null;
-    var pm = hasData ? (real - well.awal) : null;
-    var pct = hasData ? (real / well.awal * 100) : null;
+    var awal = well.awal;
+    var hasData = real !== null && awal !== null;
+    var pm = hasData ? (real - awal) : null;
+    var pct = hasData ? (real / awal * 100) : null;
     var val = kind === "pm" ? pm : pct;
     var text = hasData ? (kind === "pm" ? (val >= 0 ? "+" : "") + fmt(val, 2) : fmt(val, 1) + "%") : "–";
     var cls = ratioClass(hasData ? pct : null);
@@ -119,7 +119,7 @@
     var idxs = monthIndexesFor(currentPeriod);
     var html = "<thead>" + buildHead(currentPeriod) + "</thead><tbody>";
     var no = 0;
-    var groups = state().groups;
+    var groups = state.groups;
 
     groups.forEach(function (g) {
       no++;
@@ -129,9 +129,12 @@
       var sums = { awal: 0 }; idxs.forEach(function (mi) { sums[mi] = 0; });
 
       g.wells.forEach(function (w) {
-        sums.awal += w.awal;
-        html += '<tr><td class="no"></td><td class="name">' + w.name + '<span class="sub">' + w.sub + '</span></td>';
-        html += '<td class="awal"><div class="cellwrap"><input class="cell" type="text" value="' + fmt(w.awal, 0) + '" data-role="awal"></div></td>';
+        sums.awal += (w.awal || 0);
+        html += '<tr><td class="no"></td><td class="name">' + w.name + '</td>';
+        var awalVal = w.awal !== null ? fmt(w.awal, 0) : "";
+        html += '<td class="awal"><div class="cellwrap"><input class="cell" type="text" value="' + awalVal + '" placeholder="isi" ' +
+          'data-role="awal" data-inst="' + g.installation + '" data-well="' + w.name.replace(/"/g, '&quot;') + '"' +
+          (isAdmin ? '' : ' readonly') + '></div></td>';
         idxs.forEach(function (mi) {
           if (w.real[mi] !== null) sums[mi] += w.real[mi];
           html += cellReal(w, mi) + cellRatio(w, mi, "pm") + cellRatio(w, mi, "pct");
@@ -151,7 +154,7 @@
     idxs.forEach(function (mi) {
       var vals = [];
       groups.forEach(function (g) { g.wells.forEach(function (w) {
-        if (w.real[mi] !== null) vals.push(w.real[mi] / w.awal * 100);
+        if (w.real[mi] !== null && w.awal !== null) vals.push(w.real[mi] / w.awal * 100);
       }); });
       var avg = vals.length ? vals.reduce(function (a, b) { return a + b; }, 0) / vals.length : null;
       html += '<td></td><td></td><td><div class="cellwrap" style="justify-content:center;">' + (avg !== null ? fmt(avg, 1) + '%' : '–') + '</div></td>';
@@ -163,25 +166,63 @@
       'Sumber Real: <b>Data &amp; Visualisasi → Data Waduk dan Sumur → Sumur Dalam → Debit Sumur</b> · ' +
       'Format unduhan mengikuti <b>18.2 Ukur Debit.xlsx</b> persis (dua blok 6 bulan, JUMLAH per IPA, RATA-RATA di bawah).';
 
-    table.querySelectorAll('input[data-role="awal"]').forEach(function (inp, i) {
-      inp.addEventListener("change", function () {
-        var flat = [];
-        groups.forEach(function (g) { g.wells.forEach(function (w) { flat.push(w); }); });
-        var w = flat[i];
+    table.querySelectorAll('input[data-role="awal"]').forEach(function (inp) {
+      inp.addEventListener("change", async function () {
         var n = parseFloat(inp.value.replace(",", "."));
-        if (!isNaN(n)) { w.awal = n; renderTable(); renderStats(); toast("Debit awal " + w.name + " diperbarui → " + fmt(n, 0) + " m³/jam"); }
-        else { inp.value = fmt(w.awal, 0); }
+        if (isNaN(n)) { renderTable(); return; }
+        var inst = inp.dataset.inst, well = inp.dataset.well;
+        try {
+          await saveDebitAwal(inst, well, n);
+          // update state lokal supaya tidak perlu fetch ulang
+          state.groups.forEach(function (g) { if (g.installation === inst) g.wells.forEach(function (w) { if (w.name === well) w.awal = n; }); });
+          renderTable(); renderStats();
+          toast("Debit awal " + well + " diperbarui → " + fmt(n, 0) + " m³/jam");
+        } catch (err) {
+          toast("Gagal menyimpan: " + err.message);
+          renderTable();
+        }
       });
     });
+  }
+
+  async function saveDebitAwal(installation, well_name, debit_awal) {
+    var token = currentAccessToken();
+    var res = await fetch('/api/visualization/kpi-ukur-debit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify({ kind: 'debit_awal', installation: installation, well_name: well_name, debit_awal: debit_awal })
+    });
+    if (!res.ok) { var d = await res.json().catch(function () { return {}; }); throw new Error(d.error || ('HTTP ' + res.status)); }
+  }
+
+  async function saveMeta() {
+    var token = currentAccessToken();
+    var keterangan = state.meta[currentPeriod === 0 ? '1' : '2'].keterangan;
+    var body = {
+      kind: 'meta',
+      period_key: periodKeyFor(currentPeriod),
+      keterangan: keterangan,
+      signPlaceDate: document.getElementById('signDate').value,
+      roleLeft: document.getElementById('role1').value,
+      nameLeft: document.getElementById('name1').value,
+      roleRight: document.getElementById('role2').value,
+      nameRight: document.getElementById('name2').value
+    };
+    var res = await fetch('/api/visualization/kpi-ukur-debit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify(body)
+    });
+    if (!res.ok) { var d = await res.json().catch(function () { return {}; }); throw new Error(d.error || ('HTTP ' + res.status)); }
   }
 
   function renderStats() {
     var totalWell = 0, totalAwal = 0, pcts = [];
     var idxs = monthIndexesFor(currentPeriod);
-    var groups = state().groups;
+    var groups = state.groups;
     groups.forEach(function (g) { g.wells.forEach(function (w) {
-      totalWell++; totalAwal += w.awal;
-      idxs.forEach(function (mi) { if (w.real[mi] !== null) pcts.push(w.real[mi] / w.awal * 100); });
+      totalWell++; totalAwal += (w.awal || 0);
+      idxs.forEach(function (mi) { if (w.real[mi] !== null && w.awal !== null) pcts.push(w.real[mi] / w.awal * 100); });
     }); });
     var avgPct = pcts.length ? pcts.reduce(function (a, b) { return a + b; }, 0) / pcts.length : 0;
     var cls = avgPct >= 95 ? "good" : (avgPct >= 85 ? "warn" : "");
@@ -195,28 +236,87 @@
 
   function renderKet() {
     var list = document.getElementById("ketList");
-    var keterangan = state().keterangan;
+    var meta = state.meta[currentPeriod === 0 ? '1' : '2'];
+    var keterangan = meta.keterangan || [];
     list.innerHTML = keterangan.map(function (k, i) {
-      return '<div class="kline"><span class="mark">~</span><input value="' + k.replace(/"/g, '&quot;') + '" data-i="' + i + '"><button data-del="' + i + '" title="Hapus">×</button></div>';
-    }).join("");
+      return '<div class="kline"><span class="mark">~</span><input value="' + (k || '').replace(/"/g, '&quot;') + '" data-i="' + i + '"' + (isAdmin ? '' : ' readonly') + '>' +
+        (isAdmin ? '<button data-del="' + i + '" title="Hapus">×</button>' : '') + '</div>';
+    }).join("") || '<div style="font-size:12.5px;color:var(--ink-faint);">Belum ada keterangan untuk periode ini.</div>';
+
+    if (!isAdmin) return;
     list.querySelectorAll("input").forEach(function (inp) {
-      inp.addEventListener("change", function () { keterangan[+inp.dataset.i] = inp.value; });
+      inp.addEventListener("change", async function () {
+        keterangan[+inp.dataset.i] = inp.value;
+        try { await saveMeta(); toast("Keterangan disimpan."); }
+        catch (err) { toast("Gagal menyimpan: " + err.message); }
+      });
     });
     list.querySelectorAll("button[data-del]").forEach(function (btn) {
-      btn.addEventListener("click", function () { keterangan.splice(+btn.dataset.del, 1); renderKet(); });
+      btn.addEventListener("click", async function () {
+        keterangan.splice(+btn.dataset.del, 1);
+        renderKet();
+        try { await saveMeta(); toast("Keterangan dihapus."); }
+        catch (err) { toast("Gagal menyimpan: " + err.message); }
+      });
+    });
+  }
+
+  function renderSign() {
+    var meta = state.meta[currentPeriod === 0 ? '1' : '2'];
+    document.getElementById('signDate').value = meta.signPlaceDate || '';
+    document.getElementById('role1').value = meta.roleLeft || '';
+    document.getElementById('name1').value = meta.nameLeft || '';
+    document.getElementById('role2').value = meta.roleRight || '';
+    document.getElementById('name2').value = meta.nameRight || '';
+    ['signDate', 'role1', 'name1', 'role2', 'name2'].forEach(function (id) {
+      document.getElementById(id).readOnly = !isAdmin;
     });
   }
 
   function renderYearSelect() {
     var sel = document.getElementById("yearSelect");
-    var years = Object.keys(DATA_BY_YEAR).sort();
+    var years = state.availableYears && state.availableYears.length ? state.availableYears : [state.year];
     sel.innerHTML = years.map(function (y) {
-      return '<option value="' + y + '"' + (y === currentYear ? ' selected' : '') + '>' + y + '</option>';
+      return '<option value="' + y + '"' + (String(y) === String(state.year) ? ' selected' : '') + '>' + y + '</option>';
     }).join("");
-    sel.addEventListener("change", function () {
-      currentYear = sel.value;
-      renderAll();
-    });
+  }
+
+  function renderStatusBadge() {
+    var badge = document.getElementById('statusBadge');
+    if (state.locked) {
+      badge.innerHTML = '<span class="status-pill warn">Data Contoh (Terkunci)</span>';
+      return;
+    }
+    var filled = 0;
+    state.groups.forEach(function (g) { g.wells.forEach(function (w) {
+      w.real.forEach(function (v) { if (v !== null) filled++; });
+    }); });
+    var cls = filled > 0 ? 'good' : 'warn';
+    badge.innerHTML = '<span class="status-pill ' + cls + '">Data Asli — Tahun ' + state.year + '</span>';
+  }
+
+  function updateLockBanner() {
+    var banner = document.getElementById('lockBanner');
+    if (!state.locked || isAdmin) { banner.style.display = 'none'; return; }
+    banner.style.display = 'flex';
+    document.getElementById('lockStatusText').textContent = pollTimer ? 'Menunggu persetujuan admin lewat email...' : '';
+  }
+
+  function updateDownloadButton() {
+    var btn = document.getElementById('downloadBtn');
+    if (isAdmin) { btn.textContent = 'Unduh Excel'; btn.classList.add('enabled'); }
+    else { btn.textContent = '🔒 Unduh Excel (Admin)'; btn.classList.remove('enabled'); }
+  }
+
+  function renderAll() {
+    renderYearSelect();
+    renderStatusBadge();
+    updateLockBanner();
+    updateDownloadButton();
+    renderTable();
+    renderStats();
+    renderKet();
+    renderSign();
   }
 
   function toast(msg) {
@@ -227,18 +327,19 @@
     t._h = setTimeout(function () { t.classList.remove("show"); }, 2800);
   }
 
-  function renderAll() {
-    renderTable();
-    renderStats();
-    renderKet();
-  }
+  // ------------------------------------------------------------------
+  // EVENTS
+  // ------------------------------------------------------------------
+  document.getElementById("yearSelect").addEventListener("change", function (e) {
+    loadYear(e.target.value);
+  });
 
   document.getElementById("periodTabs").addEventListener("click", function (e) {
     var b = e.target.closest(".tab"); if (!b) return;
     document.querySelectorAll(".tab").forEach(function (t) { t.classList.remove("active"); });
     b.classList.add("active");
     currentPeriod = +b.dataset.period;
-    renderTable(); renderStats();
+    renderTable(); renderStats(); renderKet(); renderSign();
   });
 
   var printSwitch = document.getElementById("printSwitch");
@@ -249,38 +350,300 @@
   });
 
   document.getElementById("addKet").addEventListener("click", function () {
-    state().keterangan.push(""); renderKet();
-  });
-
-  document.getElementById("downloadBtn").addEventListener("click", function () {
-    toast("Contoh saja untuk saat ini — export .xlsx dengan format identik seperti lampiran akan disambungkan di iterasi berikutnya.");
+    if (!isAdmin) return;
+    var meta = state.meta[currentPeriod === 0 ? '1' : '2'];
+    meta.keterangan.push("");
+    renderKet();
   });
 
   var fetching = false;
-  document.getElementById("fetchBtn").addEventListener("click", function () {
+  document.getElementById("fetchBtn").addEventListener("click", async function () {
     if (fetching) return;
     fetching = true;
     var btn = document.getElementById("fetchBtn");
     var oldHtml = btn.innerHTML;
     btn.innerHTML = '<span class="spin"></span> Menarik dari Debit Sumur…';
     btn.disabled = true;
-    setTimeout(function () {
-      state().groups.forEach(function (g) { g.wells.forEach(function (w) {
-        for (var mi = 0; mi < 12; mi++) {
-          if (w.real[mi] !== null) {
-            var jitter = (Math.round((Math.random() - 0.5) * 10)) / 100;
-            w.real[mi] = Math.round((w.real[mi] + jitter) * 1000) / 1000;
-          }
-        }
-      }); });
-      btn.innerHTML = oldHtml;
-      btn.disabled = false;
-      fetching = false;
-      renderTable(); renderStats();
-      toast("Data dari Debit Sumur berhasil ditarik ulang (simulasi).");
-    }, 900);
+    await reloadSameYear();
+    btn.innerHTML = oldHtml;
+    btn.disabled = false;
+    fetching = false;
+    toast("Data terbaru dari Debit Sumur berhasil ditarik.");
   });
 
-  renderYearSelect();
-  renderAll();
+  // ------------------------------------------------------------------
+  // UNDUH EXCEL — format persis 18.2 Ukur Debit.xlsx, dibangun di browser
+  // pakai SheetJS (sama seperti tombol Unduh Excel di halaman viz lain).
+  // ------------------------------------------------------------------
+  function colLetter(n) {
+    var s = ""; while (n > 0) { var m = (n - 1) % 26; s = String.fromCharCode(65 + m) + s; n = Math.floor((n - 1) / 26); } return s;
+  }
+  function monthColsXlsx(i) { var base = 4 + i * 3; return { real: base, pm: base + 1, pct: base + 2 }; }
+
+  function buildYearWorkbook() {
+    var wb = XLSX.utils.book_new();
+    var ws = {};
+    var merges = [];
+    function set(addr, v, opts) {
+      var cell = { v: v };
+      if (opts && opts.f) { cell.f = opts.f; delete cell.v; }
+      if (opts && opts.z) cell.z = opts.z;
+      ws[addr] = cell;
+    }
+    function addr(c, r) { return colLetter(c) + r; }
+
+    function block(rowOffset, monthNames, judulBulan, monthBase) {
+      var R = function (r) { return r + rowOffset; };
+      set('A' + R(1), 'PERUSAHAAN UMUM DAERAH TIRTA MANUNTUNG');
+      set('A' + R(2), 'KOTA BALIKPAPAN');
+      set('A' + R(4), ' 18.2 PENGUKURAN DEBIT SUMUR'); merges.push({ s: { r: R(4) - 1, c: 0 }, e: { r: R(4) - 1, c: 20 } });
+      set('A' + R(5), judulBulan); merges.push({ s: { r: R(5) - 1, c: 0 }, e: { r: R(5) - 1, c: 20 } });
+
+      merges.push({ s: { r: R(7) - 1, c: 0 }, e: { r: R(9) - 1, c: 0 } }); set('A' + R(7), 'NO');
+      merges.push({ s: { r: R(7) - 1, c: 1 }, e: { r: R(9) - 1, c: 1 } }); set('B' + R(7), 'IPA/ NO.SUMUR');
+      set('C' + R(7), 'DEBIT'); set('C' + R(8), 'AWAL'); set('C' + R(9), 'M3/H');
+
+      monthNames.forEach(function (mn, i) {
+        var cc = monthColsXlsx(i);
+        merges.push({ s: { r: R(7) - 1, c: cc.real - 1 }, e: { r: R(7) - 1, c: cc.pct - 1 } });
+        set(addr(cc.real, R(7)), mn);
+        set(addr(cc.real, R(8)), 'REAL');
+        merges.push({ s: { r: R(8) - 1, c: cc.pm - 1 }, e: { r: R(8) - 1, c: cc.pct - 1 } });
+        set(addr(cc.pm, R(8)), 'RATIO EFFISIENSI');
+        set(addr(cc.pm, R(9)), '±'); set(addr(cc.pct, R(9)), '%');
+      });
+
+      var r = R(10);
+      var jumlahRows = [];
+      state.groups.forEach(function (g) {
+        set('A' + r, g.no || (state.groups.indexOf(g) + 1)); set('B' + r, g.ipa);
+        r++;
+        var firstWell = r;
+        g.wells.forEach(function (w) {
+          set('B' + r, w.name);
+          set('C' + r, w.awal, { z: '0.00' });
+          monthNames.forEach(function (mn, i) {
+            var cc = monthColsXlsx(i);
+            var v = w.real[monthBase + i];
+            if (v !== null && v !== undefined) set(addr(cc.real, r), v, { z: '0.00' });
+            set(addr(cc.pm, r), null, { f: 'IF(' + addr(cc.real, r) + '="","",' + addr(cc.real, r) + '-C' + r + ')', z: '0.00' });
+            set(addr(cc.pct, r), null, { f: 'IF(' + addr(cc.real, r) + '="","",' + addr(cc.real, r) + '/C' + r + '*100)', z: '0.00' });
+          });
+          r++;
+        });
+        var lastWell = r - 1;
+        set('B' + r, 'JUMLAH');
+        set('C' + r, null, { f: 'SUM(C' + firstWell + ':C' + lastWell + ')', z: '0.00' });
+        monthNames.forEach(function (mn, i) {
+          var cc = monthColsXlsx(i);
+          set(addr(cc.real, r), null, { f: 'IF(COUNT(' + addr(cc.real, firstWell) + ':' + addr(cc.real, lastWell) + ')=0,"",SUM(' + addr(cc.real, firstWell) + ':' + addr(cc.real, lastWell) + '))', z: '0.00' });
+        });
+        jumlahRows.push(r);
+        r++;
+      });
+
+      var rataRow = r;
+      set('B' + rataRow, 'RATA RATA');
+      monthNames.forEach(function (mn, i) {
+        var cc = monthColsXlsx(i);
+        set(addr(cc.pct, rataRow), null, { f: 'IF(COUNT(' + addr(cc.pct, R(10)) + ':' + addr(cc.pct, rataRow - 1) + ')=0,"",AVERAGE(' + addr(cc.pct, R(10)) + ':' + addr(cc.pct, rataRow - 1) + '))', z: '0.00' });
+      });
+      r++;
+
+      var meta = state.meta[monthBase === 0 ? '1' : '2'];
+      var ketHeaderRow = r; set('B' + ketHeaderRow, 'Keterangan :'); r++;
+      (meta.keterangan || []).forEach(function (k) { set('B' + r, '~ ' + k); r++; });
+      var lastKetRow = r - 1;
+      if (lastKetRow < ketHeaderRow) lastKetRow = ketHeaderRow;
+
+      merges.push({ s: { r: lastKetRow - 1, c: 17 }, e: { r: lastKetRow - 1, c: 19 } });
+      set('R' + lastKetRow, meta.signPlaceDate || '');
+      var dibuatRow = lastKetRow + 1;
+      merges.push({ s: { r: dibuatRow - 1, c: 17 }, e: { r: dibuatRow - 1, c: 19 } });
+      set('R' + dibuatRow, 'Dibuat oleh');
+      var roleRow = dibuatRow + 1;
+      merges.push({ s: { r: roleRow - 1, c: 3 }, e: { r: roleRow - 1, c: 5 } });
+      set('D' + roleRow, meta.roleLeft || 'Mengetahui/Menyetujui :');
+      merges.push({ s: { r: roleRow - 1, c: 17 }, e: { r: roleRow, c: 19 } });
+      set('R' + roleRow, meta.roleRight || '');
+      var roleLeftRow = roleRow + 1;
+      merges.push({ s: { r: roleLeftRow - 1, c: 3 }, e: { r: roleLeftRow - 1, c: 5 } });
+      set('D' + roleLeftRow, '');
+      var nameRow = roleLeftRow + 5;
+      merges.push({ s: { r: nameRow - 1, c: 2 }, e: { r: nameRow, c: 6 } });
+      set('C' + nameRow, meta.nameLeft || '');
+      merges.push({ s: { r: nameRow - 1, c: 17 }, e: { r: nameRow - 1, c: 19 } });
+      set('R' + nameRow, meta.nameRight || '');
+
+      return nameRow + 2;
+    }
+
+    var next = block(0, MONTHS.slice(0, 6), 'BULAN : Januari - Juni ' + state.year, 0);
+    var lastRow = block(next + 1, MONTHS.slice(6, 12), 'BULAN : Juli - Desember ' + state.year, 6);
+
+    ws['!ref'] = 'A1:U' + Math.max(lastRow - 1, 1);
+    ws['!merges'] = merges;
+    ws['!cols'] = [4, 30, 12, 11, 11, 12, 13, 10, 12, 10, 11, 14, 11, 9, 12, 11, 9, 10, 11, 10, 11].map(function (w) { return { wch: w }; });
+    XLSX.utils.book_append_sheet(wb, ws, '18.2 UKUR DEBIT SUMUR');
+    return wb;
+  }
+
+  document.getElementById("downloadBtn").addEventListener("click", function () {
+    if (!isAdmin) {
+      alert('Unduh Excel khusus admin. Silakan login admin terlebih dahulu.');
+      window.location.href = '../../login.html?redirect=' + encodeURIComponent('apps/kpi-sab/ukur-debit.html');
+      return;
+    }
+    if (typeof XLSX === 'undefined') { toast('Pustaka Excel belum siap, coba lagi sebentar.'); return; }
+    var wb = buildYearWorkbook();
+    XLSX.writeFile(wb, '18.2 Ukur Debit ' + state.year + '.xlsx');
+  });
+
+  // ------------------------------------------------------------------
+  // STATUS ADMIN
+  // ------------------------------------------------------------------
+  function checkAdminStatus() {
+    var token = localStorage.getItem('token');
+    var role = localStorage.getItem('role');
+    isAdmin = !!(token && role === 'admin');
+  }
+
+  // ------------------------------------------------------------------
+  // AKSES DATA VITAL — modal "Minta Akses" + polling + auto-unlock, disalin
+  // dari apps/riwayat-air-baku/app.js supaya token yang sama berlaku di sini.
+  // ------------------------------------------------------------------
+  function openAccessModal() {
+    var overlay = document.getElementById('accessModalOverlay');
+    if (!overlay) return;
+    overlay.style.display = 'flex';
+    var status = document.getElementById('accessModalStatus');
+    status.textContent = ''; status.className = 'status-msg';
+  }
+  function closeAccessModal() {
+    var overlay = document.getElementById('accessModalOverlay');
+    if (overlay) overlay.style.display = 'none';
+  }
+  function setAccessModalStatus(msg, cls) {
+    var el = document.getElementById('accessModalStatus');
+    if (!el) return;
+    el.textContent = msg; el.className = 'status-msg ' + (cls || '');
+  }
+
+  var ADMIN_WHATSAPP_NUMBER = '6281381146320';
+  function openWhatsappChat() {
+    var win = window.open('', '_blank');
+    var nama = document.getElementById('accessNamaInput').value.trim();
+    var namaPart = nama ? (' ' + nama) : '';
+    var message = 'Halo, saya' + namaPart + ' baru saja mengirim permintaan akses data KPI 18.2 Ukur Debit di website, mohon persetujuannya.';
+    var url = 'https://wa.me/' + ADMIN_WHATSAPP_NUMBER + '?text=' + encodeURIComponent(message);
+    if (win) win.location.href = url; else window.open(url, '_blank');
+  }
+
+  async function submitAccessRequest() {
+    var nama = document.getElementById('accessNamaInput').value.trim();
+    var alasan = document.getElementById('accessAlasanInput').value.trim();
+    if (!nama) { setAccessModalStatus('Isi nama dulu ya.', 'error'); return; }
+    var btn = document.getElementById('accessModalSubmit');
+    btn.disabled = true;
+    setAccessModalStatus('Mengirim permintaan...', 'pending');
+    try {
+      var res = await fetch('/api/visualization/request', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ requestedBy: nama, dataType: 'sumur_debit', reason: alasan || undefined })
+      });
+      var data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.error || 'Gagal mengirim permintaan.');
+      vizRequestId = data.requestId; vizRequestSecret = data.pollSecret;
+      try { localStorage.setItem('vizRequestId', String(vizRequestId)); localStorage.setItem('vizRequestSecret', String(vizRequestSecret || '')); } catch (e) {}
+      setAccessModalStatus('Permintaan terkirim. Menunggu admin menyetujui lewat email — halaman ini akan otomatis update.', 'pending');
+      startPolling();
+    } catch (err) {
+      setAccessModalStatus(err.message, 'error');
+    }
+    btn.disabled = false;
+  }
+
+  function startPolling() {
+    if (pollTimer) clearInterval(pollTimer);
+    updateLockBanner();
+    pollTimer = setInterval(checkAccessStatus, 4000);
+    checkAccessStatus();
+  }
+
+  async function checkAccessStatus() {
+    if (!vizRequestId || !vizRequestSecret) return;
+    try {
+      var res = await fetch('/api/visualization/status?id=' + vizRequestId + '&secret=' + encodeURIComponent(vizRequestSecret || ''));
+      var data = await res.json();
+      if (data.status === 'approved') {
+        clearInterval(pollTimer); pollTimer = null;
+        vizToken = data.token; vizTokenExpiresAt = data.expiresAt;
+        try {
+          localStorage.setItem('vizAccessToken', vizToken);
+          localStorage.setItem('vizAccessExpiresAt', vizTokenExpiresAt);
+          localStorage.removeItem('vizRequestId'); localStorage.removeItem('vizRequestSecret');
+        } catch (e) {}
+        scheduleTokenExpiry();
+        setAccessModalStatus('Akses disetujui! Memuat data asli...', 'ok');
+        await reloadSameYear();
+        closeAccessModal();
+      } else if (data.status === 'expired' || data.status === 'not_found') {
+        clearInterval(pollTimer); pollTimer = null;
+        vizRequestId = null; vizRequestSecret = null;
+        try { localStorage.removeItem('vizRequestId'); localStorage.removeItem('vizRequestSecret'); } catch (e) {}
+        updateLockBanner();
+      }
+    } catch (err) { console.warn('Gagal cek status akses:', err); }
+  }
+
+  function scheduleTokenExpiry() {
+    if (expiryTimer) clearTimeout(expiryTimer);
+    var ms = new Date(vizTokenExpiresAt).getTime() - Date.now();
+    expiryTimer = setTimeout(function () {
+      vizToken = null; vizTokenExpiresAt = null;
+      try { localStorage.removeItem('vizAccessToken'); localStorage.removeItem('vizAccessExpiresAt'); } catch (e) {}
+      reloadSameYear();
+    }, Math.max(ms, 0));
+  }
+
+  function restoreVizSession() {
+    try {
+      var token = localStorage.getItem('vizAccessToken');
+      var expiresAt = localStorage.getItem('vizAccessExpiresAt');
+      if (token && expiresAt && new Date(expiresAt).getTime() > Date.now()) {
+        vizToken = token; vizTokenExpiresAt = expiresAt;
+        scheduleTokenExpiry();
+        return;
+      }
+      var pendingId = localStorage.getItem('vizRequestId');
+      var pendingSecret = localStorage.getItem('vizRequestSecret');
+      if (pendingId && pendingSecret) {
+        vizRequestId = pendingId; vizRequestSecret = pendingSecret;
+        startPolling();
+      }
+    } catch (e) {}
+  }
+
+  function wireAccessControls() {
+    var requestBtn = document.getElementById('requestAccessBtn');
+    var cancelBtn = document.getElementById('accessModalCancel');
+    var submitBtn = document.getElementById('accessModalSubmit');
+    var whatsappBtn = document.getElementById('accessModalWhatsapp');
+    if (requestBtn) requestBtn.addEventListener('click', openAccessModal);
+    if (cancelBtn) cancelBtn.addEventListener('click', closeAccessModal);
+    if (submitBtn) submitBtn.addEventListener('click', submitAccessRequest);
+    if (whatsappBtn) whatsappBtn.addEventListener('click', openWhatsappChat);
+  }
+
+  // ------------------------------------------------------------------
+  // INIT
+  // ------------------------------------------------------------------
+  async function init() {
+    checkAdminStatus();
+    wireAccessControls();
+    restoreVizSession();
+    await loadYear(null);
+  }
+
+  init();
 })();

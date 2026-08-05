@@ -259,6 +259,54 @@ table.kpi td.ratio .cellwrap{background:var(--bg);color:var(--ink-soft);justify-
 }
 .toast.show{opacity:1;transform:translate(-50%,0);pointer-events:auto;}
 
+/* --- Lock banner ("data contoh" + tombol Minta Akses), sama seperti
+   apps/riwayat-air-baku --- */
+.lock-banner{
+  display:flex;align-items:center;justify-content:space-between;gap:14px;
+  background:#FBEBD8;border:1px solid var(--warn);border-radius:10px;
+  padding:14px 18px;margin-bottom:20px;flex-wrap:wrap;
+}
+.lock-banner-text{font-size:13px;color:var(--ink);flex:1;min-width:220px;line-height:1.5;}
+.lock-banner-text b{color:var(--low);}
+
+.access-modal-overlay{
+  position:fixed;inset:0;background:rgba(14,42,50,0.45);
+  display:flex;align-items:center;justify-content:center;z-index:1000;padding:20px;
+}
+.access-modal{
+  background:var(--surface);border-radius:14px;padding:24px 26px;max-width:380px;width:100%;
+  box-shadow:0 20px 50px -20px rgba(14,42,50,0.4);
+}
+.access-modal h3{font-family:'Space Grotesk',sans-serif;font-size:17px;margin:0 0 6px;color:var(--primary);}
+.access-modal .hint{font-size:12.5px;color:var(--ink-soft);line-height:1.5;margin:0 0 16px;}
+.access-modal label{display:block;font-size:11.5px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-soft);margin:12px 0 5px;}
+.access-modal input, .access-modal textarea{
+  width:100%;padding:9px 11px;border:1px solid var(--line-muted);border-radius:8px;
+  font-family:inherit;font-size:13.5px;background:var(--bg);color:var(--ink);
+}
+.access-modal textarea{resize:vertical;min-height:56px;}
+.access-modal-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:16px;}
+.btn-ghost{
+  font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:13.5px;
+  padding:9px 16px;border-radius:8px;border:none;background:var(--primary-pale);color:var(--primary);cursor:pointer;
+}
+.btn-ghost:hover{background:var(--line-muted);}
+.btn-whatsapp{
+  display:flex;align-items:center;justify-content:center;gap:6px;
+  width:100%;margin-top:10px;
+  font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:13.5px;
+  padding:10px 16px;border-radius:8px;border:none;background:#25D366;color:#fff;cursor:pointer;
+}
+.btn-whatsapp:hover{background:#1DA851;}
+.access-modal .status-msg{margin-top:10px;font-size:12.5px;min-height:16px;}
+.access-modal .status-msg.error{color:var(--low);}
+.access-modal .status-msg.ok{color:var(--good);}
+.access-modal .status-msg.pending{color:var(--warn);}
+
+.dl-btn-admin{background:var(--ink-faint);opacity:.6;cursor:not-allowed;}
+.dl-btn-admin.enabled{background:var(--primary);opacity:1;cursor:pointer;}
+.dl-btn-admin.enabled:hover{background:var(--ink);}
+
 /* ===== Navbar bersama PTMB (disalin dari apps/riwayat-air-baku/style.css) ===== */
 .ptmb-navbar{
   position:sticky; top:0; z-index:999;
