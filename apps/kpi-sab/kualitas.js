@@ -54,6 +54,7 @@
       showErrorState(err);
       return;
     }
+    rebuildElevasiIndex();
     currentPeriod = 0;
     document.querySelectorAll('.tab').forEach(function (t, i) { t.classList.toggle('active', i === 0); });
     var thisRealYear = String(new Date().getFullYear());
@@ -68,6 +69,7 @@
       showErrorState(err);
       return;
     }
+    rebuildElevasiIndex();
     renderAll();
   }
 
@@ -152,14 +154,20 @@
   // ------------------------------------------------------------------
   // PANEL STATUS PINTU AIR (ELEVASI, HARIAN) -- diedit langsung di sini,
   // BUKAN lewat Input Massal. Bisa lebih dari satu elevasi ON bersamaan.
+  //
+  // state.elevasiDaily dari server SUDAH forward-fill: klik ON di suatu
+  // tanggal membuat status itu "menempel" ke semua tanggal berikutnya
+  // (termasuk bulan/tahun depan) sampai di-OFF-kan lagi -- BUKAN status
+  // per-hari yang berdiri sendiri. Karena satu klik bisa mengubah banyak
+  // bulan sekaligus, sesudah toggle kita muat ulang data (reloadSameYear)
+  // supaya tabel utama & panel ini konsisten dengan hasil forward-fill
+  // yang sebenarnya dihitung di server -- bukan disimulasikan di client.
   // ------------------------------------------------------------------
-  function findElevasiRow(dateStr) {
-    var row = state.elevasiDaily.find(function (r) { return r.Tanggal === dateStr; });
-    if (!row) {
-      row = { Tanggal: dateStr, manggar: { 3: false, 5: false, 7: false }, teritip: { 3: false, 5: false, 7: false } };
-      state.elevasiDaily.push(row);
-    }
-    return row;
+  var elevasiByDate = {};
+
+  function rebuildElevasiIndex() {
+    elevasiByDate = {};
+    (state.elevasiDaily || []).forEach(function (r) { elevasiByDate[r.Tanggal] = r; });
   }
 
   async function saveElevasiToggle(dateStr, loc, elevasi, on) {
@@ -174,17 +182,14 @@
 
   async function toggleElevasi(dateStr, loc, elevasi) {
     if (!isAdmin) return;
-    var row = findElevasiRow(dateStr);
-    var newVal = !row[loc][elevasi];
-    var mi = Number(dateStr.slice(5, 7)) - 1;
-    var group = state.groups.find(function (g) { return g.key === loc; });
+    var row = elevasiByDate[dateStr];
+    var currentVal = row ? !!row[loc][elevasi] : false;
+    var newVal = !currentVal;
     try {
       await saveElevasiToggle(dateStr, loc, elevasi, newVal);
-      row[loc][elevasi] = newVal;
-      if (group) group.elevasiHari[elevasi][mi] += (newVal ? 1 : -1);
-      renderTable();
-      renderElevasiTable();
-      toast('Elevasi ' + elevasi + ' ' + (loc === 'manggar' ? 'Manggar' : 'Teritip') + ' ' + (newVal ? 'ON' : 'OFF') + ' disimpan.');
+      await reloadSameYear();
+      toast('Elevasi ' + elevasi + ' ' + (loc === 'manggar' ? 'Manggar' : 'Teritip') + ' ' + (newVal ? 'ON' : 'OFF') +
+        ' mulai ' + dateStr + ' — berlaku terus sampai diubah lagi.');
     } catch (err) {
       toast('Gagal menyimpan: ' + err.message);
     }
@@ -198,7 +203,7 @@
   }
 
   function elevasiCell(dateStr, loc, elevasi) {
-    var row = state.elevasiDaily.find(function (r) { return r.Tanggal === dateStr; });
+    var row = elevasiByDate[dateStr];
     var on = row ? !!row[loc][elevasi] : false;
     var cls = 'switch small' + (on ? ' on' : '');
     if (isAdmin) {
