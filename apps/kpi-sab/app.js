@@ -27,7 +27,10 @@
     return "bad";
   }
   function monthIndexesFor(period) { return period === 0 ? [0, 1, 2, 3, 4, 5] : [6, 7, 8, 9, 10, 11]; }
-  function periodKeyFor(period) { return String(state.year) + '-' + (period === 0 ? '1' : '2'); }
+  // Keterangan & Penandatangan sama untuk semua periode/tahun (lihat
+  // lib/visualization/kpi.js) -- server selalu mengisi '1' dan '2' dengan isi
+  // yang sama, jadi cukup baca dari salah satu saja.
+  function currentMeta() { return state.meta['1']; }
 
   // ------------------------------------------------------------------
   // MUAT DATA
@@ -133,7 +136,7 @@
         html += '<tr><td class="no"></td><td class="name">' + w.name + '</td>';
         var awalVal = w.awal !== null ? fmt(w.awal, 0) : "";
         html += '<td class="awal"><div class="cellwrap"><input class="cell" type="text" value="' + awalVal + '" placeholder="isi" ' +
-          'data-role="awal" data-inst="' + g.installation + '" data-well="' + w.name.replace(/"/g, '&quot;') + '"' +
+          'data-role="awal" data-inst="' + g.installation + '" data-well="' + w.dbName.replace(/"/g, '&quot;') + '"' +
           (isAdmin ? '' : ' readonly') + '></div></td>';
         idxs.forEach(function (mi) {
           if (w.real[mi] !== null) sums[mi] += w.real[mi];
@@ -170,13 +173,13 @@
       inp.addEventListener("change", async function () {
         var n = parseFloat(inp.value.replace(",", "."));
         if (isNaN(n)) { renderTable(); return; }
-        var inst = inp.dataset.inst, well = inp.dataset.well;
+        var inst = inp.dataset.inst, dbName = inp.dataset.well, label = dbName;
         try {
-          await saveDebitAwal(inst, well, n);
+          await saveDebitAwal(inst, dbName, n);
           // update state lokal supaya tidak perlu fetch ulang
-          state.groups.forEach(function (g) { if (g.installation === inst) g.wells.forEach(function (w) { if (w.name === well) w.awal = n; }); });
+          state.groups.forEach(function (g) { if (g.installation === inst) g.wells.forEach(function (w) { if (w.dbName === dbName) { w.awal = n; label = w.name; } }); });
           renderTable(); renderStats();
-          toast("Debit awal " + well + " diperbarui → " + fmt(n, 0) + " m³/jam");
+          toast("Debit awal " + label + " diperbarui → " + fmt(n, 0) + " m³/jam");
         } catch (err) {
           toast("Gagal menyimpan: " + err.message);
           renderTable();
@@ -197,10 +200,9 @@
 
   async function saveMeta() {
     var token = currentAccessToken();
-    var keterangan = state.meta[currentPeriod === 0 ? '1' : '2'].keterangan;
+    var keterangan = currentMeta().keterangan;
     var body = {
       kind: 'meta',
-      period_key: periodKeyFor(currentPeriod),
       keterangan: keterangan,
       signPlaceDate: document.getElementById('signDate').value,
       roleLeft: document.getElementById('role1').value,
@@ -253,12 +255,12 @@
 
   function renderKet() {
     var list = document.getElementById("ketList");
-    var meta = state.meta[currentPeriod === 0 ? '1' : '2'];
+    var meta = currentMeta();
     var keterangan = meta.keterangan || [];
     list.innerHTML = keterangan.map(function (k, i) {
       return '<div class="kline"><span class="mark">~</span><input value="' + (k || '').replace(/"/g, '&quot;') + '" data-i="' + i + '"' + (isAdmin ? '' : ' readonly') + '>' +
         (isAdmin ? '<button data-del="' + i + '" title="Hapus">×</button>' : '') + '</div>';
-    }).join("") || '<div style="font-size:12.5px;color:var(--ink-faint);">Belum ada keterangan untuk periode ini.</div>';
+    }).join("") || '<div style="font-size:12.5px;color:var(--ink-faint);">Belum ada keterangan.</div>';
 
     if (!isAdmin) return;
     list.querySelectorAll("input").forEach(function (inp) {
@@ -279,14 +281,34 @@
   }
 
   function renderSign() {
-    var meta = state.meta[currentPeriod === 0 ? '1' : '2'];
+    var meta = currentMeta();
+    // Tanggal selalu hari ini, dari server (lihat todaySignDate di
+    // lib/visualization/kpi.js) -- tidak pernah disimpan, jadi selalu
+    // read-only di sini supaya tidak ada yang mengira ini bisa diedit lalu
+    // bingung kenapa tidak tersimpan.
     document.getElementById('signDate').value = meta.signPlaceDate || '';
+    document.getElementById('signDate').readOnly = true;
     document.getElementById('role1').value = meta.roleLeft || '';
     document.getElementById('name1').value = meta.nameLeft || '';
     document.getElementById('role2').value = meta.roleRight || '';
     document.getElementById('name2').value = meta.nameRight || '';
-    ['signDate', 'role1', 'name1', 'role2', 'name2'].forEach(function (id) {
+    ['role1', 'name1', 'role2', 'name2'].forEach(function (id) {
       document.getElementById(id).readOnly = !isAdmin;
+    });
+  }
+
+  // Penandatangan (nama & jabatan) sekarang tersimpan permanen begitu diubah
+  // -- sebelumnya tidak ada listener sama sekali di sini, jadi apa pun yang
+  // diketik tidak pernah benar-benar tersimpan (itu sebabnya harus isi ulang
+  // terus). Dipasang sekali saat init, bukan tiap renderSign(), karena
+  // elemen inputnya statis (tidak pernah dibuat ulang lewat innerHTML).
+  function wireSignatureControls() {
+    ['role1', 'name1', 'role2', 'name2'].forEach(function (id) {
+      document.getElementById(id).addEventListener('change', async function () {
+        if (!isAdmin) return;
+        try { await saveMeta(); toast('Penandatangan disimpan.'); }
+        catch (err) { toast('Gagal menyimpan: ' + err.message); }
+      });
     });
   }
 
@@ -368,7 +390,7 @@
 
   document.getElementById("addKet").addEventListener("click", function () {
     if (!isAdmin) return;
-    var meta = state.meta[currentPeriod === 0 ? '1' : '2'];
+    var meta = currentMeta();
     meta.keterangan.push("");
     renderKet();
   });
@@ -566,6 +588,7 @@
   async function init() {
     checkAdminStatus();
     wireAccessControls();
+    wireSignatureControls();
     restoreVizSession();
     await loadYear(null);
   }

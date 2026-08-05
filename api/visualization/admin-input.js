@@ -73,10 +73,10 @@ module.exports = async (req, res) => {
       return res.status(200).json({ success: true });
     }
     if (kind === 'meta') {
+      // Keterangan & Penandatangan cuma satu baris pengaturan ('global'),
+      // bukan per periode lagi -- lihat lib/visualization/kpi.js.
       await ensureKpiTables();
-      const { period_key } = req.body;
-      if (!period_key) return res.status(400).json({ error: 'period_key wajib diisi' });
-      await saveMeta(period_key, req.body);
+      await saveMeta(null, req.body);
       return res.status(200).json({ success: true });
     }
 
