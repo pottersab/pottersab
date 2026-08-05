@@ -1,7 +1,7 @@
 const { pool, ensureVizTables, ensureKpiTables } = require('../../lib/db');
 const { requireAdmin } = require('../../lib/auth');
 const { DATASETS } = require('../../lib/visualization/columns');
-const { saveDebitAwal, saveMeta, saveApatdMeta } = require('../../lib/visualization/kpi');
+const { saveDebitAwal, saveMeta, saveApatdMeta, savePengambilanTarget, savePengambilanMeta } = require('../../lib/visualization/kpi');
 
 function toNumOrNull(v) {
   if (v === undefined || v === null || v === '') return null;
@@ -85,6 +85,24 @@ module.exports = async (req, res) => {
       // oleh"), lihat lib/visualization/kpi.js.
       await ensureKpiTables();
       await saveApatdMeta(req.body);
+      return res.status(200).json({ success: true });
+    }
+    if (kind === 'pengambilan_target') {
+      // Anggaran per jumlah hari (31/30/29/28) KPI 18.3b Pengambilan Air Baku
+      // -- lihat catatan kpi_pengambilan_target di lib/db.js.
+      await ensureKpiTables();
+      const { day_count, ap_value, atd_value } = req.body;
+      const dc = Number(day_count);
+      if (![31, 30, 29, 28].includes(dc)) {
+        return res.status(400).json({ error: 'day_count harus 31, 30, 29, atau 28' });
+      }
+      const toNumOrNullLocal = v => (v === undefined || v === null || v === '' || isNaN(Number(v))) ? null : Number(v);
+      await savePengambilanTarget(dc, toNumOrNullLocal(ap_value), toNumOrNullLocal(atd_value));
+      return res.status(200).json({ success: true });
+    }
+    if (kind === 'pengambilan_meta') {
+      await ensureKpiTables();
+      await savePengambilanMeta(req.body);
       return res.status(200).json({ success: true });
     }
 

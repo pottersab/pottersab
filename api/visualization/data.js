@@ -5,7 +5,7 @@ const { checkVizAccess } = require('../../lib/visualization/viz-auth');
 const { buildDummyRows, buildDummyWideSingleRows, buildDummySumurDebitRows, buildDummySumurLevelRows } = require('../../lib/visualization/dummy');
 const { fetchRealRows, fetchWideSingleRows, fetchSumurWells, fetchSumurDebitRows, fetchSumurLevelRows } = require('../../lib/visualization/repo');
 const { logViewerAction } = require('../../lib/visualization/access-log');
-const { getKpiUkurDebitData, buildKpiExcelWorkbook, getKpiApatdData, buildKpiApatdExcelWorkbook } = require('../../lib/visualization/kpi');
+const { getKpiUkurDebitData, buildKpiExcelWorkbook, getKpiApatdData, buildKpiApatdExcelWorkbook, getKpiPengambilanData, buildKpiPengambilanExcelWorkbook } = require('../../lib/visualization/kpi');
 
 module.exports = async (req, res) => {
   if (req.method !== 'GET') {
@@ -65,6 +65,28 @@ module.exports = async (req, res) => {
     const buffer = await buildKpiApatdExcelWorkbook(result);
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename="18.3A APATD ${result.year}.xlsx"`);
+    return res.status(200).send(Buffer.from(buffer));
+  }
+
+  // KPI 18.3b Pengambilan Air Baku -- Realisasi dihitung ulang dari 'ap' +
+  // 'atd' (sama seperti kpi_apatd), Anggaran dari kpi_pengambilan_target.
+  // Ditangani terpisah juga, sama seperti kpi_ukur_debit/kpi_apatd di atas.
+  if (dataType === 'kpi_pengambilan') {
+    await ensureKpiTables();
+    const access = await checkVizAccess(req);
+    const result = await getKpiPengambilanData(access, req.query.tahun);
+    return res.status(200).json(result);
+  }
+
+  if (dataType === 'kpi_pengambilan_xlsx') {
+    await ensureKpiTables();
+    const user = requireAdmin(req, res);
+    if (!user) return;
+    const result = await getKpiPengambilanData({ granted: true, kind: 'admin' }, req.query.tahun);
+    if (req.query.tanggal) result.meta.signPlaceDate = req.query.tanggal;
+    const buffer = await buildKpiPengambilanExcelWorkbook(result);
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="18.3B Pengambilan Air Baku ${result.year}.xlsx"`);
     return res.status(200).send(Buffer.from(buffer));
   }
 
