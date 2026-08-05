@@ -270,6 +270,12 @@ header{
 .hub-card:hover{transform:translateY(-3px);box-shadow:0 12px 28px rgba(10,37,55,.09)}
 .hub-card h3{font-size:17px;font-weight:600}
 .hub-card p{font-size:13.5px;color:var(--ink-soft);flex:1}
+/* Kartu di tab Tools/Data/Development (.hub-grid) dibuat SAMA UKURAN: tinggi
+   minimum sama & deskripsi dibatasi 3 baris (lebih panjang di-potong dengan
+   elipsis). Sengaja di-scope ke .hub-grid supaya tidak mengganggu .hub-deck
+   (kartu beranda) yang sudah punya aturan sendiri. */
+.hub-grid .hub-card{min-height:250px}
+.hub-grid .hub-card p{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
 .tag-row{display:flex;gap:6px;flex-wrap:wrap}
 .tag{
   font-size:11px;font-weight:600;padding:3px 9px;border-radius:99px;
