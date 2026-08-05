@@ -5,7 +5,6 @@
 
   var state = null;      // respons terakhir dari /api/visualization/data?dataType=kpi_18_1a
   var currentPeriod = 0; // 0 = Jan-Jun, 1 = Jul-Des
-  var printMode = true;
   var isAdmin = false;
 
   // --- akses data asli: token JWT admin (localStorage) atau token viz-access
@@ -94,13 +93,12 @@
     return r1 + r2 + r3;
   }
 
-  // ANGG konstan per instalasi (jumlah sumur aktif), ditulis di tiap bulan.
-  function cellAngg(g) {
-    var v = g.angg;
-    var has = v !== null && v !== undefined && v > 0;
-    var val = has ? fmt(v) : "";
-    var hidePrint = (!has && printMode);
-    return '<td class="angg"><div class="cellwrap"><span class="cellnum">' + (hidePrint ? '' : val) + '</span></div></td>';
+  // ANGG konstan per instalasi (jumlah sumur aktif), ditulis di tiap bulan
+  // yang SUDAH ada datanya. Bulan kosong (real null) dikosongkan semua.
+  function cellAngg(g, mi) {
+    var has = g.real[mi] !== null && g.real[mi] !== undefined && g.angg > 0;
+    var val = has ? fmt(g.angg) : "";
+    return '<td class="angg"><div class="cellwrap"><span class="cellnum">' + val + '</span></div></td>';
   }
 
   function cellReal(g, mi) {
@@ -108,23 +106,19 @@
     var has = v !== null && v !== undefined && v > 0;
     var cls = has ? "web" : "empty";
     var val = has ? fmt(v) : "";
-    var hidePrint = (!has && printMode);
-    return '<td class="real"><div class="cellwrap ' + cls + '"><span class="cellnum">' +
-      (hidePrint ? '' : (has ? val : '—')) + '</span></div></td>';
+    return '<td class="real"><div class="cellwrap ' + cls + '"><span class="cellnum">' + val + '</span></div></td>';
   }
 
   function cellRatio(g, mi, kind) {
     var angg = g.angg, real = g.real[mi];
-    var has = angg !== null && angg > 0 && real !== null && real > 0;
-    var pm = has ? (real - angg) : null;
-    var pct = has ? (real / angg * 100) : null;
+    var has = real !== null && real !== undefined && angg > 0 && real > 0;
+    if (!has) return '<td class="ratio"><div class="cellwrap"></div></td>';
+    var pm = real - angg;
+    var pct = real / angg * 100;
     var val = kind === "pm" ? pm : pct;
-    var text = has ? (kind === "pm" ? (val >= 0 ? "+" : "") + fmt(val) : fmt(val, 1) + "%") : "–";
-    var cls = ratioClass(has ? pct : null);
-    var hidePrint = (!has && printMode);
-    return '<td class="ratio"><div class="cellwrap"><span class="pill ' + (hidePrint ? "" : cls) + '" ' +
-      (hidePrint ? 'style="color:var(--bg);background:var(--bg);"' : '') +
-      '>' + text + '</span></div></td>';
+    var text = kind === "pm" ? (pm >= 0 ? "+" : "") + fmt(pm) : fmt(pct, 1) + "%";
+    var cls = ratioClass(pct);
+    return '<td class="ratio"><div class="cellwrap"><span class="pill ' + cls + '">' + text + '</span></div></td>';
   }
 
   function renderTable() {
@@ -135,22 +129,29 @@
     state.groups.forEach(function (g, gi) {
       html += '<tr><td class="no">' + (gi + 1) + '</td><td class="name">' + g.label + '</td>';
       idxs.forEach(function (mi) {
-        html += cellAngg(g) + cellReal(g, mi) + cellRatio(g, mi, "pm") + cellRatio(g, mi, "pct");
+        html += cellAngg(g, mi) + cellReal(g, mi) + cellRatio(g, mi, "pm") + cellRatio(g, mi, "pct");
       });
       html += '</tr>';
     });
 
-    // RATA - RATA = penjumlahan ANGG/REAL per bulan; ± dikosongkan persis file contoh.
+    // RATA - RATA = penjumlahan ANGG/REAL per bulan; ± dikosongkan persis file
+    // contoh. Bulan kosong (belum ada data) ikut dikosongkan, bukan diisi 0.
     html += '<tr class="sum"><td class="no"></td><td class="name">RATA - RATA</td>';
     idxs.forEach(function (mi) {
-      var sumAngg = state.groups.reduce(function (s, g) { return s + (g.angg || 0); }, 0);
-      var sumReal = state.groups.reduce(function (s, g) { return s + ((g.real[mi] || 0)); }, 0);
-      var has = sumAngg > 0 && sumReal > 0;
-      html += '<td class="angg"><div class="cellwrap"><span class="cellnum">' + fmt(sumAngg) + '</span></div></td>';
-      html += '<td class="real"><div class="cellwrap web"><span class="cellnum">' + fmt(sumReal) + '</span></div></td>';
-      html += '<td class="ratio"></td>';
-      html += '<td class="ratio"><div class="cellwrap"><span class="pill ' + (has ? ratioClass(sumReal / sumAngg * 100) : 'dim') + '">' +
-        (has ? fmt(sumReal / sumAngg * 100, 1) + '%' : '–') + '</span></div></td>';
+      var sumAngg = 0, sumReal = 0, any = false;
+      state.groups.forEach(function (g) {
+        var rv = g.real[mi];
+        if (rv !== null && rv !== undefined) { sumReal += rv; sumAngg += (g.angg || 0); any = true; }
+      });
+      if (!any) {
+        html += '<td class="angg"></td><td class="real"></td><td class="ratio"></td><td class="ratio"></td>';
+      } else {
+        html += '<td class="angg"><div class="cellwrap"><span class="cellnum">' + fmt(sumAngg) + '</span></div></td>';
+        html += '<td class="real"><div class="cellwrap web"><span class="cellnum">' + fmt(sumReal) + '</span></div></td>';
+        html += '<td class="ratio"></td>';
+        html += '<td class="ratio"><div class="cellwrap"><span class="pill ' + ratioClass(sumReal / sumAngg * 100) + '">' +
+          fmt(sumReal / sumAngg * 100, 1) + '%</span></div></td>';
+      }
     });
     html += '</tr>';
 
@@ -377,13 +378,6 @@
     b.classList.add("active");
     currentPeriod = +b.dataset.period;
     renderTable(); renderStats();
-  });
-
-  var printSwitch = document.getElementById("printSwitch");
-  printSwitch.addEventListener("click", function () {
-    printMode = !printMode;
-    printSwitch.classList.toggle("on", printMode);
-    renderTable();
   });
 
   document.getElementById("addKet").addEventListener("click", function () {
