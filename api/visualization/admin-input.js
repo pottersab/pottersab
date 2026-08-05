@@ -1,7 +1,7 @@
 const { pool, ensureVizTables, ensureKpiTables } = require('../../lib/db');
 const { requireAdmin } = require('../../lib/auth');
 const { DATASETS } = require('../../lib/visualization/columns');
-const { saveDebitAwal, saveMeta } = require('../../lib/visualization/kpi');
+const { saveDebitAwal, saveMeta, saveApatdMeta } = require('../../lib/visualization/kpi');
 
 function toNumOrNull(v) {
   if (v === undefined || v === null || v === '') return null;
@@ -77,6 +77,14 @@ module.exports = async (req, res) => {
       // bukan per periode lagi -- lihat lib/visualization/kpi.js.
       await ensureKpiTables();
       await saveMeta(null, req.body);
+      return res.status(200).json({ success: true });
+    }
+    if (kind === 'apatd_meta') {
+      // Keterangan & Penandatangan KPI 18.3a APATD -- tabel sendiri
+      // (kpi_apatd_meta), labelnya beda dari 18.2 ("Mengetahui" / "Direkap
+      // oleh"), lihat lib/visualization/kpi.js.
+      await ensureKpiTables();
+      await saveApatdMeta(req.body);
       return res.status(200).json({ success: true });
     }
 
