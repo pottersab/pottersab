@@ -1,9 +1,10 @@
-const { ensureVizTables } = require('../../lib/db');
+const { ensureVizTables, ensureKpiTables } = require('../../lib/db');
 const { DATASETS, isValidDataType } = require('../../lib/visualization/columns');
 const { checkVizAccess } = require('../../lib/visualization/viz-auth');
 const { buildDummyRows, buildDummyWideSingleRows, buildDummySumurDebitRows, buildDummySumurLevelRows } = require('../../lib/visualization/dummy');
 const { fetchRealRows, fetchWideSingleRows, fetchSumurWells, fetchSumurDebitRows, fetchSumurLevelRows } = require('../../lib/visualization/repo');
 const { logViewerAction } = require('../../lib/visualization/access-log');
+const { getKpiUkurDebitData } = require('../../lib/visualization/kpi');
 
 module.exports = async (req, res) => {
   if (req.method !== 'GET') {
@@ -13,6 +14,18 @@ module.exports = async (req, res) => {
   await ensureVizTables();
 
   const { dataType } = req.query;
+
+  // KPI 18.2 Ukur Debit gabungan 5 instalasi -- bukan satu baris di DATASETS
+  // (bentuknya bukan 'wide'/'sumur-debit' tunggal), jadi ditangani terpisah
+  // di sini sebelum masuk jalur DATASETS biasa. Lihat lib/visualization/kpi.js
+  // untuk alasan kenapa ini tidak jadi berkas api/ sendiri.
+  if (dataType === 'kpi_ukur_debit') {
+    await ensureKpiTables();
+    const access = await checkVizAccess(req);
+    const result = await getKpiUkurDebitData(access, req.query.tahun);
+    return res.status(200).json(result);
+  }
+
   if (!isValidDataType(dataType)) {
     return res.status(400).json({ error: 'dataType tidak dikenal' });
   }

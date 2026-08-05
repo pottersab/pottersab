@@ -3,7 +3,7 @@
 
   var MONTHS = ["JANUARI", "FEBRUARI", "MARET", "APRIL", "MEI", "JUNI", "JULI", "AGUSTUS", "SEPTEMBER", "OKTOBER", "NOVEMBER", "DESEMBER"];
 
-  var state = null;      // respons terakhir dari /api/visualization/kpi-ukur-debit
+  var state = null;      // respons terakhir dari /api/visualization/data?dataType=kpi_ukur_debit
   var currentPeriod = 0; // 0 = Jan-Jun, 1 = Jul-Des (potongan tampilan dari 12 bulan yg sudah dimuat)
   var printMode = true;
   var isAdmin = false;
@@ -36,7 +36,7 @@
     var headers = {};
     var token = currentAccessToken();
     if (token) headers['Authorization'] = 'Bearer ' + token;
-    var url = '/api/visualization/kpi-ukur-debit' + (tahun ? ('?tahun=' + encodeURIComponent(tahun)) : '');
+    var url = '/api/visualization/data?dataType=kpi_ukur_debit' + (tahun ? ('&tahun=' + encodeURIComponent(tahun)) : '');
     var res = await fetch(url, { headers: headers });
     if (!res.ok) throw new Error('Gagal memuat data (HTTP ' + res.status + ')');
     return res.json();
@@ -187,7 +187,7 @@
 
   async function saveDebitAwal(installation, well_name, debit_awal) {
     var token = currentAccessToken();
-    var res = await fetch('/api/visualization/kpi-ukur-debit', {
+    var res = await fetch('/api/visualization/admin-input', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
       body: JSON.stringify({ kind: 'debit_awal', installation: installation, well_name: well_name, debit_awal: debit_awal })
@@ -208,7 +208,7 @@
       roleRight: document.getElementById('role2').value,
       nameRight: document.getElementById('name2').value
     };
-    var res = await fetch('/api/visualization/kpi-ukur-debit', {
+    var res = await fetch('/api/visualization/admin-input', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
       body: JSON.stringify(body)

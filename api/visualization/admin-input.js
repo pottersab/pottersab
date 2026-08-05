@@ -1,6 +1,7 @@
-const { pool, ensureVizTables } = require('../../lib/db');
+const { pool, ensureVizTables, ensureKpiTables } = require('../../lib/db');
 const { requireAdmin } = require('../../lib/auth');
 const { DATASETS } = require('../../lib/visualization/columns');
+const { saveDebitAwal, saveMeta } = require('../../lib/visualization/kpi');
 
 function toNumOrNull(v) {
   if (v === undefined || v === null || v === '') return null;
@@ -57,6 +58,28 @@ module.exports = async (req, res) => {
   }
 
   if (req.method === 'POST') {
+    // KPI 18.2 Ukur Debit (Debit Awal & Keterangan/Penandatangan) numpang di
+    // endpoint admin ini juga -- lihat lib/visualization/kpi.js untuk alasan
+    // kenapa tidak jadi berkas api/ sendiri (batas 12 Serverless Function
+    // paket Hobby).
+    const { kind } = req.body || {};
+    if (kind === 'debit_awal') {
+      await ensureKpiTables();
+      const { installation, well_name, debit_awal } = req.body;
+      if (!installation || !well_name || debit_awal === undefined || debit_awal === null || isNaN(Number(debit_awal))) {
+        return res.status(400).json({ error: 'installation, well_name, dan debit_awal (angka) wajib diisi' });
+      }
+      await saveDebitAwal(installation, well_name, debit_awal);
+      return res.status(200).json({ success: true });
+    }
+    if (kind === 'meta') {
+      await ensureKpiTables();
+      const { period_key } = req.body;
+      if (!period_key) return res.status(400).json({ error: 'period_key wajib diisi' });
+      await saveMeta(period_key, req.body);
+      return res.status(200).json({ success: true });
+    }
+
     const { bulan, ap, atd } = req.body || {};
     if (!bulan) return res.status(400).json({ error: 'bulan wajib diisi' });
     const bulanDate = `${bulan}-01`;
