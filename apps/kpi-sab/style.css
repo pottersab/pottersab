@@ -398,6 +398,31 @@ table.mon-table tr.mon-block td.no{font-size:14px;color:var(--ink);}
    jumlah sumur) -- pakai kelas .kpi yang sama dengan 18.3b. --- */
 table.kpi td .cellnum{font-family:'IBM Plex Mono',monospace;font-size:13px;}
 
+/* Panel "Daftar Sumur & Status Aktif" -- cuma sumur AKTIF yang jadi ANGG. */
+.well-card{margin-bottom:20px;}
+.well-hint{font-size:12.5px;color:var(--ink-soft);line-height:1.5;margin:0 0 14px;}
+.well-group{margin-bottom:12px;}
+.well-group:last-child{margin-bottom:0;}
+.well-ipa{
+  font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:13px;
+  color:var(--primary);margin-bottom:7px;display:flex;align-items:center;gap:8px;
+}
+.well-count{
+  font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;
+  background:var(--primary-pale);color:var(--primary);border-radius:999px;padding:2px 8px;
+}
+.well-chips{display:flex;flex-wrap:wrap;gap:7px;}
+.well-chip{
+  border:1.5px solid var(--line-muted);background:var(--surface);color:var(--ink-soft);
+  border-radius:999px;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer;
+  font-family:'IBM Plex Mono',monospace;transition:all .13s;
+}
+.well-chip:hover{border-color:var(--primary-light);}
+.well-chip.on{background:var(--good);border-color:var(--good);color:#fff;}
+.well-chip.off{background:var(--bg);border-color:var(--line-muted);color:var(--ink-faint);}
+.well-chip:disabled{cursor:default;opacity:1;}
+.well-empty{font-size:12px;color:var(--ink-faint);}
+
 /* ===== Navbar bersama PTMB (disalin dari apps/riwayat-air-baku/style.css) ===== */
 .ptmb-navbar{
   position:sticky; top:0; z-index:999;

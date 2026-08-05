@@ -15,6 +15,12 @@
 
   function currentAccessToken() { return localStorage.getItem('token') || vizToken || null; }
 
+  function esc(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+
   function fmt(n) {
     if (n === null || n === undefined || isNaN(n)) return "";
     return n.toLocaleString("id-ID", { maximumFractionDigits: 0 });
@@ -185,6 +191,57 @@
   }
 
   // ------------------------------------------------------------------
+  // DAFTAR SUMUR & STATUS AKTIF -- panel di bawah tabel. Hanya sumur AKTIF
+  // yang dihitung sebagai ANGG; toggle status khusus admin (disimpan di kolom
+  // active tabel sumur_wells lewat admin-library action=wells).
+  // ------------------------------------------------------------------
+  function renderWells() {
+    var wrap = document.getElementById('wellList');
+    var html = '';
+    state.groups.forEach(function (g) {
+      html += '<div class="well-group"><div class="well-ipa">' + esc(g.label) +
+        ' <span class="well-count">' + g.angg + ' aktif</span></div><div class="well-chips">';
+      var list = g.wells || [];
+      list.forEach(function (w) {
+        var on = !!w.active;
+        html += '<button type="button" class="well-chip ' + (on ? 'on' : 'off') + '"' +
+          ' data-inst="' + esc(g.installation) + '" data-well="' + esc(w.well_name) + '"' +
+          (isAdmin ? '' : ' disabled') + '>' + (on ? '✓ ' : '○ ') + esc(w.well_name) + '</button>';
+      });
+      if (!list.length) html += '<span class="well-empty">Belum ada sumur terdaftar.</span>';
+      html += '</div></div>';
+    });
+    wrap.innerHTML = html;
+
+    if (!isAdmin) return;
+    wrap.querySelectorAll('.well-chip').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        toggleWellActive(btn.dataset.inst, btn.dataset.well, !btn.classList.contains('on'));
+      });
+    });
+  }
+
+  async function saveWellActive(installation, wellName, active) {
+    var token = currentAccessToken();
+    var res = await fetch('/api/visualization/admin-library?action=wells', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify({ action: 'set_active', installation: installation, category: 'level', wellName: wellName, active: active })
+    });
+    if (!res.ok) { var d = await res.json().catch(function () { return {}; }); throw new Error(d.error || ('HTTP ' + res.status)); }
+  }
+
+  async function toggleWellActive(installation, wellName, active) {
+    try {
+      await saveWellActive(installation, wellName, active);
+      await reloadSameYear();
+      toast('Sumur ' + wellName + ' ditandai ' + (active ? 'AKTIF' : 'NONAKTIF') + ' — ANGG diperbarui.');
+    } catch (err) {
+      toast('Gagal menyimpan: ' + err.message);
+    }
+  }
+
+  // ------------------------------------------------------------------
   // KETERANGAN & PENANDATANGAN (global, pola sama pengambilan.js)
   // ------------------------------------------------------------------
   async function saveMeta() {
@@ -294,6 +351,7 @@
     updateDownloadButton();
     renderTable();
     renderStats();
+    renderWells();
     renderKet();
     renderSign();
   }

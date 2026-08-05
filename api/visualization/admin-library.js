@@ -641,6 +641,21 @@ async function handleWells(req, res) {
 
   if (req.method === 'POST') {
     const { installation, category, wellName } = req.body || {};
+
+    // Toggle status aktif sumur (dipakai panel "Daftar Sumur & Status Aktif"
+    // di KPI 18.1a -- ANGG cuma menghitung sumur AKTIF). Tidak menghapus
+    // sumur, jadi data lamanya tetap ada.
+    if (req.body && req.body.action === 'set_active') {
+      if (!installation || !['debit', 'level'].includes(category) || !wellName || !String(wellName).trim()) {
+        return res.status(400).json({ error: 'installation, category, dan wellName wajib diisi' });
+      }
+      await pool.query(
+        'UPDATE sumur_wells SET active = $1 WHERE installation = $2 AND category = $3 AND well_name = $4',
+        [!!req.body.active, installation, category, String(wellName).trim()]
+      );
+      return res.status(200).json({ success: true });
+    }
+
     if (!installation || !['debit', 'level'].includes(category) || !wellName || !String(wellName).trim()) {
       return res.status(400).json({ error: 'installation, category, dan wellName wajib diisi' });
     }
