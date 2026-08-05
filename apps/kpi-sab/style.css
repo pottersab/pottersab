@@ -69,12 +69,14 @@ h1{
   padding:22px;display:flex;flex-direction:column;gap:10px;
   transition:transform .18s,box-shadow .18s,border-color .18s;
 }
-/* Kartu hub kembali ke tata letak normal: tinggi alami mengikuti isi, dan grid
-   (minmax 280px) otomatis menyamakan tinggi semua kartu dalam satu baris.
-   Tombol di bawah teks, tanpa ruang kosong yang dipaksakan. */
+/* Kartu hub: tata letak normal seperti kartu lain. Paragraf TIDAK ikut
+   membesar (flex-grow 0) -- kalau dibiarkan flex:1, kartu yang isinya pendek
+   jadi berlubang besar di antara teks dan tag. Tombol ditempel ke bawah lewat
+   margin-top:auto, jadi ruang sisa jatuh di BAWAH tag (bukan di tengah kartu). */
 .hub-card:hover{transform:translateY(-3px);box-shadow:0 12px 28px rgba(14,42,50,.10);border-color:#BFD8E0;}
 .hub-card h3{font-family:'Space Grotesk',sans-serif;font-size:17px;font-weight:700;margin:0;}
-.hub-card p{font-size:13.5px;color:var(--ink-soft);flex:1;margin:0;}
+.hub-card p{font-size:13.5px;color:var(--ink-soft);margin:0;flex:0 1 auto;}
+.hub-card .open{margin-top:auto;}
 .hub-glow{
   position:absolute;top:-50px;right:-50px;width:170px;height:170px;
   border-radius:50%;filter:blur(10px);opacity:.5;pointer-events:none;z-index:0;
