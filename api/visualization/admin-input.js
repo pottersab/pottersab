@@ -1,7 +1,7 @@
 const { pool, ensureVizTables, ensureKpiTables } = require('../../lib/db');
 const { requireAdmin } = require('../../lib/auth');
 const { DATASETS } = require('../../lib/visualization/columns');
-const { saveDebitAwal, saveMeta, saveApatdMeta, savePengambilanTarget, savePengambilanMeta, saveKualitasElevasi, saveKualitasMeta, saveKpi192Meta, saveLevelSumurMeta, saveLevelStatisDinamisMeta, saveKpi18_5Values, saveKpi18_5Meta, saveKpi18_6Meta } = require('../../lib/visualization/kpi');
+const { saveDebitAwal, saveMeta, saveApatdMeta, savePengambilanTarget, savePengambilanMeta, saveKualitasElevasi, saveKualitasMeta, saveKpi192Meta, saveLevelSumurMeta, saveLevelStatisDinamisMeta, saveKpi18_5Values, saveKpi18_5Meta, saveKpi18_6Meta, saveKpiActivityPlanRow } = require('../../lib/visualization/kpi');
 
 function toNumOrNull(v) {
   if (v === undefined || v === null || v === '') return null;
@@ -180,6 +180,17 @@ module.exports = async (req, res) => {
       // (kpi_18_6_meta), label "Mengetahui/ Menyetujui" (lihat kpi.js).
       await ensureKpiTables();
       await saveKpi18_6Meta(req.body);
+      return res.status(200).json({ success: true });
+    }
+    if (kind === 'kpi_activity_plan_row') {
+      // Simpan satu baris Activity Plan (item/grup): kolom manual + nilai %
+      // manual (untuk item manual). Lihat kpi.js.
+      await ensureKpiTables();
+      const { item_key } = req.body;
+      if (!item_key || !String(item_key).trim()) {
+        return res.status(400).json({ error: 'item_key wajib diisi' });
+      }
+      await saveKpiActivityPlanRow(String(item_key).trim(), req.body);
       return res.status(200).json({ success: true });
     }
 

@@ -431,6 +431,17 @@ table.jadwal-table td.rr.real{color:var(--edit-ink);}
 table.jadwal-table td.dt{text-align:center;font-family:'IBM Plex Mono',monospace;font-size:12px;padding:6px 8px;white-space:nowrap;vertical-align:middle;}
 table.jadwal-table td.dt.dash{color:var(--ink-faint);}
 
+/* --- Activity Plan SAB: rekap KPI tahunan, progres per bulan Jan-Jun. --- */
+table.act-table{min-width:1700px;}
+table.act-table td.name{white-space:normal;font-size:12.5px;font-weight:600;padding:5px 9px;vertical-align:middle;}
+table.act-table tr.act-group td{background:var(--primary-pale);font-weight:700;}
+table.act-table td.meta{padding:2px 4px;vertical-align:middle;}
+table.act-table td.meta input.cell{text-align:left;font-family:'Inter',sans-serif;font-size:12px;padding:2px 4px;background:var(--bg);border-radius:4px;}
+table.act-table td.actval{padding:2px 4px;text-align:center;vertical-align:middle;}
+table.act-table td.actval input.cell{text-align:center;font-family:'IBM Plex Mono',monospace;font-size:12px;background:var(--edit-pale);border-radius:4px;color:var(--edit-ink);font-weight:700;}
+table.act-table td.actval.auto{background:var(--primary-pale);font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:600;}
+table.act-table td.actval.empty{background:repeating-linear-gradient(45deg,transparent 0 5px,var(--bg) 5px 10px);color:var(--ink-faint);}
+
 /* Panel "Daftar Sumur & Status Aktif" -- cuma sumur AKTIF yang jadi ANGG. */
 .well-card{margin-bottom:20px;}
 .well-hint{font-size:12.5px;color:var(--ink-soft);line-height:1.5;margin:0 0 14px;}
