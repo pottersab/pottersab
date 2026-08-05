@@ -1,7 +1,7 @@
 const { pool, ensureVizTables, ensureKpiTables } = require('../../lib/db');
 const { requireAdmin } = require('../../lib/auth');
 const { DATASETS } = require('../../lib/visualization/columns');
-const { saveDebitAwal, saveMeta, saveApatdMeta, savePengambilanTarget, savePengambilanMeta, saveKualitasElevasi, saveKualitasMeta, saveKpi192Meta } = require('../../lib/visualization/kpi');
+const { saveDebitAwal, saveMeta, saveApatdMeta, savePengambilanTarget, savePengambilanMeta, saveKualitasElevasi, saveKualitasMeta, saveKpi192Meta, saveLevelSumurMeta } = require('../../lib/visualization/kpi');
 
 function toNumOrNull(v) {
   if (v === undefined || v === null || v === '') return null;
@@ -135,6 +135,14 @@ module.exports = async (req, res) => {
       // ("Mengetahui/ Menyetujui" / "Dibuat Oleh"), lihat kpi.js.
       await ensureKpiTables();
       await saveKpi192Meta(req.body);
+      return res.status(200).json({ success: true });
+    }
+    if (kind === 'kpi_18_1a_meta') {
+      // Keterangan & Penandatangan KPI 18.1a Pengukuran Level Sumur --
+      // tabel sendiri (kpi_18_1a_meta), label "Mengetahui/Menyetujui :" /
+      // "Di buat oleh :" (lihat kpi.js).
+      await ensureKpiTables();
+      await saveLevelSumurMeta(req.body);
       return res.status(200).json({ success: true });
     }
 

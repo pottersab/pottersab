@@ -394,6 +394,10 @@ table.mon-table td.ke-empty{
 }
 table.mon-table tr.mon-block td.no{font-size:14px;color:var(--ink);}
 
+/* --- 18.1a Pengukuran Level Sumur: tabel ANGG/REAL/±/% per bulan (angka
+   jumlah sumur) -- pakai kelas .kpi yang sama dengan 18.3b. --- */
+table.kpi td .cellnum{font-family:'IBM Plex Mono',monospace;font-size:13px;}
+
 /* ===== Navbar bersama PTMB (disalin dari apps/riwayat-air-baku/style.css) ===== */
 .ptmb-navbar{
   position:sticky; top:0; z-index:999;

@@ -5,7 +5,7 @@ const { checkVizAccess } = require('../../lib/visualization/viz-auth');
 const { buildDummyRows, buildDummyWideSingleRows, buildDummySumurDebitRows, buildDummySumurLevelRows } = require('../../lib/visualization/dummy');
 const { fetchRealRows, fetchWideSingleRows, fetchSumurWells, fetchSumurDebitRows, fetchSumurLevelRows } = require('../../lib/visualization/repo');
 const { logViewerAction } = require('../../lib/visualization/access-log');
-const { getKpiUkurDebitData, buildKpiExcelWorkbook, getKpiApatdData, buildKpiApatdExcelWorkbook, getKpiPengambilanData, buildKpiPengambilanExcelWorkbook, getKpiKualitasData, buildKpiKualitasExcelWorkbook, getKpi192Data, buildKpi192ExcelWorkbook } = require('../../lib/visualization/kpi');
+const { getKpiUkurDebitData, buildKpiExcelWorkbook, getKpiApatdData, buildKpiApatdExcelWorkbook, getKpiPengambilanData, buildKpiPengambilanExcelWorkbook, getKpiKualitasData, buildKpiKualitasExcelWorkbook, getKpi192Data, buildKpi192ExcelWorkbook, getKpiLevelSumurData, buildKpiLevelSumurExcelWorkbook } = require('../../lib/visualization/kpi');
 
 module.exports = async (req, res) => {
   if (req.method !== 'GET') {
@@ -136,6 +136,31 @@ module.exports = async (req, res) => {
     const buffer = await buildKpi192ExcelWorkbook(result);
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename="19.2 Evaluasi Hasil Monitoring ${result.monthTitle}.xlsx"`);
+    return res.status(200).send(Buffer.from(buffer));
+  }
+
+  // KPI 18.1a Pengukuran Level Sumur -- laporan JUMLAH sumur per instalasi
+  // (ANGG = sumur aktif, REAL = sumur terukur), dihitung ulang dari
+  // sumur_wells/sumur_level_readings. Ditangani terpisah juga, sama seperti
+  // KPI lain (batas 12 Serverless Function -- lihat kpi.js).
+  if (dataType === 'kpi_18_1a') {
+    await ensureKpiTables();
+    await ensureVizTables();
+    const access = await checkVizAccess(req);
+    const result = await getKpiLevelSumurData(access, req.query.tahun);
+    return res.status(200).json(result);
+  }
+
+  if (dataType === 'kpi_18_1a_xlsx') {
+    await ensureKpiTables();
+    await ensureVizTables();
+    const user = requireAdmin(req, res);
+    if (!user) return;
+    const result = await getKpiLevelSumurData({ granted: true, kind: 'admin' }, req.query.tahun);
+    if (req.query.tanggal) result.meta.signPlaceDate = req.query.tanggal;
+    const buffer = await buildKpiLevelSumurExcelWorkbook(result);
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="18.1A Pengukuran Level Sumur ${result.year}.xlsx"`);
     return res.status(200).send(Buffer.from(buffer));
   }
 
