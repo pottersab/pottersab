@@ -36,6 +36,10 @@ module.exports = async (req, res) => {
     const user = requireAdmin(req, res);
     if (!user) return;
     const result = await getKpiUkurDebitData({ granted: true, kind: 'admin' }, req.query.tahun);
+    // Tanggal tanda tangan defaultnya hari ini, tapi boleh ditimpa manual dari
+    // halaman (field-nya bisa diedit) -- meta['1'] & meta['2'] sama-sama
+    // menunjuk objek yang sama, jadi cukup timpa sekali.
+    if (req.query.tanggal) result.meta['1'].signPlaceDate = req.query.tanggal;
     const buffer = await buildKpiExcelWorkbook(result);
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename="18.2 Ukur Debit ${result.year}.xlsx"`);

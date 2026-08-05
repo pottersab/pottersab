@@ -282,17 +282,18 @@
 
   function renderSign() {
     var meta = currentMeta();
-    // Tanggal selalu hari ini, dari server (lihat todaySignDate di
-    // lib/visualization/kpi.js) -- tidak pernah disimpan, jadi selalu
-    // read-only di sini supaya tidak ada yang mengira ini bisa diedit lalu
-    // bingung kenapa tidak tersimpan.
+    // Tanggal defaultnya hari ini (dari server, lihat todaySignDate di
+    // lib/visualization/kpi.js), tapi tetap bisa diedit manual -- misalnya
+    // untuk laporan yang disiapkan sehari sebelum dicetak. Perubahannya
+    // dipakai pas Unduh Excel (lihat downloadBtn), tapi sengaja TIDAK
+    // disimpan ke database -- supaya kembali ke hari ini lagi tiap buka
+    // halaman ini, bukan "nyangkut" di tanggal yang pernah diketik.
     document.getElementById('signDate').value = meta.signPlaceDate || '';
-    document.getElementById('signDate').readOnly = true;
     document.getElementById('role1').value = meta.roleLeft || '';
     document.getElementById('name1').value = meta.nameLeft || '';
     document.getElementById('role2').value = meta.roleRight || '';
     document.getElementById('name2').value = meta.nameRight || '';
-    ['role1', 'name1', 'role2', 'name2'].forEach(function (id) {
+    ['signDate', 'role1', 'name1', 'role2', 'name2'].forEach(function (id) {
       document.getElementById(id).readOnly = !isAdmin;
     });
   }
@@ -427,7 +428,10 @@
     btn.disabled = true; btn.textContent = 'Menyiapkan Excel...';
     try {
       var token = currentAccessToken();
-      var res = await fetch('/api/visualization/data?dataType=kpi_ukur_debit_xlsx&tahun=' + encodeURIComponent(state.year), {
+      var tanggalTtd = document.getElementById('signDate').value;
+      var apiUrl = '/api/visualization/data?dataType=kpi_ukur_debit_xlsx&tahun=' + encodeURIComponent(state.year) +
+        (tanggalTtd ? '&tanggal=' + encodeURIComponent(tanggalTtd) : '');
+      var res = await fetch(apiUrl, {
         headers: { 'Authorization': 'Bearer ' + token }
       });
       if (!res.ok) {
