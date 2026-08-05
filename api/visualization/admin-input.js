@@ -1,7 +1,7 @@
 const { pool, ensureVizTables, ensureKpiTables } = require('../../lib/db');
 const { requireAdmin } = require('../../lib/auth');
 const { DATASETS } = require('../../lib/visualization/columns');
-const { saveDebitAwal, saveMeta, saveApatdMeta, savePengambilanTarget, savePengambilanMeta } = require('../../lib/visualization/kpi');
+const { saveDebitAwal, saveMeta, saveApatdMeta, savePengambilanTarget, savePengambilanMeta, saveKualitasElevasi, saveKualitasMeta } = require('../../lib/visualization/kpi');
 
 function toNumOrNull(v) {
   if (v === undefined || v === null || v === '') return null;
@@ -103,6 +103,30 @@ module.exports = async (req, res) => {
     if (kind === 'pengambilan_meta') {
       await ensureKpiTables();
       await savePengambilanMeta(req.body);
+      return res.status(200).json({ success: true });
+    }
+    if (kind === 'kualitas_elevasi') {
+      // Status ON/OFF pintu elevasi 3/5/7 KPI 18.4 Laporan Kualitas Air Baku
+      // -- diedit langsung di panel harian halaman itu (bukan lewat Input
+      // Massal), satu toggle sekali klik/POST. Lihat kualitas_pintu_elevasi
+      // di lib/db.js & saveKualitasElevasi di lib/visualization/kpi.js.
+      await ensureVizTables();
+      const { tanggal, lokasi, elevasi, on } = req.body;
+      if (!tanggal || !/^\d{4}-\d{2}-\d{2}$/.test(tanggal)) {
+        return res.status(400).json({ error: 'tanggal (YYYY-MM-DD) wajib diisi' });
+      }
+      if (!['manggar', 'teritip'].includes(lokasi)) {
+        return res.status(400).json({ error: 'lokasi harus manggar atau teritip' });
+      }
+      if (![3, 5, 7].includes(Number(elevasi))) {
+        return res.status(400).json({ error: 'elevasi harus 3, 5, atau 7' });
+      }
+      await saveKualitasElevasi(tanggal, lokasi, Number(elevasi), !!on);
+      return res.status(200).json({ success: true });
+    }
+    if (kind === 'kualitas_meta') {
+      await ensureKpiTables();
+      await saveKualitasMeta(req.body);
       return res.status(200).json({ success: true });
     }
 

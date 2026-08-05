@@ -326,6 +326,30 @@ table.kpi td.angg input{color:var(--edit-ink);font-weight:700;}
 .dl-btn-admin.enabled{background:var(--primary);opacity:1;cursor:pointer;}
 .dl-btn-admin.enabled:hover{background:var(--ink);}
 
+/* --- Panel "Status Pintu Air — Elevasi (Harian)" (18.4 Laporan Kualitas Air
+   Baku): pilih bulan + tabel harian dengan toggle ON/OFF per elevasi per
+   lokasi, admin-editable langsung (bukan lewat panel Pengaturan seperti
+   target-grid di atas -- di sini tiap SEL punya switch sendiri). --- */
+.elevasi-controls{display:flex;align-items:center;gap:10px;margin-bottom:12px;}
+.elevasi-controls label{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-soft);font-weight:600;}
+.elevasi-controls select{
+  font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:600;
+  padding:7px 10px;border-radius:8px;border:1px solid var(--line-muted);
+  background:var(--bg);color:var(--ink);cursor:pointer;
+}
+table.elevasi-table{border-collapse:separate;border-spacing:0;width:100%;min-width:520px;font-family:'IBM Plex Mono',monospace;}
+table.elevasi-table thead th{
+  background:var(--bg);border-bottom:1px solid var(--line-muted);border-right:1px solid var(--line-muted);
+  padding:6px 8px;font-size:10.5px;font-weight:700;color:var(--ink-soft);
+  text-transform:uppercase;letter-spacing:.04em;text-align:center;white-space:nowrap;font-family:'Inter',sans-serif;
+}
+table.elevasi-table tbody td{border-bottom:1px solid var(--line-muted);border-right:1px solid var(--line-muted);padding:6px 8px;text-align:center;}
+table.elevasi-table td.no{color:var(--ink-faint);font-weight:600;width:70px;}
+table.elevasi-table td.elevasi-cell{display:table-cell;}
+.switch.small{width:30px;height:17px;margin:0 auto;}
+.switch.small::after{width:13px;height:13px;}
+.switch.small.on::after{left:15px;}
+
 /* ===== Navbar bersama PTMB (disalin dari apps/riwayat-air-baku/style.css) ===== */
 .ptmb-navbar{
   position:sticky; top:0; z-index:999;
