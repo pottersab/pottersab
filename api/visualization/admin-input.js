@@ -1,7 +1,7 @@
 const { pool, ensureVizTables, ensureKpiTables } = require('../../lib/db');
 const { requireAdmin } = require('../../lib/auth');
 const { DATASETS } = require('../../lib/visualization/columns');
-const { saveDebitAwal, saveMeta, saveApatdMeta, savePengambilanTarget, savePengambilanMeta, saveKualitasElevasi, saveKualitasMeta, saveKpi192Meta, saveLevelSumurMeta, saveLevelStatisDinamisMeta } = require('../../lib/visualization/kpi');
+const { saveDebitAwal, saveMeta, saveApatdMeta, savePengambilanTarget, savePengambilanMeta, saveKualitasElevasi, saveKualitasMeta, saveKpi192Meta, saveLevelSumurMeta, saveLevelStatisDinamisMeta, saveKpi18_5Values, saveKpi18_5Meta } = require('../../lib/visualization/kpi');
 
 function toNumOrNull(v) {
   if (v === undefined || v === null || v === '') return null;
@@ -151,6 +151,28 @@ module.exports = async (req, res) => {
       // "Dibuat oleh" (lihat kpi.js).
       await ensureKpiTables();
       await saveLevelStatisDinamisMeta(req.body);
+      return res.status(200).json({ success: true });
+    }
+    if (kind === 'kpi_18_5_values') {
+      // Simpan ANGG/REAL KPI 18.5 (input manual per periode + item). Admin
+      // mengisi langsung di halaman peralatan.html.
+      await ensureKpiTables();
+      const { periode, item_no, angg, real } = req.body;
+      if (!periode || !/^\d{4}-\d{2}$/.test(String(periode))) {
+        return res.status(400).json({ error: 'periode (YYYY-MM) wajib diisi' });
+      }
+      const it = Number(item_no);
+      if (!Number.isInteger(it) || it < 1 || it > 5) {
+        return res.status(400).json({ error: 'item_no harus 1-5' });
+      }
+      await saveKpi18_5Values(periode, it, angg, real);
+      return res.status(200).json({ success: true });
+    }
+    if (kind === 'kpi_18_5_meta') {
+      // Keterangan & Penandatangan KPI 18.5 -- tabel sendiri (kpi_18_5_meta),
+      // label "Mengetahui/Menyetujui :" / "Direkap Oleh" (lihat kpi.js).
+      await ensureKpiTables();
+      await saveKpi18_5Meta(req.body);
       return res.status(200).json({ success: true });
     }
 

@@ -5,7 +5,7 @@ const { checkVizAccess } = require('../../lib/visualization/viz-auth');
 const { buildDummyRows, buildDummyWideSingleRows, buildDummySumurDebitRows, buildDummySumurLevelRows } = require('../../lib/visualization/dummy');
 const { fetchRealRows, fetchWideSingleRows, fetchSumurWells, fetchSumurDebitRows, fetchSumurLevelRows } = require('../../lib/visualization/repo');
 const { logViewerAction } = require('../../lib/visualization/access-log');
-const { getKpiUkurDebitData, buildKpiExcelWorkbook, getKpiApatdData, buildKpiApatdExcelWorkbook, getKpiPengambilanData, buildKpiPengambilanExcelWorkbook, getKpiKualitasData, buildKpiKualitasExcelWorkbook, getKpi192Data, buildKpi192ExcelWorkbook, getKpiLevelSumurData, buildKpiLevelSumurExcelWorkbook, getKpiLevelStatisDinamisData, buildKpiLevelStatisDinamisExcelWorkbook } = require('../../lib/visualization/kpi');
+const { getKpiUkurDebitData, buildKpiExcelWorkbook, getKpiApatdData, buildKpiApatdExcelWorkbook, getKpiPengambilanData, buildKpiPengambilanExcelWorkbook, getKpiKualitasData, buildKpiKualitasExcelWorkbook, getKpi192Data, buildKpi192ExcelWorkbook, getKpiLevelSumurData, buildKpiLevelSumurExcelWorkbook, getKpiLevelStatisDinamisData, buildKpiLevelStatisDinamisExcelWorkbook, getKpi18_5Data, buildKpi18_5ExcelWorkbook } = require('../../lib/visualization/kpi');
 
 module.exports = async (req, res) => {
   if (req.method !== 'GET') {
@@ -185,6 +185,30 @@ module.exports = async (req, res) => {
     const buffer = await buildKpiLevelStatisDinamisExcelWorkbook(result);
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename="18.1B Pengukuran Statis Dinamis ${result.year}.xlsx"`);
+    return res.status(200).send(Buffer.from(buffer));
+  }
+
+  // KPI 18.5 Monitoring Kondisi Peralatan -- laporan INPUT MANUAL (ANGG/REAL
+  // diisi admin, disimpan di kpi_18_5_monitoring), ±/% dihitung otomatis.
+  // Ditangani terpisah juga, sama seperti KPI lain (lihat kpi.js).
+  if (dataType === 'kpi_18_5') {
+    await ensureKpiTables();
+    await ensureVizTables();
+    const access = await checkVizAccess(req);
+    const result = await getKpi18_5Data(access, req.query.tahun);
+    return res.status(200).json(result);
+  }
+
+  if (dataType === 'kpi_18_5_xlsx') {
+    await ensureKpiTables();
+    await ensureVizTables();
+    const user = requireAdmin(req, res);
+    if (!user) return;
+    const result = await getKpi18_5Data({ granted: true, kind: 'admin' }, req.query.tahun);
+    if (req.query.tanggal) result.meta.signPlaceDate = req.query.tanggal;
+    const buffer = await buildKpi18_5ExcelWorkbook(result);
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="18.5 Monitoring Kondisi Peralatan ${result.tahun}.xlsx"`);
     return res.status(200).send(Buffer.from(buffer));
   }
 

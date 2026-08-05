@@ -414,6 +414,14 @@ table.sd-table td.sdv.edit{background:var(--edit-pale);color:var(--edit-ink);fon
 table.sd-table td.empty{background:repeating-linear-gradient(45deg,transparent 0 5px,var(--bg) 5px 10px);}
 table.sd-table tr.grouphead td{white-space:nowrap;}
 
+/* --- 18.5 Monitoring Kondisi Peralatan: ANGG & REAL diisi MANUAL (input
+   kuning, bisa diedit admin), ± & % otomatis. --- */
+table.peralatan-table{min-width:900px;}
+table.peralatan-table td.angg .cellwrap,
+table.peralatan-table td.real .cellwrap{background:var(--edit-pale);border-left:2px solid var(--edit);justify-content:center;}
+table.peralatan-table input.inpval{color:var(--edit-ink);font-weight:700;text-align:center;width:100%;}
+table.peralatan-table td.name{white-space:nowrap;font-size:12.5px;font-weight:600;}
+
 /* Panel "Daftar Sumur & Status Aktif" -- cuma sumur AKTIF yang jadi ANGG. */
 .well-card{margin-bottom:20px;}
 .well-hint{font-size:12.5px;color:var(--ink-soft);line-height:1.5;margin:0 0 14px;}
