@@ -183,6 +183,8 @@
     updateLockBanner();
     updateDownloadButton();
     renderTable();
+    var sd = document.getElementById('signDate');
+    if (sd && !sd.value && state.signPlaceDate) sd.value = state.signPlaceDate;
   }
 
   function toast(msg) {
@@ -230,7 +232,9 @@
     btn.disabled = true; btn.textContent = 'Menyiapkan Excel...';
     try {
       var token = currentAccessToken();
-      var apiUrl = '/api/visualization/data?dataType=kpi_activity_plan_xlsx&tahun=' + encodeURIComponent(state.tahun);
+      var tanggalTtd = document.getElementById('signDate').value;
+      var apiUrl = '/api/visualization/data?dataType=kpi_activity_plan_xlsx&tahun=' + encodeURIComponent(state.tahun) +
+        (tanggalTtd ? '&tanggal=' + encodeURIComponent(tanggalTtd) : '');
       var res = await fetch(apiUrl, { headers: { 'Authorization': 'Bearer ' + token } });
       if (!res.ok) {
         var d = await res.json().catch(function () { return {}; });

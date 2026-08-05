@@ -249,6 +249,7 @@ module.exports = async (req, res) => {
     const user = requireAdmin(req, res);
     if (!user) return;
     const result = await getKpiActivityPlanData({ granted: true, kind: 'admin' }, req.query.tahun);
+    if (req.query.tanggal) result.signPlaceDate = req.query.tanggal;
     const buffer = await buildKpiActivityPlanExcelWorkbook(result);
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename="Activity Plan SAB ${result.tahun}.xlsx"`);
