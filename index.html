@@ -276,12 +276,14 @@ header{
    tidak mengganggu .hub-deck (kartu beranda) yang punya aturan sendiri. */
 .hub-grid .hub-card p{flex:0 1 auto}
 .hub-grid .hub-card .open{margin-top:auto}
-/* Semua kartu hub Tools/Data/Development dibuat seragam tingginya: baris grid
-   dibagi rata (grid-auto-rows:1fr) + min-height, supaya tidak ada kartu yang
-   tampak lebih besar/kecil dari yang lain (mis. kartu dengan .last-input di
-   Development lebih tinggi). Dikecualikan dari .hub-deck (kartu beranda). */
-.hub-grid:not(.hub-deck){grid-auto-rows:1fr;}
-.hub-grid:not(.hub-deck) .hub-card{min-height:280px;}
+/* Semua kartu hub Tools/Data/Development dibuat seragam tingginya: min-height
+   cukup + deskripsi di-clamp 3 baris, supaya kartu yang isinya panjang (mis.
+   LPJ) atau punya baris .last-input tidak tampak lebih tinggi. Dikecualikan
+   dari .hub-deck (kartu beranda). */
+.hub-grid:not(.hub-deck) .hub-card{min-height:300px;}
+.hub-grid:not(.hub-deck) .hub-card p{
+  display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden;
+}
 
 .tag-row{display:flex;gap:6px;flex-wrap:wrap}
 .tag{
