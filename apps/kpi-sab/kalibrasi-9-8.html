@@ -15,6 +15,17 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
+<style>
+  /* Cetak PDF identik dengan hasil Excel -- container khusus yang hanya
+     tampil saat print; @page = kertas legal (215.9 x 355.6 mm), portrait. */
+  #printHost{display:none;}
+  @media print{
+    body{background:#fff;}
+    body > *{display:none !important;}
+    #printHost{display:block !important;}
+    @page{size:215.9mm 355.6mm;margin:12mm 14mm;}
+  }
+</style>
 </head>
 <body>
 <header class="ptmb-navbar">
@@ -129,6 +140,7 @@ function doLogout(){
     </div>
     <div class="spacer"></div>
     <button class="dl-btn dl-btn-ghost" id="fetchBtn">🌐 Muat ulang</button>
+    <button class="dl-btn dl-btn-ghost" id="printBtn">🖨️ Cetak PDF</button>
     <button class="dl-btn dl-btn-admin" id="downloadBtn">🔒 Unduh Excel (Admin)</button>
   </div>
 
@@ -198,6 +210,8 @@ function doLogout(){
 </div>
 
 <div class="toast" id="toast"></div>
+
+<div id="printHost"></div>
 
 <script defer src="kalibrasi-9-8.js"></script>
 <script defer src="../../assets/js/nav-badge.js"></script>
