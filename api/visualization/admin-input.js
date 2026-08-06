@@ -1,7 +1,7 @@
 const { pool, ensureVizTables, ensureKpiTables } = require('../../lib/db');
 const { requireAdmin } = require('../../lib/auth');
 const { DATASETS } = require('../../lib/visualization/columns');
-const { saveDebitAwal, saveMeta, saveApatdMeta, savePengambilanTarget, savePengambilanMeta, saveKualitasElevasi, saveKualitasMeta, saveKpi192Meta, saveLevelSumurMeta, saveLevelStatisDinamisMeta, saveKpi18_5Values, saveKpi18_5Meta, saveKpi18_6Meta, saveKpiActivityPlanRow, saveActivityPlanMeta, saveJadwalKegiatanMeta, saveK92Meta, saveK93Meta, saveK93Disadap, saveK94Meta, saveK94Items, saveK97Items, saveK97Meta, saveK95Items, saveK95Meta } = require('../../lib/visualization/kpi');
+const { saveDebitAwal, saveMeta, saveApatdMeta, savePengambilanTarget, savePengambilanMeta, saveKualitasElevasi, saveKualitasMeta, saveKpi192Meta, saveLevelSumurMeta, saveLevelStatisDinamisMeta, saveKpi18_5Values, saveKpi18_5Meta, saveKpi18_6Meta, saveKpiActivityPlanRow, saveActivityPlanMeta, saveJadwalKegiatanMeta, saveK92Meta, saveK93Meta, saveK93Disadap, saveK94Meta, saveK94Items, saveK97Items, saveK97Meta, saveK95Items, saveK95Meta, saveK98Items, saveK98Meta } = require('../../lib/visualization/kpi');
 
 function toNumOrNull(v) {
   if (v === undefined || v === null || v === '') return null;
@@ -289,6 +289,24 @@ module.exports = async (req, res) => {
       // kode dokumen & Halaman 9.5 -- global, lihat kpi.js.
       await ensureKpiTables();
       await saveK95Meta(req.body);
+      return res.status(200).json({ success: true });
+    }
+    if (kind === 'kpi_9_8_items') {
+      // Isian manual 9.8 Laporan Jadwal Kalibrasi per bulan: rows array
+      // [{no, namaAlat, noSeri, kodeInventaris, terakhir, berikutnya, keterangan}].
+      await ensureKpiTables();
+      const { bulan, rows } = req.body || {};
+      if (!bulan || !/^\d{4}-\d{2}$/.test(bulan)) {
+        return res.status(400).json({ error: 'bulan wajib diisi dengan format YYYY-MM' });
+      }
+      await saveK98Items(bulan, Array.isArray(rows) ? rows : []);
+      return res.status(200).json({ success: true });
+    }
+    if (kind === 'kpi_9_8_meta') {
+      // Penandatangan 2 kolom (Mengetahui/Menyetujui + Dibuat oleh), kode
+      // dokumen, Lokasi & Halaman 9.8 -- global, lihat kpi.js.
+      await ensureKpiTables();
+      await saveK98Meta(req.body);
       return res.status(200).json({ success: true });
     }
 
