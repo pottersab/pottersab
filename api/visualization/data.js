@@ -16,6 +16,14 @@ module.exports = async (req, res) => {
 
   const { dataType } = req.query;
 
+  // KPI Sumber Air Baku KHUSUS ADMIN (permintaan user): semua dataType kpi_*
+  // butuh login admin -- baik lihat data maupun unduh. Berkas kpi-admin-guard.js
+  // menjaga sisi antarmuka; di sini penegakan yang sebenarnya (non-admin 403).
+  if (dataType && /^kpi_/.test(dataType)) {
+    const user = requireAdmin(req, res);
+    if (!user) return;
+  }
+
   // KPI 18.2 Ukur Debit gabungan 5 instalasi -- bukan satu baris di DATASETS
   // (bentuknya bukan 'wide'/'sumur-debit' tunggal), jadi ditangani terpisah
   // di sini sebelum masuk jalur DATASETS biasa. Lihat lib/visualization/kpi.js
