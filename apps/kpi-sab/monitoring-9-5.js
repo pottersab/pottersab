@@ -71,11 +71,17 @@
     document.getElementById('name1').value = meta.nameMengetahui || '';
     document.getElementById('role2').value = meta.roleMenyetujui || '';
     document.getElementById('name2').value = meta.nameMenyetujui || '';
-    document.getElementById('pelaksana').value = meta.pelaksana || '';
+    // Pelaksana: simpan polos (nama per baris), form = 3 kolom nama terpisah.
+    var pel = String(meta.pelaksana || '').split('\n').map(function (l) {
+      return l.replace(/^\d+\.\s*/, '').replace(/[.…\s]+$/, '').trim();
+    });
+    document.getElementById('pelaksana1').value = pel[0] || '';
+    document.getElementById('pelaksana2').value = pel[1] || '';
+    document.getElementById('pelaksana3').value = pel[2] || '';
     document.getElementById('footerCode').value = meta.footerCode || '';
     document.getElementById('halInput').value = meta.halaman || '1';
     document.getElementById('dariInput').value = meta.totalHalaman || '1';
-    ['role1', 'name1', 'role2', 'name2', 'pelaksana', 'footerCode', 'halInput', 'dariInput'].forEach(function (id) {
+    ['role1', 'name1', 'role2', 'name2', 'pelaksana1', 'pelaksana2', 'pelaksana3', 'footerCode', 'halInput', 'dariInput'].forEach(function (id) {
       document.getElementById(id).readOnly = !isAdmin;
     });
   }
@@ -147,13 +153,18 @@
     btn.disabled = true;
     status.textContent = 'Menyimpan...';
     try {
+      var pel = [
+        document.getElementById('pelaksana1').value.trim(),
+        document.getElementById('pelaksana2').value.trim(),
+        document.getElementById('pelaksana3').value.trim()
+      ].filter(Boolean).join('\n');
       var body = {
         kind: 'kpi_9_5_meta',
         roleMengetahui: document.getElementById('role1').value,
         nameMengetahui: document.getElementById('name1').value,
         roleMenyetujui: document.getElementById('role2').value,
         nameMenyetujui: document.getElementById('name2').value,
-        pelaksana: document.getElementById('pelaksana').value,
+        pelaksana: pel,
         footerCode: document.getElementById('footerCode').value,
         halaman: document.getElementById('halInput').value.trim() || '1',
         totalHalaman: document.getElementById('dariInput').value.trim() || '1'
