@@ -1497,9 +1497,18 @@ function validateBeforeDownload(){
   return true;
 }
 
+// Nama dokumen (riwayat & file unduhan) mengikuti format yang dipakai di
+// kantor: "P2K3_<Bulan>-<tahun>" (mis. "P2K3_Agustus-2026"), diambil dari
+// tanggal laporan.
+function namaP2k3Dokumen(ext){
+  const [y, m] = String(state.tanggalLaporan || '').split('-').map(Number);
+  const bln = (y && m && BULAN[m-1]) ? `${BULAN[m-1]}-${y}` : (state.tanggalLaporan || '');
+  return bln ? `P2K3_${bln}.${ext}` : `P2K3_tanpa-tanggal.${ext}`;
+}
+
 document.getElementById('downloadPdfBtn').addEventListener('click', ()=>{
   if(!validateBeforeDownload()) return;
-  saveHistoryEntry('Laporan P2K3', `Laporan_P2K3_${(state.namaInstalasi||'').replace(/[^a-z0-9]+/gi,'_')||'draft'}_${state.tanggalLaporan}.pdf`, state);
+  saveHistoryEntry('Laporan P2K3', namaP2k3Dokumen('pdf'), state);
   window.print();
 });
 
@@ -1510,7 +1519,7 @@ document.getElementById('downloadBtn').addEventListener('click', ()=>{
     const blob = new Blob([bytes], {type:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    const fname = `Laporan_P2K3_${(state.namaInstalasi||'').replace(/[^a-z0-9]+/gi,'_')||'draft'}_${state.tanggalLaporan}.docx`;
+    const fname = namaP2k3Dokumen('docx');
     a.href = url; a.download = fname;
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
     setTimeout(()=>URL.revokeObjectURL(url), 4000);

@@ -1117,7 +1117,7 @@ function loadRiwayatLokal(){
       if(h.details) return h;
       return {
         id: h.key || `lama-${h.nomorUrut}-${h.tanggal}`,
-        documentName: `SPD_${padNomor(h.nomorUrut)}_${h.tanggal}.xlsx`,
+        documentName: namaDokumenSPD({ nomorUrut: h.nomorUrut, tanggal: h.tanggal, items: h.items || [], keterangan: h.keterangan || '' }),
         createdAt: h.savedAt || '',
         createdBy: '',
         details: {
@@ -1214,6 +1214,45 @@ function cetak(html){
 // tampil di formulir. Sesudah suratnya tercatat di riwayat, nomor berikutnya
 // diambil ulang dari riwayat (nomor terakhir + 1), jadi form dan riwayat
 // tidak mungkin melenceng satu sama lain.
+
+// Nama dokumen di Riwayat Surat: "SPD_<no urut>_<uraian>-<bulan>-<tahun>"
+// (mis. "SPD_45_Belanja bahan kimia-Agustus-2026"). Uraian diambil dari item
+// pertama yang terisi; kalau kosong, jatuh ke nama file seperti biasa.
+function sanitasiNamaFileSPD(teks){
+  return String(teks || '')
+    .replace(/[\r\n]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .replace(/[<>:"/\\|?*]+/g, '')
+    .trim()
+    .slice(0, 120);
+}
+// Nama dokumen SPD tanpa ekstensi (dipakai riwayat & jadi basis nama file
+// unduhan): "SPD_<no urut>_<uraian>-<bulan>-<tahun>". Uraian diambil dari
+// item pertama yang terisi; kalau kosong, jatuh ke nama teknis.
+function namaDokumenSPD(d){
+  const nomor = padNomor(d && d.nomorUrut);
+  let uraian = '';
+  if(d && Array.isArray(d.items)){
+    for(const it of d.items){
+      if(it && String(it.uraian || '').trim()){
+        uraian = sanitasiNamaFileSPD(it.uraian);
+        break;
+      }
+    }
+  }
+  if(!uraian && d && String(d.keterangan || '').trim()){
+    uraian = sanitasiNamaFileSPD(d.keterangan);
+  }
+  const [y, m] = String((d && d.tanggal) || '').split('-').map(Number);
+  const bln = (m && y) ? `${BULAN_ID[m-1]}-${y}` : '';
+  if(nomor && uraian && bln) return `SPD_${nomor}_${uraian}-${bln}`;
+  return `SPD_${nomor}_${String((d && d.tanggal) || 'tanpa-tanggal')}`;
+}
+// Nama file unduhan SPD = nama dokumen + ekstensi.
+function namaFileSPD(d, ext){
+  return `${namaDokumenSPD(d)}.${ext}`;
+}
+
 async function prosesUnduh(format){
   if(!validasi()) return;
   const btn = document.getElementById(format === 'pdf' ? 'btnUnduhPdf' : 'btnUnduhExcel');
@@ -1221,7 +1260,8 @@ async function prosesUnduh(format){
   const nomorDipakai = state.nomorUrut;
   try{
     const d = currentDoc();
-    const fname = `SPD_${padNomor(nomorDipakai)}_${state.tanggal}.${format === 'pdf' ? 'pdf' : 'xlsx'}`;
+    // Nama file unduhan mengikuti nama dokumen (SPD_no_uraian-bulan-tahun).
+    const fname = namaFileSPD(d, format === 'pdf' ? 'pdf' : 'xlsx');
     // File yang diunduh selalu berisi isian apa adanya -- bayangan contoh
     // untuk viewer tidak pernah ikut tercetak.
     if(format === 'pdf') cetak(docHtml(d, { tanpaContoh:true }));
@@ -1233,7 +1273,7 @@ async function prosesUnduh(format){
       // menggandakan barisnya.
       const idLokal = `${padNomor(nomorDipakai)}__${state.tanggal}`;
       riwayat = riwayat.filter(h=>String(h.id) !== idLokal);
-      riwayat.unshift({ id: idLokal, documentName: fname, createdAt: new Date().toISOString(), createdBy: '', details: d });
+      riwayat.unshift({ id: idLokal, documentName: namaDokumenSPD(d), createdAt: new Date().toISOString(), createdBy: '', details: d });
       saveRiwayatLokal();
       renderHistory();
       setStatus(`Berhasil diunduh: ${fname}`, 'ok');
@@ -1242,7 +1282,7 @@ async function prosesUnduh(format){
     }
 
     setStatus('Mencatat ke riwayat…');
-    await saveHistoryEntry('SPD', fname, d);
+    await saveHistoryEntry('SPD', namaDokumenSPD(d), d);
     await muatRiwayat();
 
     // siap untuk SPD berikutnya -- isi surat dibiarkan supaya admin bisa

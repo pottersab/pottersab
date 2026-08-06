@@ -1618,6 +1618,31 @@ function persistAllPersons(){
   rememberPerson(state.mengetahuiNama, state.mengetahuiJabatan);
 }
 
+/* Nama dokumen di Riwayat Surat: prioritas Sub Judul, kalau kosong pakai isi
+   "Telah Melakukan Pemeriksaan Pada" (yang hampir selalu terisi, apalagi
+   otomatis dari laporan yang dipilih), kalau dua-duanya kosong baru jatuh ke
+   nama file. Ditebar supaya nama di riwayat tidak pernah menjadi
+   "Berita_Acara_45_tanggal.docx" mentah kalau subjudulnya lupa diisi. */
+function sanitasiNamaDokumen(teks){
+  return String(teks || '')
+    .replace(/[\r\n]+/g, ' ')        // baris baru -> spasi
+    .replace(/\s+/g, ' ')            // banyak spasi -> satu
+    .replace(/[<>:"/\\|?*]+/g, '')   // karakter terlarang nama file
+    .trim()
+    .slice(0, 120);                  // batasi panjang nama
+}
+// Nama dokumen Berita Acara (dipakai untuk riwayat & nama file unduhan):
+// prioritas Sub Judul, kalau kosong pakai isi "Telah Melakukan Pemeriksaan
+// Pada", kalau dua-duanya kosong baru nama teknis. Tanpa ekstensi -- ekstensi
+// ditambahkan di tempat pemakaian (.docx / .pdf).
+function namaDokumenBA(){
+  const judul = String(state.subjudul || '').trim();
+  if(judul) return `${state.nomorUrut}_${judul}`;
+  const pemeriksaan = sanitasiNamaDokumen(state.periksaPada);
+  if(pemeriksaan) return `${state.nomorUrut}_${pemeriksaan}`;
+  return `Berita_Acara_${state.nomorUrut}_${state.tanggalSurat}`;
+}
+
 document.getElementById('downloadBtn').addEventListener('click', ()=>{
   if(!validateBeforeDownload()) return;
   try{
@@ -1625,15 +1650,15 @@ document.getElementById('downloadBtn').addEventListener('click', ()=>{
     const blob = new Blob([bytes], {type:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    const fname = `Berita_Acara_${state.nomorUrut}_${state.tanggalSurat}.docx`;
+    // Nama file unduhan mengikuti nama dokumen (nomor + subjudul / periksa
+    // pada), sama seperti yang tampil di Riwayat Surat.
+    const docName = namaDokumenBA();
+    const fname = docName + '.docx';
     a.href=url; a.download=fname;
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
     setTimeout(()=>URL.revokeObjectURL(url),4000);
     persistAllPersons();
-    // Nama dokumen di Riwayat Surat pakai nomor urut + subjudul (bukan nama
-    // file unduhan) supaya lebih gampang dikenali di daftar riwayat -- kalau
-    // subjudul kosong, tetap pakai nama file sebagai fallback.
-    saveHistoryEntry('Berita Acara', state.subjudul ? `${state.nomorUrut}_${state.subjudul}` : fname, { state: state, photos: photos })
+    saveHistoryEntry('Berita Acara', docName, { state: state, photos: photos })
       .then(entry => finalkanDraft(entry && entry.id));
     setStatus('Berhasil diunduh: '+fname, false);
   }catch(err){
@@ -1653,7 +1678,7 @@ document.getElementById('pdfBtn').addEventListener('click', ()=>{
   );
   if(!ok) return;
   persistAllPersons();
-  saveHistoryEntry('Berita Acara', state.subjudul ? `${state.nomorUrut}_${state.subjudul}` : `Berita_Acara_${state.nomorUrut}_${state.tanggalSurat}.pdf`, { state: state, photos: photos })
+  saveHistoryEntry('Berita Acara', namaDokumenBA(), { state: state, photos: photos })
     .then(entry => finalkanDraft(entry && entry.id));
   const prevTitle=document.title;
   document.title=' ';

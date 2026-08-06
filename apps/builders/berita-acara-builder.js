@@ -413,7 +413,22 @@ function generateDocxBytes(d, photoList){
 }
 
 function filename(d){
-  return `Berita_Acara_${d.nomorUrut}_${d.tanggalSurat}.docx`;
+  // Nama file mengikuti nama dokumen (nomor + subjudul / periksa pada), sama
+  // seperti yang disimpan ke riwayat -- supaya "Unduh Ulang" di Dashboard
+  // Admin menghasilkan file dengan nama yang konsisten dengan riwayatnya.
+  const judul = String(d.subjudul || '').trim();
+  let base;
+  if(judul) base = `${d.nomorUrut}_${judul}`;
+  else{
+    const pemeriksaan = String(d.periksaPada || '')
+      .replace(/[\r\n]+/g, ' ')
+      .replace(/\s+/g, ' ')
+      .replace(/[<>:"/\\|?*]+/g, '')
+      .trim()
+      .slice(0, 120);
+    base = pemeriksaan ? `${d.nomorUrut}_${pemeriksaan}` : `Berita_Acara_${d.nomorUrut}_${d.tanggalSurat}`;
+  }
+  return `${base}.docx`;
 }
 
 return { generateBytes: generateDocxBytes, filename: filename };

@@ -414,7 +414,11 @@ function generateDocxBytes(d){
   return generateDocxBytesInner(d);
 }
 function filename(d){
-  return `Laporan_P2K3_${(d.namaInstalasi||'').replace(/[^a-z0-9]+/gi,'_')||'draft'}_${d.tanggalLaporan}.docx`;
+  // Format yang dipakai kantor: "P2K3_<Bulan>-<tahun>.docx" (mis.
+  // "P2K3_Agustus-2026.docx"), diambil dari tanggal laporan.
+  const [y, m] = String(d.tanggalLaporan || '').split('-').map(Number);
+  const bln = (y && m && BULAN[m-1]) ? `${BULAN[m-1]}-${y}` : (d.tanggalLaporan || '');
+  return bln ? `P2K3_${bln}.docx` : `P2K3_tanpa-tanggal.docx`;
 }
 
 return { generateBytes: generateDocxBytes, filename: filename };

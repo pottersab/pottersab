@@ -171,8 +171,12 @@ async function generateBytes(d){
 }
 
 function filename(d){
-  const lok=(d.lokasi||'draft').replace(/[^a-z0-9]+/gi,'_');
-  return `Ceklist_APD_${lok}_${d.tanggal}.xlsx`;
+  // Format yang dipakai kantor: "APD_<Bulan>-<tahun>.xlsx" (mis.
+  // "APD_Agustus-2026.xlsx"), diambil dari tanggal ceklist.
+  const bulanId = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+  const [y, m] = String(d.tanggal || '').split('-').map(Number);
+  const bln = (y && m && bulanId[m-1]) ? `${bulanId[m-1]}-${y}` : (d.tanggal || '');
+  return bln ? `APD_${bln}.xlsx` : `APD_tanpa-tanggal.xlsx`;
 }
 
 return { generateBytes: generateBytes, filename: filename };

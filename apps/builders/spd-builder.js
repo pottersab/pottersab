@@ -278,7 +278,34 @@ ${mergeXml}
     return createZip(buildWorkbookFiles(data));
   }
   function filename(data){
-    return `SPD_${data.nomorUrut}_${data.tanggal}.xlsx`;
+    // Nama file mengikuti nama dokumen (SPD_no_uraian-bulan-tahun), sama
+    // seperti yang disimpan ke riwayat -- supaya "Unduh Ulang" di Dashboard
+    // Admin menghasilkan file dengan nama yang konsisten dengan riwayatnya.
+    const nomor = String(data.nomorUrut || '');
+    let uraian = '';
+    if(Array.isArray(data.items)){
+      for(const it of data.items){
+        if(it && String(it.uraian || '').trim()){
+          uraian = String(it.uraian).trim()
+            .replace(/[\r\n]+/g, ' ')
+            .replace(/\s+/g, ' ')
+            .replace(/[<>:"/\\|?*]+/g, '')
+            .slice(0, 120);
+          break;
+        }
+      }
+    }
+    if(!uraian && String(data.keterangan || '').trim()){
+      uraian = String(data.keterangan).trim()
+        .replace(/[\r\n]+/g, ' ')
+        .replace(/\s+/g, ' ')
+        .replace(/[<>:"/\\|?*]+/g, '')
+        .slice(0, 120);
+    }
+    const [y, m] = String(data.tanggal || '').split('-').map(Number);
+    const bln = (m && y && BULAN_ID[m-1]) ? `${BULAN_ID[m-1]}-${y}` : '';
+    if(nomor && uraian && bln) return `SPD_${nomor}_${uraian}-${bln}.xlsx`;
+    return `SPD_${nomor}_${String(data.tanggal || 'tanpa-tanggal')}.xlsx`;
   }
 
   return { generateBytes: generateXlsxBytes, filename: filename };

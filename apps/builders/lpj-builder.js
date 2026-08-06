@@ -472,8 +472,11 @@ ${mergeXml}
     return createZip(buildWorkbookFiles(data));
   }
   function filename(data){
-    const v = String(data.voucherNo||'').replace(/[^\w.-]+/g,'-') || 'tanpa-voucher';
-    return `LPJ_${v}_${data.tanggalSurat||''}.xlsx`;
+    // Format yang dipakai kantor: "LPJ_<Bulan>-<tahun>.xlsx" (mis.
+    // "LPJ_Agustus-2026.xlsx"), diambil dari tanggal surat.
+    const [y, m] = String(data.tanggalSurat || '').split('-').map(Number);
+    const bln = (y && m && BULAN_ID[m-1]) ? `${BULAN_ID[m-1]}-${y}` : (data.tanggalSurat || 'tanpa-tanggal');
+    return `LPJ_${bln}.xlsx`;
   }
 
   return {

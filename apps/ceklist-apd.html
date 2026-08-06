@@ -913,6 +913,16 @@ updateAccessBanner();
 refresh();
 
 /* ---------- cetak / PDF: paksa jadi 1 halaman sesuai ukuran dokumen ---------- */
+// Nama dokumen (riwayat & file unduhan) mengikuti format yang dipakai di
+// kantor: "APD_<Bulan>-<tahun>" (mis. "APD_Agustus-2026"), diambil dari
+// tanggal ceklist.
+function namaApdDokumen(ext){
+  const blnId = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+  const tgl = document.getElementById('fTanggal').value || '';
+  const [y, m] = tgl.split('-').map(Number);
+  const bln = (y && m && blnId[m-1]) ? `${blnId[m-1]}-${y}` : tgl;
+  return bln ? `APD_${bln}.${ext}` : `APD_tanpa-tanggal.${ext}`;
+}
 function printDoc(){
   const page = document.getElementById('docPage');
   const pxToMm = 25.4/96;
@@ -921,8 +931,7 @@ function printDoc(){
   const hMm = Math.ceil(page.offsetHeight * pxToMm) + marginMm*2;
   const styleEl = document.getElementById('printPageSize');
   if(styleEl) styleEl.textContent = `@page{size:${wMm}mm ${hMm}mm;margin:${marginMm}mm;}`;
-  const lok=(document.getElementById('fLokasi').value||'draft').replace(/[^a-z0-9]+/gi,'_');
-  saveHistoryEntry('Ceklist APD', `Ceklist_APD_${lok}_${document.getElementById('fTanggal').value}.pdf`, {
+  saveHistoryEntry('Ceklist APD', namaApdDokumen('pdf'), {
     lokasi: document.getElementById('fLokasi').value,
     tanggal: document.getElementById('fTanggal').value,
     docnum: DOCNUM,
@@ -1111,8 +1120,7 @@ async function downloadExcel(){
     const blob=new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
     const url=URL.createObjectURL(blob);
     const a=document.createElement('a');
-    const lok=(document.getElementById('fLokasi').value||'draft').replace(/[^a-z0-9]+/gi,'_');
-    const fname = `Ceklist_APD_${lok}_${document.getElementById('fTanggal').value}.xlsx`;
+    const fname = namaApdDokumen('xlsx');
     a.href=url; a.download=fname;
     document.body.appendChild(a); a.click(); a.remove();
     URL.revokeObjectURL(url);
