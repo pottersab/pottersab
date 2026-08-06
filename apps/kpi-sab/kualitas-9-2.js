@@ -75,11 +75,10 @@
       '<span class="cellnum">' + (hasData ? val : (hidePrint ? '' : '—')) + '</span></div></td>';
   }
 
+  // Status pintu elevasi TIDAK bisa diubah di halaman ini -- mengikuti data
+  // 18.4 (pengubahannya lewat halaman 18.4 di KPI), supaya tidak ada perbedaan
+  // data kalau tidak sengaja terklik.
   function elevCell(row, loc, elevasi, on) {
-    if (isAdmin) {
-      return '<td class="elev-cell"><button type="button" class="elev-btn ' + (on ? 'on' : 'off') + '" ' +
-        'data-date="' + row.tanggal + '" data-loc="' + loc + '" data-e="' + elevasi + '">' + (on ? 'ON' : 'OFF') + '</button></td>';
-    }
     return '<td class="elev-cell"><span class="elev-tag ' + (on ? 'on' : 'off') + '">' + (on ? 'ON' : 'OFF') + '</span></td>';
   }
 
@@ -128,13 +127,6 @@
   function renderTables() {
     var wrap = document.getElementById('locTables');
     wrap.innerHTML = state.locations.map(buildLocTable).join('');
-
-    if (!isAdmin) return;
-    wrap.querySelectorAll('.elev-btn').forEach(function (btn) {
-      btn.addEventListener('click', function () {
-        toggleElevasi(btn.dataset.date, btn.dataset.loc, Number(btn.dataset.e), btn.classList.contains('on'));
-      });
-    });
   }
 
   function renderStats() {
@@ -151,38 +143,8 @@
 
   function renderElevHint() {
     var el = document.getElementById('elevHint');
-    if (isAdmin) {
-      el.innerHTML = '💡 Klik status <b>ON/OFF</b> di kolom Elevasi untuk mengubah pintu air mulai tanggal itu — status <b>berlaku terus sampai diubah lagi</b> (termasuk bulan berikutnya), bukan hanya hari itu. Bisa lebih dari satu elevasi ON bersamaan.';
-      el.style.display = '';
-    } else {
-      el.style.display = 'none';
-    }
-  }
-
-  // ------------------------------------------------------------------
-  // TOGGLE STATUS ELEVASI (carry-forward) -- data sama dengan 18.4.
-  // ------------------------------------------------------------------
-  async function saveElevasiToggle(dateStr, loc, elevasi, on) {
-    var token = currentAccessToken();
-    var res = await fetch('/api/visualization/admin-input', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-      body: JSON.stringify({ kind: 'kualitas_elevasi', tanggal: dateStr, lokasi: loc, elevasi: elevasi, on: on })
-    });
-    if (!res.ok) { var d = await res.json().catch(function () { return {}; }); throw new Error(d.error || ('HTTP ' + res.status)); }
-  }
-
-  async function toggleElevasi(dateStr, loc, elevasi, currentlyOn) {
-    if (!isAdmin) return;
-    var newVal = !currentlyOn;
-    try {
-      await saveElevasiToggle(dateStr, loc, elevasi, newVal);
-      await reloadSameMonth();
-      toast('Elevasi ' + elevasi + ' ' + (loc === 'manggar' ? 'Manggar' : 'Teritip') + ' ' + (newVal ? 'ON' : 'OFF') +
-        ' mulai ' + dateStr + ' — berlaku terus sampai diubah lagi.');
-    } catch (err) {
-      toast('Gagal menyimpan: ' + err.message);
-    }
+    el.innerHTML = '🔒 Status pintu elevasi <b>mengikuti data 18.4</b> — tidak bisa diubah di halaman ini (ubah lewat <b>18.4 Laporan Kualitas Air Baku</b> di KPI), supaya data tidak berubah tidak sengaja.';
+    el.style.display = '';
   }
 
   // ------------------------------------------------------------------
