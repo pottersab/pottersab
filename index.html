@@ -276,6 +276,12 @@ header{
    tidak mengganggu .hub-deck (kartu beranda) yang punya aturan sendiri. */
 .hub-grid .hub-card p{flex:0 1 auto}
 .hub-grid .hub-card .open{margin-top:auto}
+/* Semua kartu hub Tools/Data/Development dibuat seragam tingginya: baris grid
+   dibagi rata (grid-auto-rows:1fr) + min-height, supaya tidak ada kartu yang
+   tampak lebih besar/kecil dari yang lain (mis. kartu dengan .last-input di
+   Development lebih tinggi). Dikecualikan dari .hub-deck (kartu beranda). */
+.hub-grid:not(.hub-deck){grid-auto-rows:1fr;}
+.hub-grid:not(.hub-deck) .hub-card{min-height:280px;}
 
 .tag-row{display:flex;gap:6px;flex-wrap:wrap}
 .tag{
