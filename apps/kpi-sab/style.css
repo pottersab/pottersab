@@ -99,6 +99,25 @@ h1{
 .hub-card.soon .open{background:var(--ink-faint);pointer-events:none;}
 
 /* ---------------------------------------------------------------------
+   Kartu KPI kategori lain (terpisah dari deret 18.x/19.x).
+   Pemisah: garis putus-putus. Kartu: tepi putus-putus + aksen amber
+   (--edit) supaya jelas itu kelompok berbeda dari kartu KPI biasa.
+--------------------------------------------------------------------- */
+.hub-sep{
+  height:0;border:none;border-top:1px dashed var(--line-muted);
+  margin:36px 0 20px;
+}
+.hub-card.alt{
+  border-style:dashed;border-color:var(--edit);
+}
+.hub-card.alt .hub-glow{background:radial-gradient(circle,var(--edit-pale),transparent 70%);}
+.hub-card.alt .hub-ic{background:var(--edit);}
+.hub-card.alt .tag{background:var(--edit-pale);color:var(--edit-ink);}
+.hub-card.alt .open{background:var(--edit);}
+.hub-card.alt .open:hover{background:var(--edit-ink);}
+.hub-card.alt:hover{border-color:var(--edit);box-shadow:0 12px 28px rgba(185,119,9,.12);}
+
+/* ---------------------------------------------------------------------
    Tool (apps/kpi-sab/ukur-debit.html): toolbar, tabel KPI.
 --------------------------------------------------------------------- */
 .controls{
