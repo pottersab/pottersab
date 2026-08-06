@@ -220,6 +220,7 @@
   .kpi-dl-controls select,.kpi-dl-controls input[type="month"]{
     padding:6px 9px;border:1px solid var(--line);border-radius:6px;font-size:13px;background:var(--card);color:var(--navy-dark);
   }
+  table.kpi-log-table td.kpi-log-del{text-align:right;white-space:nowrap;}
 
   .load-more-row {
     text-align: center;
@@ -1016,7 +1017,7 @@ function doLogout(){
         if (!d || !d.success) { container.innerHTML = '<div class="table-empty">Gagal memuat riwayat unduhan KPI</div>'; return; }
         var rows = d.data || [];
         if (!rows.length) { container.innerHTML = '<div class="table-empty">Belum ada unduhan KPI.</div>'; return; }
-        container.innerHTML = '<table class="kpi-log-table"><thead><tr><th>Laporan</th><th>Periode</th><th>Diunduh oleh</th><th>Waktu</th></tr></thead><tbody>' +
+        container.innerHTML = '<table class="kpi-log-table"><thead><tr><th>Laporan</th><th>Periode</th><th>Diunduh oleh</th><th>Waktu</th><th></th></tr></thead><tbody>' +
           rows.map(function (r) {
             var det = r.details || {};
             var periode;
@@ -1029,12 +1030,28 @@ function doLogout(){
               '<td>' + periode + '</td>' +
               '<td>' + (r.createdBy || '') + '</td>' +
               '<td>' + waktu + '</td>' +
+              '<td class="kpi-log-del"><button type="button" class="action-btn btn-danger kpi-log-del-btn" data-id="' + r.id + '">Hapus</button></td>' +
               '</tr>';
           }).join('') + '</tbody></table>';
       })
       .catch(function () { container.innerHTML = '<div class="table-empty">Gagal memuat data</div>'; });
   }
   document.getElementById('refreshKpiLogsBtn').addEventListener('click', function () { loadKpiLogs(); });
+
+  document.getElementById('kpiLogsContent').addEventListener('click', function (e) {
+    var btn = e.target.closest('.kpi-log-del-btn');
+    if (!btn) return;
+    var id = btn.getAttribute('data-id');
+    if (!confirm('Hapus riwayat unduhan KPI ini?')) return;
+    btn.disabled = true;
+    fetch(API_URL + '/api/history?id=' + id, { method: 'DELETE', headers: { 'Authorization': 'Bearer ' + token } })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (!d || !d.success) throw new Error((d && d.error) || 'Gagal menghapus');
+        loadKpiLogs();
+      })
+      .catch(function (err) { showMessage('Gagal menghapus: ' + err.message, 'error'); btn.disabled = false; });
+  });
 
   // Tab "Riwayat Surat" aktif secara default begitu halaman dibuka --
   // tab "Log Akses Viewer" baru fetch data saat diklik pertama kali.
