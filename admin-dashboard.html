@@ -209,6 +209,18 @@
   .tab-panel { display: none; }
   .tab-panel.active { display: block; }
 
+  /* Unduh Excel KPI */
+  .kpi-dl{display:flex;flex-direction:column;gap:8px;}
+  .kpi-dl-row{
+    display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+    background:var(--card);border:1px solid var(--line);border-radius:8px;padding:10px 14px;
+  }
+  .kpi-dl-label{font-size:13.5px;font-weight:600;color:var(--navy-dark);flex:1;min-width:200px;}
+  .kpi-dl-controls{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+  .kpi-dl-controls select,.kpi-dl-controls input[type="month"]{
+    padding:6px 9px;border:1px solid var(--line);border-radius:6px;font-size:13px;background:var(--card);color:var(--navy-dark);
+  }
+
   .load-more-row {
     text-align: center;
     margin-top: 16px;
@@ -694,6 +706,7 @@ function doLogout(){
   <div class="tabs">
     <button class="tab-btn active" id="tabBtn-history" data-tab="history">Riwayat Surat</button>
     <button class="tab-btn" id="tabBtn-access" data-tab="access">Log Akses Viewer</button>
+    <button class="tab-btn" id="tabBtn-downloadKpi" data-tab="downloadKpi">Unduh Excel KPI</button>
   </div>
 
   <div class="tab-panel active" id="tabPanel-history">
@@ -775,6 +788,13 @@ function doLogout(){
     <div class="load-more-row">
       <button class="action-btn btn-secondary" id="loadMoreAccessBtn" style="display:none;">Muat Lebih Banyak</button>
     </div>
+  </div>
+
+  <div class="tab-panel" id="tabPanel-downloadKpi">
+    <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:16px;">
+      <div class="section-desc" style="margin-bottom:0;">Unduh Excel semua laporan KPI (khusus admin) — pilih tahun/bulan lalu klik Unduh.</div>
+    </div>
+    <div id="kpiDownloadList" class="table-empty">Memuat daftar unduhan...</div>
   </div>
 </div>
 
@@ -873,13 +893,100 @@ function doLogout(){
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
     document.getElementById('tabPanel-history').classList.toggle('active', tab === 'history');
     document.getElementById('tabPanel-access').classList.toggle('active', tab === 'access');
+    document.getElementById('tabPanel-downloadKpi').classList.toggle('active', tab === 'downloadKpi');
 
     if (tab === 'history' && !historyState.loaded) loadHistory(1, {});
     if (tab === 'access' && !accessState.loaded) loadAccessRequests(true);
+    if (tab === 'downloadKpi' && !kpiDownloadLoaded) renderKpiDownloadList();
   }
 
   document.getElementById('tabBtn-history').addEventListener('click', () => switchTab('history'));
   document.getElementById('tabBtn-access').addEventListener('click', () => switchTab('access'));
+  document.getElementById('tabBtn-downloadKpi').addEventListener('click', () => switchTab('downloadKpi'));
+
+  // ---- Unduh Excel KPI (tab khusus) ----
+  var KPI_DOWNLOADS = [
+    { label: '18.1a Pengukuran Level Sumur', type: 'kpi_18_1a_xlsx', period: 'year' },
+    { label: '18.1b Pengukuran Statis Dinamis', type: 'kpi_18_1b_xlsx', period: 'year' },
+    { label: '18.2 Pengukuran Debit Sumur', type: 'kpi_ukur_debit_xlsx', period: 'year' },
+    { label: '18.3a Monitoring Debit AP & ATD', type: 'kpi_apatd_xlsx', period: 'year' },
+    { label: '18.3b Pengambilan Air Baku', type: 'kpi_pengambilan_xlsx', period: 'year' },
+    { label: '18.4 Laporan Kualitas Air Baku', type: 'kpi_kualitas_xlsx', period: 'month' },
+    { label: '18.5 Monitoring Kondisi Peralatan', type: 'kpi_18_5_xlsx', period: 'year' },
+    { label: '18.6 Jadwal PM Terkendali', type: 'kpi_18_6_xlsx', period: 'year' },
+    { label: '19.2 Evaluasi Hasil Monitoring', type: 'kpi_19_2_xlsx', period: 'month' },
+    { label: 'Activity Plan SAB', type: 'kpi_activity_plan_xlsx', period: 'activity' },
+    { label: 'Jadwal Kegiatan', type: 'kpi_jadwal_kegiatan_xlsx', period: 'month' },
+    { label: '9.2 Laporan Kualitas Air Baku', type: 'kpi_9_2_xlsx', period: 'month' },
+    { label: '9.3 Laporan Kondisi Air Waduk', type: 'kpi_9_3_xlsx', period: 'month' },
+    { label: '9.4 Laporan Ketidaksesuaian Debit', type: 'kpi_9_4_xlsx', period: 'month' },
+    { label: '9.5 Laporan Monitoring Pipa Transmisi', type: 'kpi_9_5_xlsx', period: 'month' },
+    { label: '9.7 Laporan Kondisi Air Sumur', type: 'kpi_9_7_xlsx', period: 'month' },
+    { label: '9.8 Laporan Jadwal Kalibrasi', type: 'kpi_9_8_xlsx', period: 'month' }
+  ];
+  var kpiDownloadLoaded = false;
+
+  function renderKpiDownloadList() {
+    kpiDownloadLoaded = true;
+    var wrap = document.getElementById('kpiDownloadList');
+    var now = new Date();
+    var currentYear = now.getFullYear();
+    var currentMonth = now.toISOString().slice(0, 7);
+    var years = [];
+    for (var y = currentYear; y >= 2015; y--) years.push(y);
+    var opt = function (v, sel) { return '<option value="' + v + '"' + (sel ? ' selected' : '') + '>' + v + '</option>'; };
+    wrap.innerHTML = '<div class="kpi-dl">' + KPI_DOWNLOADS.map(function (item) {
+      var controls = '';
+      if (item.period === 'year') {
+        controls = '<select class="kpi-dl-year">' + years.map(function (y) { return opt(y, y === currentYear); }).join('') + '</select>';
+      } else if (item.period === 'month') {
+        controls = '<input type="month" class="kpi-dl-month" value="' + currentMonth + '">';
+      } else {
+        controls = '<select class="kpi-dl-year">' + years.map(function (y) { return opt(y, y === currentYear); }).join('') + '</select>' +
+          '<select class="kpi-dl-periode"><option value="1">Jan–Jun</option><option value="2">Jul–Des</option></select>';
+      }
+      return '<div class="kpi-dl-row">' +
+        '<span class="kpi-dl-label">' + item.label + '</span>' +
+        '<span class="kpi-dl-controls">' + controls + '</span>' +
+        '<button class="action-btn btn-primary kpi-dl-btn" data-type="' + item.type + '">Unduh Excel</button>' +
+        '</div>';
+    }).join('') + '</div>';
+  }
+
+  function downloadKpi(type, params) {
+    var token = localStorage.getItem('token');
+    var qs = Object.keys(params).map(function (k) { return k + '=' + encodeURIComponent(params[k]); }).join('&');
+    return fetch('/api/visualization/data?dataType=' + type + (qs ? '&' + qs : ''), {
+      headers: { 'Authorization': 'Bearer ' + token }
+    }).then(function (res) {
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      var cd = res.headers.get('Content-Disposition') || '';
+      var m = cd.match(/filename="?([^";]+)"?/);
+      return res.blob().then(function (blob) { return { blob: blob, fname: m ? m[1] : (type + '.xlsx') }; });
+    }).then(function (d) {
+      var url = URL.createObjectURL(d.blob);
+      var a = document.createElement('a');
+      a.href = url; a.download = d.fname;
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+    });
+  }
+
+  document.getElementById('kpiDownloadList').addEventListener('click', function (e) {
+    var btn = e.target.closest('.kpi-dl-btn');
+    if (!btn || btn.disabled) return;
+    var row = btn.closest('.kpi-dl-row');
+    var params = {};
+    var ys = row.querySelector('.kpi-dl-year'); if (ys) params.tahun = ys.value;
+    var ms = row.querySelector('.kpi-dl-month'); if (ms) params.bulan = ms.value;
+    var ps = row.querySelector('.kpi-dl-periode'); if (ps) params.periode = ps.value;
+    btn.disabled = true;
+    var old = btn.textContent;
+    btn.textContent = 'Menyiapkan...';
+    downloadKpi(btn.getAttribute('data-type'), params)
+      .then(function () { btn.disabled = false; btn.textContent = old; })
+      .catch(function (err) { showMessage('Gagal unduh: ' + err.message, 'error'); btn.disabled = false; btn.textContent = old; });
+  });
 
   // Tab "Riwayat Surat" aktif secara default begitu halaman dibuka --
   // tab "Log Akses Viewer" baru fetch data saat diklik pertama kali.
