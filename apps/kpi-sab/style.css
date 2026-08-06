@@ -114,18 +114,20 @@ h1{
 .hub-card.alt .open:hover{background:var(--edit-ink);}
 .hub-card.alt:hover{border-color:var(--edit);box-shadow:0 12px 28px rgba(185,119,9,.12);}
 
-/* Panah ke bawah: dari bagian kartu KPI utama ke bagian kartu gaya beda
-   (halaman kedua). Melayang (bounce) sebagai ajakan scroll. */
-.scroll-down{
+/* Panah antar "halaman": ke bawah dari kartu KPI utama ke kartu gaya beda,
+   ke atas untuk kembali. Melayang (bounce) sebagai ajakan scroll. */
+.scroll-down,.scroll-up{
   display:grid;place-items:center;width:48px;height:48px;border-radius:50%;
   margin:34px auto 6px;color:var(--primary);
   border:1px solid var(--line-muted);background:var(--surface);
   box-shadow:0 8px 20px rgba(14,42,50,.10);
-  animation:bob 1.7s ease-in-out infinite;
   transition:color .15s,border-color .15s;
 }
-.scroll-down:hover{color:var(--edit);border-color:var(--edit);}
-@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(7px)}}
+.scroll-down{animation:bobDown 1.7s ease-in-out infinite;}
+.scroll-up{animation:bobUp 1.7s ease-in-out infinite;}
+.scroll-down:hover,.scroll-up:hover{color:var(--edit);border-color:var(--edit);}
+@keyframes bobDown{0%,100%{transform:translateY(0)}50%{transform:translateY(7px)}}
+@keyframes bobUp{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
 
 /* ---------------------------------------------------------------------
    Tool (apps/kpi-sab/ukur-debit.html): toolbar, tabel KPI.
