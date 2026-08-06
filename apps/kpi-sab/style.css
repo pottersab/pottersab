@@ -684,7 +684,7 @@ table.k97-edit input{
 }
 table.k97-edit input:focus{ border-color:var(--edit); background:#fff; }
 table.k97-edit input[disabled]{ background:var(--bg); color:var(--ink-soft); }
-table.k97-edit td.keterangan input{ width:100%; }
+table.k97-edit td.keterangan input{ width:100%; text-align:center; }
 table.k97-edit .del-row{
   background:transparent; border:1px solid var(--line-muted); border-radius:7px; color:var(--low);
   width:30px; height:30px; cursor:pointer; font-size:14px; line-height:1;

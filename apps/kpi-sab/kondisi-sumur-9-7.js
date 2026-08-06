@@ -70,13 +70,13 @@
       '<td><input class="f-no" value="' + esc(r.no) + '"' + ro + '></td>' +
       '<td><input class="f-merk" value="' + esc(r.merk) + '"' + ro + '></td>' +
       '<td><input class="f-type" value="' + esc(r.type) + '"' + ro + '></td>' +
-      '<td class="web lvl">' + (r.levelLaluStatis == null ? '—' : esc(r.levelLaluStatis)) + '</td>' +
-      '<td class="web lvl">' + (r.levelLaluDinamis == null ? '—' : esc(r.levelLaluDinamis)) + '</td>' +
-      '<td class="web lvl">' + (r.levelIniStatis == null ? '—' : esc(r.levelIniStatis)) + '</td>' +
-      '<td class="web lvl">' + (r.levelIniDinamis == null ? '—' : esc(r.levelIniDinamis)) + '</td>' +
+      '<td class="web lvl">' + fmtNum(r.levelLaluStatis) + '</td>' +
+      '<td class="web lvl">' + fmtNum(r.levelLaluDinamis) + '</td>' +
+      '<td class="web lvl">' + fmtNum(r.levelIniStatis) + '</td>' +
+      '<td class="web lvl">' + fmtNum(r.levelIniDinamis) + '</td>' +
       '<td><input class="f-np" value="' + esc(r.namePlate) + '"' + ro + '></td>' +
-      '<td class="web real">' + (r.realLalu == null ? '—' : fmtNum(r.realLalu)) + '</td>' +
-      '<td class="web real">' + (r.realIni == null ? '—' : fmtNum(r.realIni)) + '</td>' +
+      '<td class="web real">' + fmtNum(r.realLalu) + '</td>' +
+      '<td class="web real">' + fmtNum(r.realIni) + '</td>' +
       '<td class="keterangan"><input class="f-ket" value="' + esc(r.keterangan) + '"' + ro + '></td>' +
       '<td>' + (isAdmin ? '<button type="button" class="del-row" title="Hapus baris">✕</button>' : '') + '</td>' +
       '</tr>';
