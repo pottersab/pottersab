@@ -299,7 +299,7 @@
     try {
       var res = await fetch('/api/visualization/request', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ requestedBy: nama, dataType: 'kpi_pengambilan', reason: alasan || undefined })
+        body: JSON.stringify({ requestedBy: nama, dataType: 'kpi_18_6', reason: alasan || undefined })
       });
       var data = await res.json();
       if (!res.ok || !data.success) throw new Error(data.error || 'Gagal mengirim permintaan.');

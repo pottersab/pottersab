@@ -55,6 +55,10 @@
   }
 
   async function loadYear(tahun, periode) {
+    // Pindah tahun/periode menggantikan semua yang tampil, jadi reload tertunda
+    // dari edit sebelumnya tidak relevan lagi -- batalkan supaya tidak ada
+    // fetch ganda setelah loadYear ini.
+    if (typeof reloadTimer !== 'undefined') { clearTimeout(reloadTimer); reloadTimer = null; }
     showLoadingState();
     try {
       state = await fetchApiData(tahun, periode);
@@ -273,6 +277,16 @@
     });
   }
 
+  // Reload penuh di-debounce 400ms: tiap ketikan "selesai" (change) memicu
+  // saveRow, dan mengganti beberapa sel berurutan tidak perlu fetch ulang
+  // seluruh tahun untuk tiap sel -- satu reload setelah jeda ketikan cukup
+  // untuk memutakhirkan rata-rata grup & status TCP/TDTCP.
+  var reloadTimer = null;
+  function jadwalReloadSetelahSave() {
+    clearTimeout(reloadTimer);
+    reloadTimer = setTimeout(function () { reloadSameYear(); }, 400);
+  }
+
   document.getElementById("mainTable").addEventListener("change", async function (e) {
     var inp = e.target.closest('input');
     if (!inp || !isAdmin) return;
@@ -280,9 +294,8 @@
     var key = tr.dataset.key;
     try {
       await saveRow(tr);
-      // Muat ulang supaya rata-rata grup & status TCP/TDTCP ikut ter-update.
-      await reloadSameYear();
       toast('Baris ' + key + ' disimpan.');
+      jadwalReloadSetelahSave();
     } catch (err) {
       toast('Gagal menyimpan: ' + err.message);
     }
@@ -378,7 +391,7 @@
     try {
       var res = await fetch('/api/visualization/request', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ requestedBy: nama, dataType: 'kpi_pengambilan', reason: alasan || undefined })
+        body: JSON.stringify({ requestedBy: nama, dataType: 'kpi_activity_plan', reason: alasan || undefined })
       });
       var data = await res.json();
       if (!res.ok || !data.success) throw new Error(data.error || 'Gagal mengirim permintaan.');

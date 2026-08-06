@@ -375,7 +375,15 @@ function renderFilters() {
     ${c.diaLabel ? `<select id="fDia" aria-label="Filter diameter"><option value="">Semua diameter</option>
       ${dias.map(d => `<option value="${d}"${String(filterState.dia) === String(d) ? ' selected' : ''}>${d} ${c.du}</option>`).join('')}</select>` : ''}`;
 
-  $('fCari').oninput = e => { filterState.cari = e.target.value; page = 1; renderTable(); };
+  // Pencarian di-debounce 180ms: tiap ketukan menggerakkan sort+filter+render
+  // seluruh rekap (bisa ribuan baris), jadi menunggu jeda ketikan dulu
+  // membuatnya terasa jauh lebih responsif di HP tanpa mengubah hasil akhir.
+  var cariTimer = null;
+  $('fCari').oninput = e => {
+    filterState.cari = e.target.value;
+    clearTimeout(cariTimer);
+    cariTimer = setTimeout(() => { page = 1; renderTable(); }, 180);
+  };
   $('fTahun').onchange = e => { filterState.tahun = e.target.value; page = 1; renderTable(); };
   $('fKat').onchange = e => { filterState.kat = e.target.value; page = 1; renderTable(); };
   if ($('fDia')) $('fDia').onchange = e => { filterState.dia = e.target.value; page = 1; renderTable(); };

@@ -122,11 +122,13 @@
   function cellRatio(g, mi, kind) {
     var a = g.angg[mi], r = g.real[mi];
     var has = a !== null && r !== null && a > 0;
-    if (!has) return '<td class="ratio"><div class="cellwrap"></div></td>';
+    // data-m/data-role dipakai update sel parsial (peralatanPerbaruiSetelahSimpan):
+    // sel ±/% item itu diidentifikasi lewat atribut ini, TIDAK untuk styling.
+    if (!has) return '<td class="ratio" data-m="' + mi + '" data-role="' + kind + '"><div class="cellwrap"></div></td>';
     var pm = r - a, pct = r / a * 100;
     var text = kind === "pm" ? (pm >= 0 ? "+" : "") + pm : pct.toFixed(1) + "%";
     var cls = ratioClass(pct);
-    return '<td class="ratio"><div class="cellwrap"><span class="pill ' + cls + '">' + text + '</span></div></td>';
+    return '<td class="ratio" data-m="' + mi + '" data-role="' + kind + '"><div class="cellwrap"><span class="pill ' + cls + '">' + text + '</span></div></td>';
   }
 
   function renderTable() {
@@ -135,15 +137,30 @@
     var html = "<thead>" + buildHead(currentPeriod) + "</thead><tbody>";
 
     state.groups.forEach(function (g, gi) {
-      html += '<tr><td class="no">' + g.no + '</td><td class="name">' + esc(g.label) + '</td>';
+      // data-item dipakai update sel parsial setelah simpan (lihat
+      // perbaruiSelSetelahSimpan) supaya tidak perlu rebuild seluruh tabel.
+      html += '<tr data-item="' + g.no + '"><td class="no">' + g.no + '</td><td class="name">' + esc(g.label) + '</td>';
       idxs.forEach(function (mi) {
         html += cellInput(g, mi, "angg") + cellInput(g, mi, "real") + cellRatio(g, mi, "pm") + cellRatio(g, mi, "pct");
       });
       html += '</tr>';
     });
 
-    // RATA-RATA: SUM ANGG/REAL per bulan, AVERAGE %; bulan kosong ikut kosong.
-    html += '<tr class="sum"><td class="no"></td><td class="name">RATA-RATA</td>';
+    html += buildAvgRowHtml(idxs);
+
+    html += '</tbody>';
+    table.innerHTML = html;
+
+    document.getElementById("tableFoot").innerHTML =
+      'ANGG &amp; REAL <b>diisi manual</b> oleh admin per bulan; ± &amp; % terhitung otomatis. Tahun fiskal: ' +
+      'blok Juli–Desember ' + state.tahun + ' dan Januari–Juni ' + (Number(state.tahun) + 1) + '.';
+  }
+
+  // Baris RATA-RATA (SUM ANGG/REAL per bulan, AVERAGE %) -- diekstrak dari
+  // renderTable supaya perbaruiSelSetelahSimpan bisa mengganti cuma baris ini
+  // tanpa rebuild seluruh tabel. Bulan kosong ikut kosong.
+  function buildAvgRowHtml(idxs) {
+    var html = '<tr class="sum"><td class="no"></td><td class="name">RATA-RATA</td>';
     idxs.forEach(function (mi) {
       var sumA = 0, sumR = 0, pcts = [], any = false;
       state.groups.forEach(function (g) {
@@ -164,14 +181,32 @@
           (avg !== null ? avg.toFixed(1) + '%' : '') + '</span></div></td>';
       }
     });
-    html += '</tr>';
+    return html + '</tr>';
+  }
 
-    html += '</tbody>';
-    table.innerHTML = html;
+  // Update SEL SAJA setelah satu nilai ANGG/REAL disimpan: sel ± dan % item
+  // itu di bulan itu + baris RATA-RATA, tanpa membangun ulang seluruh tabel.
+  // Memakai cellRatio() yang sama dengan renderTable, jadi hasilnya identik
+  // dengan render penuh -- cuma tidak menghancurkan/menimbun input yang
+  // sedang dipegang user (fokus tidak hilang, tidak ada flicker).
+  function perbaruiSelSetelahSimpan(it, mi) {
+    var idxs = monthIndexesFor(currentPeriod);
+    var table = document.getElementById("mainTable");
+    var g = state.groups[it - 1];
+    if (!g) return;
 
-    document.getElementById("tableFoot").innerHTML =
-      'ANGG &amp; REAL <b>diisi manual</b> oleh admin per bulan; ± &amp; % terhitung otomatis. Tahun fiskal: ' +
-      'blok Juli–Desember ' + state.tahun + ' dan Januari–Juni ' + (Number(state.tahun) + 1) + '.';
+    // Sel ± dan % item itu di bulan `mi`.
+    var row = table.querySelector('tr[data-item="' + it + '"]');
+    if (row) {
+      var pm = row.querySelector('td[data-m="' + mi + '"][data-role="pm"]');
+      var pct = row.querySelector('td[data-m="' + mi + '"][data-role="pct"]');
+      if (pm) pm.outerHTML = cellRatio(g, mi, "pm");
+      if (pct) pct.outerHTML = cellRatio(g, mi, "pct");
+    }
+
+    // Baris RATA-RATA -- ganti utuh (hanya 1 baris, murah).
+    var avgRow = table.querySelector('tr.sum');
+    if (avgRow) avgRow.outerHTML = buildAvgRowHtml(idxs);
   }
 
   // ------------------------------------------------------------------
@@ -343,7 +378,9 @@
     try {
       await saveValues(p, it, angg, real);
       if (item) { item.angg[mi] = angg; item.real[mi] = real; }
-      renderTable();
+      // Update sel ±/% item itu + baris RATA-RATA saja, bukan rebuild seluruh
+      // tabel -- hasil identik (cellRatio yang sama), tanpa kehilangan fokus.
+      perbaruiSelSetelahSimpan(it, mi);
       toast('Nilai ' + item.label + ' ' + MONTHS[mi] + ' disimpan.');
     } catch (err) {
       toast('Gagal menyimpan: ' + err.message);
@@ -438,7 +475,7 @@
     try {
       var res = await fetch('/api/visualization/request', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ requestedBy: nama, dataType: 'kpi_pengambilan', reason: alasan || undefined })
+        body: JSON.stringify({ requestedBy: nama, dataType: 'kpi_18_5', reason: alasan || undefined })
       });
       var data = await res.json();
       if (!res.ok || !data.success) throw new Error(data.error || 'Gagal mengirim permintaan.');

@@ -24,7 +24,13 @@ module.exports = async (req, res) => {
     if (!user) return;
 
     if (req.query.export !== undefined) {
-      const { rows } = await pool.query('SELECT * FROM history ORDER BY created_at DESC');
+      // Kolom dipilih eksplisit (details JSONB tidak dipakai di CSV) dan
+      // dibatasi jumlahnya supaya file ekspor tidak membengkak seiring tabel
+      // history bertambah. Ekspor memang menarik sampai 2000 entri terbaru --
+      // kalau butuh lebih, ubah limit di sini (dan naikkan batas di bawah).
+      const { rows } = await pool.query(
+        `SELECT id, document_type, document_name, created_by, role, created_at
+         FROM history ORDER BY created_at DESC LIMIT 2000`);
 
       const baris = [['ID', 'Tipe Dokumen', 'Nama Dokumen', 'Pembuat', 'Role', 'Tanggal'].join(',')];
       rows.forEach(r => {
@@ -82,7 +88,7 @@ module.exports = async (req, res) => {
         COUNT(*) AS total_count
        FROM history ${whereClause}`;
     const byTypeQuery = `SELECT document_type, COUNT(*) AS n FROM history ${dateOnlyClause} AND document_type != 'KPI' GROUP BY document_type`;
-    const dataQuery = `SELECT * FROM history ${whereClause}
+    const dataQuery = `SELECT id, document_type, document_name, details, created_by, role, created_at FROM history ${whereClause}
        ORDER BY created_at DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
 
     const [{ rows: countRows }, { rows: byTypeRows }, { rows: dataRows }] = await Promise.all([

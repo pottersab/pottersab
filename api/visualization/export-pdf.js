@@ -198,7 +198,18 @@ module.exports = async (req, res) => {
         : `rekapitulasi_${dataType}_${tahunDipakai[0]}.pdf`;
     }
   } else if (source.kind === 'wide-single') {
-    const { dateKey, rows: allRows } = await fetchWideSingleRows(source);
+    // Kalau ada tahun yang diminta, batasi fetch ke rentang tahun itu di SQL
+    // (tabel harian besar) -- hasilnya sama dengan filterByYear di bawah,
+    // tanpa menarik seluruh baris sejak 2014. Tanpa tahun (mode "Semua Data")
+    // fetch tetap semua baris.
+    const yearStart = String(year || '').match(/^\d{4}$/)
+      ? `${year}-01-01`
+      : null;
+    const yearEnd = yearStart ? `${year}-12-31` : null;
+    const { dateKey, rows: allRows } = await fetchWideSingleRows(
+      source,
+      yearStart ? { start: yearStart, end: yearEnd } : undefined
+    );
     const rows = filterByYear(allRows, year, dateKey);
     const labelFn = dateKey === 'Tanggal' ? dailyLabel : monthLabel;
     const tableRows = rows.map(r => [labelFn(r[dateKey]), fmtDesimal(r[source.csvCol])]);

@@ -46,6 +46,22 @@ function firstNonNullPerColumn(rows, columns, dateCol) {
   return { values, dates };
 }
 
+// Versi efisien dari firstNonNullPerColumn untuk TANGAN LAPANGAN:
+// hasil query DISTINCT ON (col) sudah berupa satu baris per kolom berisi
+// nilai + tanggal terbaru yang non-null, jadi cukup disalin ke map. Kolom
+// yang tidak punya data sama sekali di-set null, sama seperti perilaku
+// firstNonNullPerColumn (kolom itu tidak pernah terisi).
+function latestPerColumn(rows, columns) {
+  const values = {};
+  const dates = {};
+  columns.forEach(col => { values[col] = null; dates[col] = null; });
+  rows.forEach(r => {
+    values[r.col] = r.value !== null && r.value !== undefined ? Number(r.value) : null;
+    dates[r.col] = r.tanggal;
+  });
+  return { values, dates };
+}
+
 // Tanggal PALING BARU di antara beberapa tanggal (string 'YYYY-MM-DD', bisa
 // null) -- dipakai supaya 1 kartu popup cukup tampilkan 1 keterangan
 // "Data per ..." walau field-field di dalamnya berasal dari bulan yang beda.
@@ -70,8 +86,27 @@ async function handleMapLatest(req, res) {
   const [apResult, atdResult, manggarResult, kualitasResult, teritipLevelResult, debitResult, levelResult] = await Promise.all([
     pool.query(`SELECT to_char(bulan, 'YYYY-MM-DD') as tanggal, ${AP_COLUMNS.join(', ')} FROM air_permukaan ORDER BY bulan DESC`),
     pool.query(`SELECT to_char(bulan, 'YYYY-MM-DD') as tanggal, ${ATD_COLUMNS.join(', ')} FROM air_tanah_dalam ORDER BY bulan DESC`),
-    pool.query(`SELECT to_char(tanggal, 'YYYY-MM-DD') as tanggal, level_waduk_manggar_m, curah_hujan_mm FROM manggar_level_curahhujan ORDER BY tanggal DESC`),
-    pool.query(`SELECT to_char(tanggal, 'YYYY-MM-DD') as tanggal, ntu_manggar, ph_manggar, ntu_teritip, ph_teritip FROM kualitas_air_manggar_teritip ORDER BY tanggal DESC`),
+    // Tabel harian besar dipindahkan seluruhnya tiap request publik padahal
+    // yang dibutuhkan cuma nilai + tanggal terbaru per kolom. DISTINCT ON
+    // (col) menarik SATU baris per kolom (nilai terbaru non-null) -- hasilnya
+    // sama dengan firstNonNullPerColumn sebelumnya, tanpa transfer ribuan
+    // baris harian.
+    pool.query(`SELECT DISTINCT ON (col) col, to_char(tanggal, 'YYYY-MM-DD') as tanggal, value
+                FROM (
+                  SELECT 'level_waduk_manggar_m' AS col, tanggal, level_waduk_manggar_m AS value FROM manggar_level_curahhujan WHERE level_waduk_manggar_m IS NOT NULL
+                  UNION ALL
+                  SELECT 'curah_hujan_mm' AS col, tanggal, curah_hujan_mm AS value FROM manggar_level_curahhujan WHERE curah_hujan_mm IS NOT NULL
+                ) x ORDER BY col, tanggal DESC`),
+    pool.query(`SELECT DISTINCT ON (col) col, to_char(tanggal, 'YYYY-MM-DD') as tanggal, value
+                FROM (
+                  SELECT 'ntu_manggar' AS col, tanggal, ntu_manggar AS value FROM kualitas_air_manggar_teritip WHERE ntu_manggar IS NOT NULL
+                  UNION ALL
+                  SELECT 'ph_manggar' AS col, tanggal, ph_manggar AS value FROM kualitas_air_manggar_teritip WHERE ph_manggar IS NOT NULL
+                  UNION ALL
+                  SELECT 'ntu_teritip' AS col, tanggal, ntu_teritip AS value FROM kualitas_air_manggar_teritip WHERE ntu_teritip IS NOT NULL
+                  UNION ALL
+                  SELECT 'ph_teritip' AS col, tanggal, ph_teritip AS value FROM kualitas_air_manggar_teritip WHERE ph_teritip IS NOT NULL
+                ) x ORDER BY col, tanggal DESC`),
     pool.query(`SELECT to_char(tanggal, 'YYYY-MM-DD') as tanggal, level_waduk_teritip_m FROM teritip_level WHERE level_waduk_teritip_m IS NOT NULL ORDER BY tanggal DESC LIMIT 1`),
     // Sumur dianggap aktif kalau ADA data debit yang diinput dalam 12 BULAN
     // TERAKHIR (lihat statusFromDebit di apps/peta-ipa-sumur/app.js) -- makanya
@@ -110,8 +145,8 @@ async function handleMapLatest(req, res) {
     };
   });
 
-  const manggar = firstNonNullPerColumn(manggarResult.rows, ['level_waduk_manggar_m', 'curah_hujan_mm'], 'tanggal');
-  const kualitas = firstNonNullPerColumn(kualitasResult.rows, ['ntu_manggar', 'ph_manggar', 'ntu_teritip', 'ph_teritip'], 'tanggal');
+  const manggar = latestPerColumn(manggarResult.rows, ['level_waduk_manggar_m', 'curah_hujan_mm']);
+  const kualitas = latestPerColumn(kualitasResult.rows, ['ntu_manggar', 'ph_manggar', 'ntu_teritip', 'ph_teritip']);
   const teritipLevelRow = teritipLevelResult.rows[0];
   const waduk = {
     manggar: {

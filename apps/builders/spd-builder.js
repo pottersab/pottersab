@@ -19,7 +19,9 @@ window.SpdBuilder = (function () {
   }
   function u16(n){return [n&0xFF,(n>>8)&0xFF];}
   function u32(n){return [n&0xFF,(n>>>8)&0xFF,(n>>>16)&0xFF,(n>>>24)&0xFF];}
-  function strToBytes(s){return Array.from(new TextEncoder().encode(s));}
+  // TextEncoder.encode sudah mengembalikan Uint8Array -- tanpa Array.from
+  // (yang membuat array JS perantara) supaya tidak ada alokasi ganda.
+  function strToBytes(s){return new TextEncoder().encode(s);}
 
   function createZip(files){
     const localParts=[], central=[];
@@ -261,7 +263,7 @@ ${mergeXml}
 <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
 </Relationships>`;
 
-    function toBytes(s){return new Uint8Array(strToBytes(s));}
+    function toBytes(s){return strToBytes(s);}
 
     return [
       {name:'[Content_Types].xml',data:toBytes(CONTENT_TYPES)},

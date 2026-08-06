@@ -853,14 +853,12 @@ function doLogout(){
 <!-- Builder tiap jenis surat -- dipakai fitur "Unduh Ulang (format asli)" di
      Riwayat Surat. Sama persis dengan yang dipakai halaman surat aslinya
      (apps/builders/*.js), supaya file yang dibangun ulang dari sini identik
-     strukturnya dengan file yang pertama kali diunduh admin. -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
-<script src="apps/builders/spd-builder.js"></script>
-<script src="apps/builders/lpj-builder.js"></script>
-<script src="apps/builders/berita-acara-builder.js"></script>
-<script src="apps/builders/surat-permohonan-builder.js"></script>
-<script src="apps/builders/laporan-p2k3-builder.js"></script>
-<script src="apps/builders/ceklist-apd-builder.js"></script>
+     strukturnya dengan file yang pertama kali diunduh admin.
+
+     Builder + exceljs TIDAK lagi dimuat saat halaman dibuka -- itu ~900 KB
+     yang hanya terpakai saat tombol "Unduh Ulang" ditekan (aksi jarang).
+     Dimuat dinamis sekali oleh loadBuilderScripts() di bawah, lalu di-cache
+     supaya unduhan berikutnya langsung jalan. -->
 
 <script>
   const API_URL = '';
@@ -1612,6 +1610,47 @@ function doLogout(){
     'Laporan P2K3': 'LAPORAN P2K3',
     'Ceklist APD': 'CEKLIST INSPEKSI APD'
   };
+  // Script yang perlu dimuat sebelum "Unduh Ulang" bisa jalan, per jenis
+  // dokumen. ceklist-apd memakai ExcelJS di browser, jadi exceljs ikut
+  // dimuat untuknya. Script lain (SPD/LPJ) hand-roll ZIP-nya sendiri dan
+  // DOCX (Berita Acara/Surat Permohonan/Laporan P2K3) juga mandiri.
+  const BUILDER_SCRIPTS = {
+    'SPD': ['apps/builders/spd-builder.js'],
+    'LPJ': ['apps/builders/lpj-builder.js'],
+    // kop.js menyediakan logo/kop (window.KopAssets) yang dipakai builder
+    // DOCX & ceklist -- dimuat dulu supaya builder tidak ReferenceError.
+    'Berita Acara': ['apps/builders/kop.js', 'apps/builders/berita-acara-builder.js'],
+    'Surat Permohonan': ['apps/builders/kop.js', 'apps/builders/surat-permohonan-builder.js'],
+    'Laporan P2K3': ['apps/builders/kop.js', 'apps/builders/laporan-p2k3-builder.js'],
+    'Ceklist APD': [
+      'https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js',
+      'apps/builders/kop.js',
+      'apps/builders/ceklist-apd-builder.js'
+    ]
+  };
+  const loadedScripts = {};
+  // Memuat script eksternal (bukan <script> statis di HTML) dan menunggu
+  // sampai selesai. Dimuat paling banyak sekali per URL -- panggilan
+  // berikutnya langsung resolve. Promise per URL disimpan supaya dua klik
+  // "Unduh Ulang" beruntun tidak memuat file yang sama dua kali.
+  function loadScript(src) {
+    if (loadedScripts[src]) return loadedScripts[src];
+    loadedScripts[src] = new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = src;
+      s.onload = () => resolve();
+      s.onerror = () => { delete loadedScripts[src]; reject(new Error('Gagal memuat ' + src)); };
+      document.head.appendChild(s);
+    });
+    return loadedScripts[src];
+  }
+  // Menjamin semua script untuk satu jenis dokumen sudah termuat (berurutan,
+  // supaya dependensi seperti exceljs selesai sebelum builder-nya).
+  async function loadBuilderScripts(documentType) {
+    const urls = BUILDER_SCRIPTS[documentType] || [];
+    for (const url of urls) await loadScript(url);
+  }
+
   // `validate` mengecek apakah `details` sungguh berisi data surat lengkap
   // (bukan cuma catatan "halaman dibuka" dari recordAccess() di index.html,
   // yang menulis ke tabel history yang sama tapi cuma details:{accessedAt}).
@@ -1735,6 +1774,9 @@ function doLogout(){
       return;
     }
     try {
+      // Builder (dan exceljs untuk Ceklist APD) dimuat saat dibutuhkan, bukan
+      // saat halaman dibuka. Kalau sudah pernah dimuat, ini langsung resolve.
+      await loadBuilderScripts(item.documentType);
       const bytes = await regen.generate(item.details || {});
       const blob = new Blob([bytes], { type: regen.mime });
       const url = URL.createObjectURL(blob);

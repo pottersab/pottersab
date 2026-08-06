@@ -179,6 +179,15 @@
           // update state lokal supaya tidak perlu fetch ulang
           state.groups.forEach(function (g) { if (g.installation === inst) g.wells.forEach(function (w) { if (w.dbName === dbName) { w.awal = n; label = w.name; } }); });
           renderTable(); renderStats();
+          // renderTable membangun ulang input (fokus hilang). Kembalikan fokus
+          // ke sel Debit Awal sumur yang sama supaya admin yang mengisi beberapa
+          // sumur berurutan tidak perlu meng-klik ulang tiap sel. Tabel ini
+          // memang di-render ulang utuh karena mengubah Debit Awal memengaruhi
+          // sel ratio semua bulan + baris JUMLAH + RATA-RATA (berbeda dengan
+          // tabel lain yang cuma 1 sel), jadi penghematan nyatanya di sini
+          // adalah mempertahankan posisi kursor, bukan jumlah node.
+          var fokus = document.querySelector('input[data-role="awal"][data-inst="' + inst + '"][data-well="' + dbName.replace(/"/g, '\\"') + '"]');
+          if (fokus) { fokus.focus(); try { fokus.setSelectionRange(fokus.value.length, fokus.value.length); } catch (e) {} }
           toast("Debit awal " + label + " diperbarui → " + fmt(n, 0) + " m³/jam");
         } catch (err) {
           toast("Gagal menyimpan: " + err.message);

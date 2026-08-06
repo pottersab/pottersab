@@ -1012,6 +1012,12 @@ function tampilkanHalaman(id){
   document.getElementById('page-'+id).classList.add('show');
   document.querySelectorAll('[data-nav]').forEach(b=>b.classList.toggle('active',b.dataset.nav===id));
   window.scrollTo({top:0,behavior:'smooth'});
+  // Mini peta hero cuma tampil di Beranda, dan Leaflet cuma dimuat kalau
+  // Beranda benar-benar aktif (lihat blok initMiniMap di bawah). Dipanggil
+  // di sini supaya pindah balik ke Beranda (mis. setelah masuk lewat
+  // ?page=dev) ikut memuatnya. Guard typeof: saat tampilkanHalaman() pertama
+  // kali dipanggil dari inisialisasi ?page=..., initMiniMap belum terdefinisi.
+  if(id === 'home' && typeof window.initMiniMap === 'function') window.initMiniMap();
   closeMobileNav();
 }
 
@@ -1167,41 +1173,72 @@ function doLogout(){
 })();
 </script>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
 <script>
 // ---------- Mini peta di hero (preview saja -- titik warna polos, tanpa
 // zoom control/cluster, tanpa interaksi. Klik header/tombol -> apps/peta-ipa-sumur) ----------
+// Leaflet (~140KB) dulu dimuat dari CDN di tiap kunjungan beranda, walau
+// halaman yang tampil bukan Beranda (mis. ?page=dev). Sekarang hanya dimuat
+// dinamis kalau halaman Beranda benar-benar aktif, lalu di-cache -- masuk
+// langsung ke Tools/Data/Development tidak lagi mengunduh Leaflet + tile OSM
+// yang tidak terpakai. Dipanggil ulang oleh tampilkanHalaman() tiap kali
+// pemakai kembali ke Beranda.
 (function(){
-  var mapEl = document.getElementById('heroPetaMap');
-  if(!mapEl || typeof L === 'undefined') return;
+  var heroMapInited = false;
+  var leafletPromise = null;
 
-  var heroMap = L.map('heroPetaMap', {
-    zoomControl:false, dragging:false, scrollWheelZoom:false,
-    doubleClickZoom:false, touchZoom:false, boxZoom:false,
-    keyboard:false, attributionControl:false, tap:false
-  }).setView([-1.205, 116.91], 10);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom:19 }).addTo(heroMap);
-
-  var CATEGORY_COLOR = { ipa:'#0B5566', sumur:'#2F8F5B', waduk:'#D98F3E' };
-  function addDots(list, color, radius){
-    (list || []).forEach(function(d){
-      L.circleMarker([d.lat, d.lng], { radius:radius, color:'#fff', weight:1.3, fillColor:color, fillOpacity:1 }).addTo(heroMap);
+  function loadLeaflet(){
+    if(leafletPromise) return leafletPromise;
+    leafletPromise = new Promise(function(resolve, reject){
+      var s = document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js';
+      s.onload = function(){ resolve(); };
+      s.onerror = function(){ leafletPromise = null; reject(new Error('Gagal memuat Leaflet')); };
+      document.head.appendChild(s);
     });
+    return leafletPromise;
   }
 
-  fetch('apps/peta-ipa-sumur/data/lokasi.json')
-    .then(function(res){ return res.json(); })
-    .then(function(data){
-      addDots(data.ipa, CATEGORY_COLOR.ipa, 5);
-      addDots(data.sumur, CATEGORY_COLOR.sumur, 3.5);
-      addDots(data.waduk, CATEGORY_COLOR.waduk, 5.5);
+  function initMiniMap(){
+    if(heroMapInited) return;
+    var home = document.getElementById('page-home');
+    if(!home || !home.classList.contains('show')) return;
+    var mapEl = document.getElementById('heroPetaMap');
+    if(!mapEl) return;
 
-      var ipaBadge = document.getElementById('petaIpaBadge');
-      if(ipaBadge) ipaBadge.lastChild.textContent = (data.ipa || []).length + ' IPA';
-      var wadukBadge = document.getElementById('petaWadukBadge');
-      if(wadukBadge) wadukBadge.lastChild.textContent = (data.waduk || []).length + ' waduk';
-    })
-    .catch(function(err){ console.error('Gagal memuat preview peta hero', err); });
+    loadLeaflet().then(function(){
+      heroMapInited = true;
+      var heroMap = L.map('heroPetaMap', {
+        zoomControl:false, dragging:false, scrollWheelZoom:false,
+        doubleClickZoom:false, touchZoom:false, boxZoom:false,
+        keyboard:false, attributionControl:false, tap:false
+      }).setView([-1.205, 116.91], 10);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom:19 }).addTo(heroMap);
+
+      var CATEGORY_COLOR = { ipa:'#0B5566', sumur:'#2F8F5B', waduk:'#D98F3E' };
+      function addDots(list, color, radius){
+        (list || []).forEach(function(d){
+          L.circleMarker([d.lat, d.lng], { radius:radius, color:'#fff', weight:1.3, fillColor:color, fillOpacity:1 }).addTo(heroMap);
+        });
+      }
+
+      fetch('apps/peta-ipa-sumur/data/lokasi.json')
+        .then(function(res){ return res.json(); })
+        .then(function(data){
+          addDots(data.ipa, CATEGORY_COLOR.ipa, 5);
+          addDots(data.sumur, CATEGORY_COLOR.sumur, 3.5);
+          addDots(data.waduk, CATEGORY_COLOR.waduk, 5.5);
+
+          var ipaBadge = document.getElementById('petaIpaBadge');
+          if(ipaBadge) ipaBadge.lastChild.textContent = (data.ipa || []).length + ' IPA';
+          var wadukBadge = document.getElementById('petaWadukBadge');
+          if(wadukBadge) wadukBadge.lastChild.textContent = (data.waduk || []).length + ' waduk';
+        })
+        .catch(function(err){ console.error('Gagal memuat preview peta hero', err); });
+    }).catch(function(err){ console.error('Gagal memuat preview peta hero', err); });
+  }
+
+  window.initMiniMap = initMiniMap;
+  initMiniMap();
 })();
 
 /* ============ HUB SEBAGAI DEK KARTU ============
@@ -1350,14 +1387,24 @@ function doLogout(){
     d.els = {prev:prev, next:next, titik:titik, bawah:bawah, semua:semua, petunjuk:petunjuk};
     d.hidup = true;
 
-    prev.addEventListener('click', function(){ geser(d,-1); });
-    next.addEventListener('click', function(){ geser(d, 1); });
-    semua.addEventListener('click', function(){ d.mode==='dek' ? bentang(d) : lipat(d); });
+    /* Handler disimpan di d.handler supaya bongkar() bisa melepasnya. Listener
+       pada tombol buatan (prev/next/semua) ikut terhapus bersama elemennya,
+       tapi listener di grid & window menempel pada elemen statis -- kalau tidak
+       dilepas, menyilang breakpoint 1180px berulang kali menumpuk handler dan
+       satu swipe/klik/wheel bisa menggeser dek beberapa kali. */
+    var handler = [];
+
+    var onPrev = function(){ geser(d,-1); };
+    var onNext = function(){ geser(d, 1); };
+    var onSemua = function(){ d.mode==='dek' ? bentang(d) : lipat(d); };
+    prev.addEventListener('click', onPrev);
+    next.addEventListener('click', onNext);
+    semua.addEventListener('click', onSemua);
 
     /* Kartu di samping tidak boleh membuka tautannya -- klik pertama
        memindahkannya ke tengah dulu, klik kedua baru membuka. Di mode kisi
        semua kartu sejajar, jadi tautannya bekerja seperti biasa. */
-    grid.addEventListener('click', function(e){
+    var onGridClick = function(e){
       if(d.mode !== 'dek' || d.sibuk) return;
       var k = e.target.closest ? e.target.closest('.hub-card') : null;
       if(!k || k.parentNode !== grid) return;
@@ -1365,33 +1412,49 @@ function doLogout(){
       if(i < 0 || i === d.akt) return;
       e.preventDefault(); e.stopPropagation();
       d.akt = i; gambar(d);
-    }, true);
+    };
+    grid.addEventListener('click', onGridClick, true);
+    handler.push(['grid','click',onGridClick,true]);
 
-    grid.addEventListener('keydown', function(e){
+    var onKeydown = function(e){
       if(e.key === 'ArrowRight'){ geser(d, 1); e.preventDefault(); }
       if(e.key === 'ArrowLeft'){ geser(d,-1); e.preventDefault(); }
-    });
+    };
+    grid.addEventListener('keydown', onKeydown);
+    handler.push(['grid','keydown',onKeydown]);
 
     var tekan=false, mulaiX=0;
-    grid.addEventListener('pointerdown', function(e){
+    var onPointerdown = function(e){
       if(d.mode !== 'dek' || d.sibuk) return;
       tekan=true; mulaiX=e.clientX;
-    });
-    window.addEventListener('pointerup', function(){ tekan=false; });
-    grid.addEventListener('pointermove', function(e){
+    };
+    grid.addEventListener('pointerdown', onPointerdown);
+    handler.push(['grid','pointerdown',onPointerdown]);
+
+    var onPointerup = function(){ tekan=false; };
+    window.addEventListener('pointerup', onPointerup);
+    handler.push(['window','pointerup',onPointerup]);
+
+    var onPointermove = function(e){
       if(!tekan) return;
       var dx = e.clientX - mulaiX;
       if(Math.abs(dx) > 85){ geser(d, dx>0?-1:1); mulaiX = e.clientX; }
-    });
+    };
+    grid.addEventListener('pointermove', onPointermove);
+    handler.push(['grid','pointermove',onPointermove]);
 
     var kunci = 0;
-    grid.addEventListener('wheel', function(e){
+    var onWheel = function(e){
       var t = Date.now();
       if(t - kunci < 400) return;
       if(Math.abs(e.deltaX) > Math.abs(e.deltaY) && Math.abs(e.deltaX) > 8){
         kunci = t; geser(d, e.deltaX>0?1:-1); e.preventDefault();
       }
-    }, {passive:false});
+    };
+    grid.addEventListener('wheel', onWheel, {passive:false});
+    handler.push(['grid','wheel',onWheel,false,'passive']);
+
+    d.handler = handler;
 
     gambar(d);
   }
@@ -1425,6 +1488,15 @@ function doLogout(){
   function bongkar(d){
     if(!d.hidup) return;
     var grid = d.grid;
+    /* Lepas semua listener yang dipasang pasang() pada elemen statis (grid &
+       window). Tanpa ini, tiap menyilang breakpoint 1180px menumpuk handler.
+       Bentuk tiap entri: [target, type, fn, capture] -- wheel memakai opsi
+       passive:false tapi saat melepas cukup flag capture yang penting. */
+    (d.handler || []).forEach(function(h){
+      var tgt = h[0] === 'window' ? window : grid;
+      tgt.removeEventListener(h[1], h[2], h[3] ? true : undefined);
+    });
+    d.handler = [];
     grid.querySelectorAll(':scope > [data-salinan]').forEach(function(k){ k.remove(); });
     grid.querySelectorAll('.hub-wash').forEach(function(s){ s.remove(); });
     d.asli.forEach(function(k){

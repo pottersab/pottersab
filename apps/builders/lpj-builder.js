@@ -20,7 +20,9 @@ window.LpjBuilder = (function () {
   }
   function u16(n){return [n&0xFF,(n>>8)&0xFF];}
   function u32(n){return [n&0xFF,(n>>>8)&0xFF,(n>>>16)&0xFF,(n>>>24)&0xFF];}
-  function strToBytes(s){return Array.from(new TextEncoder().encode(s));}
+  // TextEncoder.encode sudah mengembalikan Uint8Array -- tanpa Array.from
+  // (yang membuat array JS perantara) supaya tidak ada alokasi ganda.
+  function strToBytes(s){return new TextEncoder().encode(s);}
 
   function createZip(files){
     const localParts=[], central=[];
@@ -127,10 +129,13 @@ window.LpjBuilder = (function () {
   const SUB_DIVISI_DEFAULT = 'SUMBER AIR BAKU';
   function barisJudul(data){
     const sub = String(data.subDivisi || '').trim();
+    // periodeOtomatis map+sort semua item -- dihitung sekali, dipakai dua kali
+    // di ekspresi di bawah (sebelumnya dipanggil ganda tiap baris judul).
+    const periode = data.periode || periodeOtomatis(data.items);
     return [
       String(data.judul == null ? JUDUL_DEFAULT : data.judul).trim(),
       sub ? `BIAYA OPERASIONAL SUB DIVISI ${sub}` : 'BIAYA OPERASIONAL',
-      (data.periode || periodeOtomatis(data.items)) ? `BULAN ${data.periode || periodeOtomatis(data.items)}` : ''
+      periode ? `BULAN ${periode}` : ''
     ];
   }
 
@@ -150,8 +155,10 @@ window.LpjBuilder = (function () {
   // kiri-kanan 0,7"): kalau kelebihan, kolom Kegiatan yang dipersempit karena
   // dia satu-satunya yang teksnya boleh dibungkus ke baris berikutnya.
   const TOTAL_MAKS = 93, MIN_KEGIATAN = 24;
-  function lebarKolom(data){
-    const gs = groupItems(data.items);
+  function lebarKolom(data, gs){
+    // gs = hasil groupItems() -- di-pass dari buildWorkbookFiles supaya
+    // grouping yang mahal (filter+slice+sort+reduce) tidak dihitung dua kali
+    // dalam satu generateBytes.
     const tanggal=['Tanggal'], kegiatan=['Kegiatan'], jenis=['Keterangan'], jumlah=['Jumlah'];
     let nomorMaks = 1, totalOps = 0;
     gs.forEach(g=>{
@@ -253,7 +260,9 @@ window.LpjBuilder = (function () {
 
   function buildWorkbookFiles(data){
     const groups = groupItems(data.items);
-    const W = lebarKolom(data);
+    // groups dihitung sekali di sini, dipakai untuk lebar kolom, total, dan
+    // baris-baris tabel -- bukan dihitung ulang per fungsi.
+    const W = lebarKolom(data, groups);
     const periode = data.periode || periodeOtomatis(data.items);
     const totalOps = groups.reduce((s,g)=>s+g.subtotal,0);
     const permintaan = angka(data.permintaanDana);
@@ -447,7 +456,7 @@ ${mergeXml}
 <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
 </Relationships>`;
 
-    function toBytes(s){return new Uint8Array(strToBytes(s));}
+    function toBytes(s){return strToBytes(s);}
 
     return [
       {name:'[Content_Types].xml',data:toBytes(CONTENT_TYPES)},
