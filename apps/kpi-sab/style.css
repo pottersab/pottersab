@@ -20,6 +20,7 @@
   --radius:14px;
 }
 *{box-sizing:border-box;}
+html{scroll-behavior:smooth;}
 body{
   margin:0;
   background:var(--bg);
@@ -99,14 +100,10 @@ h1{
 .hub-card.soon .open{background:var(--ink-faint);pointer-events:none;}
 
 /* ---------------------------------------------------------------------
-   Kartu KPI kategori lain (terpisah dari deret 18.x/19.x).
-   Pemisah: garis putus-putus. Kartu: tepi putus-putus + aksen amber
-   (--edit) supaya jelas itu kelompok berbeda dari kartu KPI biasa.
+   Kartu KPI kategori lain (terpisah dari deret 18.x/19.x): tepi putus-putus
+   + aksen amber (--edit) supaya jelas itu kelompok berbeda. Akses lewat
+   panah ke bawah (.scroll-down) dari bagian kartu utama.
 --------------------------------------------------------------------- */
-.hub-sep{
-  height:0;border:none;border-top:1px dashed var(--line-muted);
-  margin:36px 0 20px;
-}
 .hub-card.alt{
   border-style:dashed;border-color:var(--edit);
 }
@@ -116,6 +113,19 @@ h1{
 .hub-card.alt .open{background:var(--edit);}
 .hub-card.alt .open:hover{background:var(--edit-ink);}
 .hub-card.alt:hover{border-color:var(--edit);box-shadow:0 12px 28px rgba(185,119,9,.12);}
+
+/* Panah ke bawah: dari bagian kartu KPI utama ke bagian kartu gaya beda
+   (halaman kedua). Melayang (bounce) sebagai ajakan scroll. */
+.scroll-down{
+  display:grid;place-items:center;width:48px;height:48px;border-radius:50%;
+  margin:34px auto 6px;color:var(--primary);
+  border:1px solid var(--line-muted);background:var(--surface);
+  box-shadow:0 8px 20px rgba(14,42,50,.10);
+  animation:bob 1.7s ease-in-out infinite;
+  transition:color .15s,border-color .15s;
+}
+.scroll-down:hover{color:var(--edit);border-color:var(--edit);}
+@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(7px)}}
 
 /* ---------------------------------------------------------------------
    Tool (apps/kpi-sab/ukur-debit.html): toolbar, tabel KPI.
