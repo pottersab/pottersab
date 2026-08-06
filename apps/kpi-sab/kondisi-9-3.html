@@ -174,7 +174,7 @@ function doLogout(){
 
   <div class="card admin-edit" id="disadapCard" style="display:none;">
     <h3>Isi Air yang Disadap (m³) — <span id="disadapMonthLabel"></span></h3>
-    <p class="hint">Tempel seluruh data dari Excel sekaligus — <b>satu baris = satu tanggal</b> (baris 1 = tanggal 1, dst). Boleh menyalin satu kolom yang sekalian berisi tanggal/kolom lain: angka terakhir tiap baris yang dipakai. Setelah diisi, klik Simpan.</p>
+    <p class="hint">Tempel seluruh data dari Excel sekaligus — <b>satu baris = satu tanggal</b> (baris 1 = tanggal 1, dst). Boleh menyalin satu kolom yang sekalian berisi tanggal/kolom lain: angka terakhir tiap baris yang dipakai. Format angka mengikuti kebiasaan Indonesia: <b>koma = desimal</b>, <b>titik = ribuan</b> (mis. <code>90.649,9</code>, <code>90.650</code>, <code>90649.9</code> — semua diterima). Setelah diisi, klik Simpan.</p>
     <textarea id="disadapTextarea" rows="8" spellcheck="false" placeholder="90649.9&#10;91839.9&#10;91580.9&#10;…"></textarea>
     <div class="edit-actions">
       <button type="button" class="dl-btn dl-btn-admin" id="disadapSaveBtn">💾 Simpan Air yang Disadap</button>

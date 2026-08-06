@@ -25,15 +25,34 @@
   // ------------------------------------------------------------------
   // PARSER TEMPEL "AIR YANG DISADAP" -- terima satu nilai per baris, atau satu
   // baris berisi banyak nilai (spasi/tab/titik-koma), atau baris yang sekalian
-  // ada tanggal/kolom lain (angka TERAKHIR tiap baris yang dipakai). Desimal
-  // bisa pakai koma (1.234,5) atau titik (1234.5).
+  // ada tanggal/kolom lain (angka TERAKHIR tiap baris yang dipakai).
+  //
+  // Format angka mengikuti kebiasaan Indonesia: koma = desimal, titik = ribuan.
+  //   - "90649,9"            -> 90649.9
+  //   - "90.649,9"           -> 90649.9   (titik ribuan + koma desimal)
+  //   - "90.650"             -> 90650     (nilai BULAT pakai titik ribuan)
+  //   - "15.067.424"         -> 15067424  (beberapa titik ribuan)
+  //   - "90649.9" / "10.11"  -> desimal pakai titik (1-2 digit di belakang)
+  // Cara membedakan titik ribuan vs titik desimal: kalau cuma ada titik dan
+  // di belakangnya 3 digit ATAU ada lebih dari satu titik -> pemisah ribuan.
   // ------------------------------------------------------------------
   function normNum(raw) {
     var s = String(raw).replace(/\s/g, '');
-    if (s.indexOf(',') !== -1 && s.indexOf('.') !== -1) {
-      s = s.lastIndexOf(',') > s.lastIndexOf('.') ? s.replace(/\./g, '').replace(',', '.') : s.replace(/,/g, '');
-    } else if (s.indexOf(',') !== -1) {
+    var hasComma = s.indexOf(',') !== -1;
+    var hasDot = s.indexOf('.') !== -1;
+    if (hasComma && hasDot) {
+      // "90.649,9" -> ribuan dipisah titik, desimal pakai koma
+      s = s.replace(/\./g, '').replace(',', '.');
+    } else if (hasComma) {
+      // "90649,9" -> koma = desimal
       s = s.replace(',', '.');
+    } else if (hasDot) {
+      var parts = s.split('.');
+      if (parts.length > 2 || (parts.length === 2 && parts[1].length >= 3)) {
+        // "90.650" / "15.067.424" -> titik = pemisah ribuan
+        s = s.replace(/\./g, '');
+      }
+      // selain itu ("90649.9", "10.11", "3.5") -> titik = desimal, dibiarkan
     }
     var v = parseFloat(s);
     return isNaN(v) ? null : v;
