@@ -72,8 +72,8 @@
       html += '<td class="jk-c" colspan="' + row.cells.length + '"></td>';
     } else {
       row.cells.forEach(function (c) {
-        // Penanda = warna sel (kelas .on), bukan teks centang.
-        html += '<td class="jk-c' + (c ? ' on' : '') + '"></td>';
+        // Penanda = warna sel sesuai baris kegiatan (row.color), bukan teks.
+        html += '<td class="jk-c"' + (c && row.color ? ' style="background:#' + row.color + '"' : '') + '></td>';
       });
     }
     var ket = (state.meta.keterangan && state.meta.keterangan[ri]) || '';
@@ -186,11 +186,24 @@
     else { btn.textContent = '🔒 Unduh Excel (Admin)'; btn.classList.remove('enabled'); }
   }
 
+  // Legenda warna per baris kegiatan (dari state.rows).
+  function renderLegend() {
+    var el = document.getElementById('legend');
+    if (!el) return;
+    var html = state.rows.map(function (row) {
+      if (!row.color) return '';
+      return '<span><i class="swatch" style="background:#' + row.color + '"></i> ' + esc(row.no) + '. ' + esc(row.uraian) + '</span>';
+    }).join('');
+    html += '<span><i class="swatch sw-edit"></i> Keterangan — bisa diisi manual (admin)</span>';
+    el.innerHTML = html;
+  }
+
   function renderAll() {
     renderMonthSelect();
     renderStatusBadge();
     updateDownloadButton();
     renderTable();
+    renderLegend();
     renderMeta();
   }
 
