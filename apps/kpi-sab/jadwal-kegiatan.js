@@ -67,9 +67,15 @@
     var html = '<tr>';
     html += '<td class="no">' + row.no + '</td>';
     html += '<td class="name">' + esc(row.uraian) + '</td>';
-    row.cells.forEach(function (c) {
-      html += '<td class="jk-c">' + (c ? esc(c) : '') + '</td>';
-    });
+    if (row.merged) {
+      // Baris pengambilan sampel: area tanggal di-merge selebar kolom tanggal.
+      html += '<td class="jk-c" colspan="' + row.cells.length + '"></td>';
+    } else {
+      row.cells.forEach(function (c) {
+        // Penanda = warna sel (kelas .on), bukan teks centang.
+        html += '<td class="jk-c' + (c ? ' on' : '') + '"></td>';
+      });
+    }
     var ket = (state.meta.keterangan && state.meta.keterangan[ri]) || '';
     html += '<td class="jk-ke"><input class="cell" data-k="' + ri + '" value="' + esc(ket) + '"' + (editable ? '' : ' readonly') + '></td>';
     html += '</tr>';
@@ -85,7 +91,7 @@
 
     document.getElementById("tableFoot").innerHTML =
       '<b>' + esc(state.monthTitle) + '</b> · ' + state.workingDays.length + ' hari kerja · ' +
-      '<b>√</b> berjalan hari itu, Sabtu/Minggu libur tidak ditampilkan.';
+      'sel <b>berwarna</b> = kegiatan berjalan hari itu; Sabtu/Minggu libur tidak ditampilkan.';
   }
 
   // ------------------------------------------------------------------
