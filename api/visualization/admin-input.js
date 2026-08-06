@@ -1,7 +1,7 @@
 const { pool, ensureVizTables, ensureKpiTables } = require('../../lib/db');
 const { requireAdmin } = require('../../lib/auth');
 const { DATASETS } = require('../../lib/visualization/columns');
-const { saveDebitAwal, saveMeta, saveApatdMeta, savePengambilanTarget, savePengambilanMeta, saveKualitasElevasi, saveKualitasMeta, saveKpi192Meta, saveLevelSumurMeta, saveLevelStatisDinamisMeta, saveKpi18_5Values, saveKpi18_5Meta, saveKpi18_6Meta, saveKpiActivityPlanRow } = require('../../lib/visualization/kpi');
+const { saveDebitAwal, saveMeta, saveApatdMeta, savePengambilanTarget, savePengambilanMeta, saveKualitasElevasi, saveKualitasMeta, saveKpi192Meta, saveLevelSumurMeta, saveLevelStatisDinamisMeta, saveKpi18_5Values, saveKpi18_5Meta, saveKpi18_6Meta, saveKpiActivityPlanRow, saveActivityPlanMeta } = require('../../lib/visualization/kpi');
 
 function toNumOrNull(v) {
   if (v === undefined || v === null || v === '') return null;
@@ -191,6 +191,13 @@ module.exports = async (req, res) => {
         return res.status(400).json({ error: 'item_key wajib diisi' });
       }
       await saveKpiActivityPlanRow(String(item_key).trim(), req.body);
+      return res.status(200).json({ success: true });
+    }
+    if (kind === 'kpi_activity_plan_meta') {
+      // Nama pejabat penandatangan (Approved/Checked/Prepared) Activity Plan
+      // SAB -- disimpan per period_key '<tahun>-<periode>'. Lihat kpi.js.
+      await ensureKpiTables();
+      await saveActivityPlanMeta(req.body);
       return res.status(200).json({ success: true });
     }
 

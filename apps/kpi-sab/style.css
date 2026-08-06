@@ -111,6 +111,12 @@ h1{
   padding:9px 12px;border-radius:8px;border:1px solid var(--line-muted);
   background:var(--surface);color:var(--ink);cursor:pointer;
 }
+.officials-row{display:flex;gap:6px;}
+.officials-row input{
+  width:145px;padding:9px 12px;border-radius:8px;border:1px solid var(--line-muted);
+  font-family:'Inter',sans-serif;font-size:13px;
+}
+.officials-row input[readonly]{background:var(--bg);color:var(--ink-soft);}
 
 .tabs{display:flex;gap:4px;background:var(--bg);padding:4px;border-radius:10px;}
 .tab{

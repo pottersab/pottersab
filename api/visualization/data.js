@@ -240,7 +240,7 @@ module.exports = async (req, res) => {
   if (dataType === 'kpi_activity_plan') {
     await ensureKpiTables();
     const access = await checkVizAccess(req);
-    const result = await getKpiActivityPlanData(access, req.query.tahun);
+    const result = await getKpiActivityPlanData(access, req.query.tahun, req.query.periode);
     return res.status(200).json(result);
   }
 
@@ -248,11 +248,12 @@ module.exports = async (req, res) => {
     await ensureKpiTables();
     const user = requireAdmin(req, res);
     if (!user) return;
-    const result = await getKpiActivityPlanData({ granted: true, kind: 'admin' }, req.query.tahun);
+    const result = await getKpiActivityPlanData({ granted: true, kind: 'admin' }, req.query.tahun, req.query.periode);
     if (req.query.tanggal) result.signPlaceDate = req.query.tanggal;
     const buffer = await buildKpiActivityPlanExcelWorkbook(result);
+    const apPeriodSuffix = result.periodeNum === 2 ? ' Jul-Des' : '';
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', `attachment; filename="Activity Plan SAB ${result.tahun}.xlsx"`);
+    res.setHeader('Content-Disposition', `attachment; filename="Activity Plan SAB ${result.tahun}${apPeriodSuffix}.xlsx"`);
     return res.status(200).send(Buffer.from(buffer));
   }
 

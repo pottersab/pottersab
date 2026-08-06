@@ -1,10 +1,21 @@
 (function () {
   "use strict";
 
-  var MONTHS = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun"];
+  // Dua periode setahun: 1 = Jan-Jun, 2 = Jul-Des. Nilai manual disimpan per
+  // indeks bulan ABSOLUT (0-5 utk P1, 6-11 utk P2) di kolom values DB.
+  var PERIODS = {
+    1: { months: ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun"], label: "JANUARI - JUNI" },
+    2: { months: ["Jul", "Agu", "Sep", "Okt", "Nov", "Des"], label: "JULI - DESEMBER" }
+  };
+  var MONTHS = PERIODS[1].months;   // fallback; diperbarui dari state.months
+  var currentPeriode = 1;
 
   var state = null;      // respons terakhir dari /api/visualization/data?dataType=kpi_activity_plan
   var isAdmin = false;
+
+  function currentMonths() {
+    return (state && state.months && state.months.length === 6) ? state.months : (PERIODS[currentPeriode] ? PERIODS[currentPeriode].months : MONTHS);
+  }
 
   // --- akses data asli: token JWT admin (localStorage) atau token viz-access
   // hasil approve email -- pola & fungsi sama persis dengan KPI lain. ---
@@ -22,11 +33,14 @@
   // ------------------------------------------------------------------
   // MUAT DATA
   // ------------------------------------------------------------------
-  async function fetchApiData(tahun) {
+  async function fetchApiData(tahun, periode) {
     var headers = {};
     var token = currentAccessToken();
     if (token) headers['Authorization'] = 'Bearer ' + token;
-    var url = '/api/visualization/data?dataType=kpi_activity_plan' + (tahun ? ('&tahun=' + encodeURIComponent(tahun)) : '');
+    var qs = [];
+    if (tahun) qs.push('tahun=' + encodeURIComponent(tahun));
+    if (periode) qs.push('periode=' + encodeURIComponent(periode));
+    var url = '/api/visualization/data?dataType=kpi_activity_plan' + (qs.length ? '&' + qs.join('&') : '');
     var res = await fetch(url, { headers: headers });
     if (!res.ok) throw new Error('Gagal memuat data (HTTP ' + res.status + ')');
     return res.json();
@@ -40,10 +54,11 @@
     document.getElementById('tableFoot').textContent = 'Gagal memuat data: ' + err.message + ' — coba muat ulang halaman.';
   }
 
-  async function loadYear(tahun) {
+  async function loadYear(tahun, periode) {
     showLoadingState();
     try {
-      state = await fetchApiData(tahun);
+      state = await fetchApiData(tahun, periode);
+      if (state.periodeNum) currentPeriode = Number(state.periodeNum);
     } catch (err) {
       showErrorState(err);
       return;
@@ -53,7 +68,8 @@
 
   async function reloadSameYear() {
     try {
-      state = await fetchApiData(state.tahun);
+      state = await fetchApiData(state.tahun, currentPeriode);
+      if (state.periodeNum) currentPeriode = Number(state.periodeNum);
     } catch (err) {
       showErrorState(err);
       return;
@@ -65,12 +81,13 @@
   // RENDER TABEL
   // ------------------------------------------------------------------
   function buildHead() {
+    var ms = currentMonths();
     return '<thead><tr>' +
       '<th style="min-width:36px;">NO</th>' +
       '<th style="min-width:230px;">Key Result Area / Action plan &amp; Strategy</th>' +
       '<th style="min-width:58px;">Target</th>' +
       '<th style="min-width:84px;">Check Timing</th>' +
-      MONTHS.map(function (m) { return '<th style="min-width:64px;">' + m + '</th>'; }).join('') +
+      ms.map(function (m) { return '<th style="min-width:64px;">' + m + '</th>'; }).join('') +
       '<th style="min-width:56px;">Status</th>' +
       '<th style="min-width:50px;">Trend</th>' +
       '<th style="min-width:150px;">Problem</th>' +
@@ -91,11 +108,14 @@
     html += '<td class="name" style="padding-left:' + (10 + indent) + 'px;">' + esc(r.label) + '</td>';
     html += '<td class="meta"><input class="cell" data-k="target" value="' + esc(r.target) + '"' + (editable ? '' : ' readonly') + '></td>';
     html += '<td class="meta"><input class="cell" data-k="timing" value="' + esc(r.timing) + '"' + (editable ? '' : ' readonly') + '></td>';
-    MONTHS.forEach(function (_, i) {
+    var miBase = (state && state.periodeNum === 2) ? 6 : 0;
+    currentMonths().forEach(function (_, i) {
       var v = r.values[i];
-      var has = v !== null && v !== undefined;
+      var has = v !== null && v !== undefined && !isNaN(v);
+      // data-m pakai indeks bulan ABSOLUT (0-5 utk P1, 6-11 utk P2) supaya
+      // tersimpan di kolom values JSONB yang benar.
       if (valuesEditable) {
-        html += '<td class="actval"><input class="cell" type="text" inputmode="decimal" data-m="' + i + '" value="' + (has ? esc(v) : '') + '"></td>';
+        html += '<td class="actval"><input class="cell" type="text" inputmode="decimal" data-m="' + (miBase + i) + '" value="' + (has ? esc(v) : '') + '"></td>';
       } else {
         html += '<td class="actval ' + (has ? 'auto' : 'empty') + '">' + (has ? esc(v) : '—') + '</td>';
       }
@@ -121,8 +141,9 @@
     html += '</tbody>';
     table.innerHTML = html;
 
+    var ms = currentMonths();
     document.getElementById("tableFoot").innerHTML =
-      'Progres <b>Jan-Jun</b> · ' + (state.periode || '') + ' · ' +
+      'Progres <b>' + esc(ms[0]) + '-' + esc(ms[5]) + '</b> · ' + esc(state.periode || '') + ' · ' +
       'Status <b>TCP</b> jika Progres ≥ target, <b>TDTCP</b> jika &lt; target. ' +
       'Kolom kuning bisa diedit admin (nilai manual &amp; metadata).';
   }
@@ -183,6 +204,16 @@
     updateLockBanner();
     updateDownloadButton();
     renderTable();
+    var ps = document.getElementById('periodeSelect');
+    if (ps) ps.value = String(state.periodeNum || 1);
+    if (state.officials) {
+      var oa = document.getElementById('offApproved');
+      var oc = document.getElementById('offChecked');
+      var op = document.getElementById('offPrepared');
+      if (oa) oa.value = state.officials.approved || '';
+      if (oc) oc.value = state.officials.checked || '';
+      if (op) op.value = state.officials.prepared || '';
+    }
     var sd = document.getElementById('signDate');
     if (sd && !sd.value && state.signPlaceDate) sd.value = state.signPlaceDate;
   }
@@ -199,8 +230,48 @@
   // EVENTS
   // ------------------------------------------------------------------
   document.getElementById("yearSelect").addEventListener("change", function (e) {
-    loadYear(e.target.value);
+    loadYear(e.target.value, currentPeriode);
   });
+
+  var periodeSelectEl = document.getElementById("periodeSelect");
+  if (periodeSelectEl) periodeSelectEl.addEventListener("change", function (e) {
+    currentPeriode = Number(e.target.value) === 2 ? 2 : 1;
+    loadYear(state.tahun, currentPeriode);
+  });
+
+  // Simpan nama pejabat (Approved/Checked/Prepared) per periode.
+  async function saveOfficials() {
+    if (!isAdmin) return;
+    var body = {
+      kind: 'kpi_activity_plan_meta',
+      period_key: state.tahun + '-' + currentPeriode,
+      approved: document.getElementById('offApproved').value,
+      checked: document.getElementById('offChecked').value,
+      prepared: document.getElementById('offPrepared').value
+    };
+    var res = await fetch('/api/visualization/admin-input', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + currentAccessToken() },
+      body: JSON.stringify(body)
+    });
+    if (!res.ok) { var d = await res.json().catch(function () { return {}; }); throw new Error(d.error || ('HTTP ' + res.status)); }
+  }
+
+  function wireOfficialsControls() {
+    ['offApproved', 'offChecked', 'offPrepared'].forEach(function (id) {
+      var el = document.getElementById(id);
+      if (!el) return;
+      if (!isAdmin) { el.readOnly = true; }
+      el.addEventListener('change', async function () {
+        try {
+          await saveOfficials();
+          toast('Nama pejabat disimpan.');
+        } catch (err) {
+          toast('Gagal menyimpan pejabat: ' + err.message);
+        }
+      });
+    });
+  }
 
   document.getElementById("mainTable").addEventListener("change", async function (e) {
     var inp = e.target.closest('input');
@@ -232,8 +303,12 @@
     btn.disabled = true; btn.textContent = 'Menyiapkan Excel...';
     try {
       var token = currentAccessToken();
+      // Pastikan nama pejabat yang baru diketik ikut diunduh (penyimpanan
+      // normal lewat event change mungkin belum sempat selesai).
+      if (isAdmin) { try { await saveOfficials(); } catch (e) {} }
       var tanggalTtd = document.getElementById('signDate').value;
       var apiUrl = '/api/visualization/data?dataType=kpi_activity_plan_xlsx&tahun=' + encodeURIComponent(state.tahun) +
+        '&periode=' + encodeURIComponent(currentPeriode) +
         (tanggalTtd ? '&tanggal=' + encodeURIComponent(tanggalTtd) : '');
       var res = await fetch(apiUrl, { headers: { 'Authorization': 'Bearer ' + token } });
       if (!res.ok) {
@@ -243,7 +318,8 @@
       var blob = await res.blob();
       var url = URL.createObjectURL(blob);
       var a = document.createElement('a');
-      a.href = url; a.download = 'Activity Plan SAB ' + state.tahun + '.xlsx';
+      var suffix = currentPeriode === 2 ? ' Jul-Des' : '';
+      a.href = url; a.download = 'Activity Plan SAB ' + state.tahun + suffix + '.xlsx';
       document.body.appendChild(a); a.click(); a.remove();
       URL.revokeObjectURL(url);
     } catch (err) {
@@ -338,7 +414,7 @@
         } catch (e) {}
         scheduleTokenExpiry();
         setAccessModalStatus('Akses disetujui! Memuat data asli...', 'ok');
-        await loadYear(state.tahun);
+        await loadYear(state.tahun, currentPeriode);
         closeAccessModal();
       } else if (data.status === 'expired' || data.status === 'not_found') {
         clearInterval(pollTimer); pollTimer = null;
@@ -355,7 +431,7 @@
     expiryTimer = setTimeout(function () {
       vizToken = null; vizTokenExpiresAt = null;
       try { localStorage.removeItem('vizAccessToken'); localStorage.removeItem('vizAccessExpiresAt'); } catch (e) {}
-      loadYear(state.tahun);
+      loadYear(state.tahun, currentPeriode);
     }, Math.max(ms, 0));
   }
 
@@ -394,8 +470,9 @@
   async function init() {
     checkAdminStatus();
     wireAccessControls();
+    wireOfficialsControls();
     restoreVizSession();
-    await loadYear(null);
+    await loadYear(null, null);
   }
 
   init();

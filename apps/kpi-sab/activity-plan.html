@@ -119,7 +119,7 @@ function doLogout(){
       <div class="brand">Perumda Tirta Manuntung — Sumber Air Baku</div>
       <h1>Activity Plan SAB <span id="statusBadge"></span></h1>
     </div>
-    <div class="top-note">Rekap KPI tahunan Sub Bagian Sumber Air &amp; Lingkungan. Progres 18.1a/18.2/18.3b otomatis dari laporan terkait; lainnya manual (default 100). Status TCP kalau ≥ target, TDTCP kalau &lt; target.</div>
+    <div class="top-note">Rekap KPI tahunan Sub Divisi Sumber Air Baku. Progres 18.1a/18.2/18.3b otomatis dari laporan terkait; lainnya manual (default 100). Status TCP kalau ≥ target, TDTCP kalau &lt; target.</div>
   </header>
 
   <div class="lock-banner" id="lockBanner" style="display:none;">
@@ -153,8 +153,23 @@ function doLogout(){
       <select id="yearSelect"></select>
     </div>
     <div class="field">
+      <label>Periode</label>
+      <select id="periodeSelect">
+        <option value="1">Januari - Juni</option>
+        <option value="2">Juli - Desember</option>
+      </select>
+    </div>
+    <div class="field">
       <label>Tanggal (di isi manual)</label>
       <input type="text" id="signDate" placeholder="Balikpapan, 7 Juli 2026" style="width:220px;padding:9px 12px;border-radius:8px;border:1px solid var(--line-muted);font-family:'Inter',sans-serif;font-size:13.5px;">
+    </div>
+    <div class="field">
+      <label>Pejabat (Approved / Checked / Prepared)</label>
+      <div class="officials-row">
+        <input type="text" id="offApproved" placeholder="Approved">
+        <input type="text" id="offChecked" placeholder="Checked">
+        <input type="text" id="offPrepared" placeholder="Prepared">
+      </div>
     </div>
     <div class="spacer"></div>
     <button class="dl-btn dl-btn-admin" id="downloadBtn">🔒 Unduh Excel (Admin)</button>
