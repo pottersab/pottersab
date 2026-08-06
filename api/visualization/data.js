@@ -5,7 +5,7 @@ const { checkVizAccess } = require('../../lib/visualization/viz-auth');
 const { buildDummyRows, buildDummyWideSingleRows, buildDummySumurDebitRows, buildDummySumurLevelRows } = require('../../lib/visualization/dummy');
 const { fetchRealRows, fetchWideSingleRows, fetchSumurWells, fetchSumurDebitRows, fetchSumurLevelRows } = require('../../lib/visualization/repo');
 const { logViewerAction } = require('../../lib/visualization/access-log');
-const { getKpiUkurDebitData, buildKpiExcelWorkbook, getKpiApatdData, buildKpiApatdExcelWorkbook, getKpiPengambilanData, buildKpiPengambilanExcelWorkbook, getKpiKualitasData, buildKpiKualitasExcelWorkbook, getKpi192Data, buildKpi192ExcelWorkbook, getKpiLevelSumurData, buildKpiLevelSumurExcelWorkbook, getKpiLevelStatisDinamisData, buildKpiLevelStatisDinamisExcelWorkbook, getKpi18_5Data, buildKpi18_5ExcelWorkbook, getKpi18_6Data, buildKpi18_6ExcelWorkbook, getKpiActivityPlanData, buildKpiActivityPlanExcelWorkbook, getKpiJadwalKegiatanData, buildKpiJadwalKegiatanExcelWorkbook, getKpi9_2Data, buildKpi9_2ExcelWorkbook, getKpi9_3Data, buildKpi9_3ExcelWorkbook, getKpi9_4Data, buildKpi9_4ExcelWorkbook, getKpi9_7Data, buildKpi9_7ExcelWorkbook } = require('../../lib/visualization/kpi');
+const { getKpiUkurDebitData, buildKpiExcelWorkbook, getKpiApatdData, buildKpiApatdExcelWorkbook, getKpiPengambilanData, buildKpiPengambilanExcelWorkbook, getKpiKualitasData, buildKpiKualitasExcelWorkbook, getKpi192Data, buildKpi192ExcelWorkbook, getKpiLevelSumurData, buildKpiLevelSumurExcelWorkbook, getKpiLevelStatisDinamisData, buildKpiLevelStatisDinamisExcelWorkbook, getKpi18_5Data, buildKpi18_5ExcelWorkbook, getKpi18_6Data, buildKpi18_6ExcelWorkbook, getKpiActivityPlanData, buildKpiActivityPlanExcelWorkbook, getKpiJadwalKegiatanData, buildKpiJadwalKegiatanExcelWorkbook, getKpi9_2Data, buildKpi9_2ExcelWorkbook, getKpi9_3Data, buildKpi9_3ExcelWorkbook, getKpi9_4Data, buildKpi9_4ExcelWorkbook, getKpi9_7Data, buildKpi9_7ExcelWorkbook, getKpi9_5Data, buildKpi9_5ExcelWorkbook } = require('../../lib/visualization/kpi');
 
 module.exports = async (req, res) => {
   if (req.method !== 'GET') {
@@ -363,6 +363,27 @@ module.exports = async (req, res) => {
     const buffer = await buildKpi9_7ExcelWorkbook(result);
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename="9.7 Laporan Kondisi Air Sumur ${result.monthTitle}.xlsx"`);
+    return res.status(200).send(Buffer.from(buffer));
+  }
+
+  // 9.5 Laporan Monitoring Pipa Transmisi -- semua isian manual admin (tidak
+  // ada data vital, semua viewer bisa lihat). Tanggal otomatis: Selasa minggu
+  // ke-2 & ke-4 (logika 18.6). Unduhan Excel persis contoh
+  // "9.5 Laporan Monitoring Pipa Transmisi.xlsx".
+  if (dataType === 'kpi_9_5') {
+    await ensureKpiTables();
+    const result = await getKpi9_5Data({ granted: true }, req.query.bulan);
+    return res.status(200).json(result);
+  }
+
+  if (dataType === 'kpi_9_5_xlsx') {
+    await ensureKpiTables();
+    const user = requireAdmin(req, res);
+    if (!user) return;
+    const result = await getKpi9_5Data({ granted: true, kind: 'admin' }, req.query.bulan);
+    const buffer = await buildKpi9_5ExcelWorkbook(result);
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="9.5 Laporan Monitoring Pipa Transmisi ${result.monthTitle}.xlsx"`);
     return res.status(200).send(Buffer.from(buffer));
   }
 

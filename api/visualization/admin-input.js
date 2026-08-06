@@ -1,7 +1,7 @@
 const { pool, ensureVizTables, ensureKpiTables } = require('../../lib/db');
 const { requireAdmin } = require('../../lib/auth');
 const { DATASETS } = require('../../lib/visualization/columns');
-const { saveDebitAwal, saveMeta, saveApatdMeta, savePengambilanTarget, savePengambilanMeta, saveKualitasElevasi, saveKualitasMeta, saveKpi192Meta, saveLevelSumurMeta, saveLevelStatisDinamisMeta, saveKpi18_5Values, saveKpi18_5Meta, saveKpi18_6Meta, saveKpiActivityPlanRow, saveActivityPlanMeta, saveJadwalKegiatanMeta, saveK92Meta, saveK93Meta, saveK93Disadap, saveK94Meta, saveK94Items, saveK97Items, saveK97Meta } = require('../../lib/visualization/kpi');
+const { saveDebitAwal, saveMeta, saveApatdMeta, savePengambilanTarget, savePengambilanMeta, saveKualitasElevasi, saveKualitasMeta, saveKpi192Meta, saveLevelSumurMeta, saveLevelStatisDinamisMeta, saveKpi18_5Values, saveKpi18_5Meta, saveKpi18_6Meta, saveKpiActivityPlanRow, saveActivityPlanMeta, saveJadwalKegiatanMeta, saveK92Meta, saveK93Meta, saveK93Disadap, saveK94Meta, saveK94Items, saveK97Items, saveK97Meta, saveK95Items, saveK95Meta } = require('../../lib/visualization/kpi');
 
 function toNumOrNull(v) {
   if (v === undefined || v === null || v === '') return null;
@@ -271,6 +271,24 @@ module.exports = async (req, res) => {
       // 9.7 -- global, lihat kpi.js.
       await ensureKpiTables();
       await saveK97Meta(req.body);
+      return res.status(200).json({ success: true });
+    }
+    if (kind === 'kpi_9_5_items') {
+      // Isian manual 9.5 Laporan Monitoring Pipa Transmisi per bulan:
+      // rows array [{no, airValve, valveWashOut, perpipaan, keterangan}].
+      await ensureKpiTables();
+      const { bulan, rows } = req.body || {};
+      if (!bulan || !/^\d{4}-\d{2}$/.test(bulan)) {
+        return res.status(400).json({ error: 'bulan wajib diisi dengan format YYYY-MM' });
+      }
+      await saveK95Items(bulan, Array.isArray(rows) ? rows : []);
+      return res.status(200).json({ success: true });
+    }
+    if (kind === 'kpi_9_5_meta') {
+      // Penandatangan 3 blok (Mengetahui / Mengetahui-Menyetujui / Pelaksana),
+      // kode dokumen & Halaman 9.5 -- global, lihat kpi.js.
+      await ensureKpiTables();
+      await saveK95Meta(req.body);
       return res.status(200).json({ success: true });
     }
 

@@ -701,3 +701,30 @@ table.k97-edit .del-row:hover{ background:var(--warn-pale); border-color:var(--w
 
 .k97-sign-card{ margin-top:14px; }
 @media(max-width:860px){ .k97-meta-grid{ grid-template-columns:1fr 1fr; } }
+
+/* --- 9.5 Laporan Monitoring Pipa Transmisi --- */
+table.k95-edit{border-collapse:collapse;width:100%;min-width:860px;}
+table.k95-edit th{
+  background:var(--primary-pale);color:var(--primary);font-size:10.5px;text-transform:uppercase;
+  letter-spacing:.04em;padding:8px 10px;text-align:center;border:1px solid var(--line-muted);white-space:nowrap;
+}
+table.k95-edit td{border:1px solid var(--line-muted);padding:4px;vertical-align:middle;}
+table.k95-edit td.no{text-align:center;color:var(--ink-soft);font-weight:600;font-family:'IBM Plex Mono',monospace;}
+table.k95-edit td.tgl{text-align:center;font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--primary);white-space:nowrap;}
+table.k95-edit td.tgl .cellwrap{justify-content:center;background:var(--primary-pale);border-radius:7px;}
+table.k95-edit input{
+  width:100%;box-sizing:border-box;border:1px solid transparent;background:var(--edit-pale);
+  border-radius:7px;padding:7px 9px;font:inherit;font-size:13px;color:var(--edit-ink);outline:none;text-align:center;
+}
+table.k95-edit input:focus{border-color:var(--edit);background:#fff;}
+table.k95-edit input[disabled]{background:var(--bg);color:var(--ink-soft);}
+table.k95-edit td.ket textarea{
+  width:100%;box-sizing:border-box;border:1px solid var(--line-muted);border-radius:7px;
+  padding:7px 9px;font:inherit;font-size:13px;color:var(--ink);resize:vertical;background:var(--surface);
+}
+table.k95-edit td.ket textarea:focus{border-color:var(--edit);outline:none;}
+.signitem textarea{
+  width:100%;box-sizing:border-box;border:1px solid var(--line-muted);border-radius:8px;
+  padding:8px 10px;font:inherit;font-size:13px;color:var(--ink);background:var(--surface);resize:vertical;
+}
+.signitem textarea:focus{border-color:var(--edit);outline:none;}
