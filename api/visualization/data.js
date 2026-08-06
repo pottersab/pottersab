@@ -5,7 +5,7 @@ const { checkVizAccess } = require('../../lib/visualization/viz-auth');
 const { buildDummyRows, buildDummyWideSingleRows, buildDummySumurDebitRows, buildDummySumurLevelRows } = require('../../lib/visualization/dummy');
 const { fetchRealRows, fetchWideSingleRows, fetchSumurWells, fetchSumurDebitRows, fetchSumurLevelRows } = require('../../lib/visualization/repo');
 const { logViewerAction } = require('../../lib/visualization/access-log');
-const { getKpiUkurDebitData, buildKpiExcelWorkbook, getKpiApatdData, buildKpiApatdExcelWorkbook, getKpiPengambilanData, buildKpiPengambilanExcelWorkbook, getKpiKualitasData, buildKpiKualitasExcelWorkbook, getKpi192Data, buildKpi192ExcelWorkbook, getKpiLevelSumurData, buildKpiLevelSumurExcelWorkbook, getKpiLevelStatisDinamisData, buildKpiLevelStatisDinamisExcelWorkbook, getKpi18_5Data, buildKpi18_5ExcelWorkbook, getKpi18_6Data, buildKpi18_6ExcelWorkbook, getKpiActivityPlanData, buildKpiActivityPlanExcelWorkbook } = require('../../lib/visualization/kpi');
+const { getKpiUkurDebitData, buildKpiExcelWorkbook, getKpiApatdData, buildKpiApatdExcelWorkbook, getKpiPengambilanData, buildKpiPengambilanExcelWorkbook, getKpiKualitasData, buildKpiKualitasExcelWorkbook, getKpi192Data, buildKpi192ExcelWorkbook, getKpiLevelSumurData, buildKpiLevelSumurExcelWorkbook, getKpiLevelStatisDinamisData, buildKpiLevelStatisDinamisExcelWorkbook, getKpi18_5Data, buildKpi18_5ExcelWorkbook, getKpi18_6Data, buildKpi18_6ExcelWorkbook, getKpiActivityPlanData, buildKpiActivityPlanExcelWorkbook, getKpiJadwalKegiatanData, buildKpiJadwalKegiatanExcelWorkbook } = require('../../lib/visualization/kpi');
 
 module.exports = async (req, res) => {
   if (req.method !== 'GET') {
@@ -254,6 +254,29 @@ module.exports = async (req, res) => {
     const apPeriodSuffix = result.periodeNum === 2 ? ' Jul-Des' : '';
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename="Activity Plan SAB ${result.tahun}${apPeriodSuffix}.xlsx"`);
+    return res.status(200).send(Buffer.from(buffer));
+  }
+
+  // Jadwal Kegiatan (apps/kpi-sab/jadwal-kegiatan.html). Beda dari KPI lain --
+  // dokumen jadwal bulanan yang kolom tanggalnya (hari kerja) & tanda √ dihitung
+  // otomatis dari kalender, jadi bisa dilihat siapa saja; cuma unduhan Excel
+  // yang dibatasi admin. Lihat lib/visualization/kpi.js.
+  if (dataType === 'kpi_jadwal_kegiatan') {
+    await ensureKpiTables();
+    const access = await checkVizAccess(req);
+    const result = await getKpiJadwalKegiatanData(access, req.query.bulan);
+    return res.status(200).json(result);
+  }
+
+  if (dataType === 'kpi_jadwal_kegiatan_xlsx') {
+    await ensureKpiTables();
+    const user = requireAdmin(req, res);
+    if (!user) return;
+    const result = await getKpiJadwalKegiatanData({ granted: true, kind: 'admin' }, req.query.bulan);
+    if (req.query.tanggal) result.meta.signPlaceDate = req.query.tanggal;
+    const buffer = await buildKpiJadwalKegiatanExcelWorkbook(result);
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="Jadwal Kegiatan ${result.monthTitle}.xlsx"`);
     return res.status(200).send(Buffer.from(buffer));
   }
 
