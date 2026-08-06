@@ -1,7 +1,7 @@
 const { pool, ensureVizTables, ensureKpiTables } = require('../../lib/db');
 const { requireAdmin } = require('../../lib/auth');
 const { DATASETS } = require('../../lib/visualization/columns');
-const { saveDebitAwal, saveMeta, saveApatdMeta, savePengambilanTarget, savePengambilanMeta, saveKualitasElevasi, saveKualitasMeta, saveKpi192Meta, saveLevelSumurMeta, saveLevelStatisDinamisMeta, saveKpi18_5Values, saveKpi18_5Meta, saveKpi18_6Meta, saveKpiActivityPlanRow, saveActivityPlanMeta, saveJadwalKegiatanMeta } = require('../../lib/visualization/kpi');
+const { saveDebitAwal, saveMeta, saveApatdMeta, savePengambilanTarget, savePengambilanMeta, saveKualitasElevasi, saveKualitasMeta, saveKpi192Meta, saveLevelSumurMeta, saveLevelStatisDinamisMeta, saveKpi18_5Values, saveKpi18_5Meta, saveKpi18_6Meta, saveKpiActivityPlanRow, saveActivityPlanMeta, saveJadwalKegiatanMeta, saveK92Meta } = require('../../lib/visualization/kpi');
 
 function toNumOrNull(v) {
   if (v === undefined || v === null || v === '') return null;
@@ -206,6 +206,13 @@ module.exports = async (req, res) => {
       // 'global'), lihat kpi.js.
       await ensureKpiTables();
       await saveJadwalKegiatanMeta(req.body);
+      return res.status(200).json({ success: true });
+    }
+    if (kind === 'kpi_9_2_meta') {
+      // Penandatangan 3 kolom (Diketahui / Mengetahui-Menyetujui / Pelaksana)
+      // & kode dokumen 9.2 Laporan Kualitas Air Baku -- global, lihat kpi.js.
+      await ensureKpiTables();
+      await saveK92Meta(req.body);
       return res.status(200).json({ success: true });
     }
 

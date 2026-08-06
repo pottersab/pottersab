@@ -5,7 +5,7 @@ const { checkVizAccess } = require('../../lib/visualization/viz-auth');
 const { buildDummyRows, buildDummyWideSingleRows, buildDummySumurDebitRows, buildDummySumurLevelRows } = require('../../lib/visualization/dummy');
 const { fetchRealRows, fetchWideSingleRows, fetchSumurWells, fetchSumurDebitRows, fetchSumurLevelRows } = require('../../lib/visualization/repo');
 const { logViewerAction } = require('../../lib/visualization/access-log');
-const { getKpiUkurDebitData, buildKpiExcelWorkbook, getKpiApatdData, buildKpiApatdExcelWorkbook, getKpiPengambilanData, buildKpiPengambilanExcelWorkbook, getKpiKualitasData, buildKpiKualitasExcelWorkbook, getKpi192Data, buildKpi192ExcelWorkbook, getKpiLevelSumurData, buildKpiLevelSumurExcelWorkbook, getKpiLevelStatisDinamisData, buildKpiLevelStatisDinamisExcelWorkbook, getKpi18_5Data, buildKpi18_5ExcelWorkbook, getKpi18_6Data, buildKpi18_6ExcelWorkbook, getKpiActivityPlanData, buildKpiActivityPlanExcelWorkbook, getKpiJadwalKegiatanData, buildKpiJadwalKegiatanExcelWorkbook } = require('../../lib/visualization/kpi');
+const { getKpiUkurDebitData, buildKpiExcelWorkbook, getKpiApatdData, buildKpiApatdExcelWorkbook, getKpiPengambilanData, buildKpiPengambilanExcelWorkbook, getKpiKualitasData, buildKpiKualitasExcelWorkbook, getKpi192Data, buildKpi192ExcelWorkbook, getKpiLevelSumurData, buildKpiLevelSumurExcelWorkbook, getKpiLevelStatisDinamisData, buildKpiLevelStatisDinamisExcelWorkbook, getKpi18_5Data, buildKpi18_5ExcelWorkbook, getKpi18_6Data, buildKpi18_6ExcelWorkbook, getKpiActivityPlanData, buildKpiActivityPlanExcelWorkbook, getKpiJadwalKegiatanData, buildKpiJadwalKegiatanExcelWorkbook, getKpi9_2Data, buildKpi9_2ExcelWorkbook } = require('../../lib/visualization/kpi');
 
 module.exports = async (req, res) => {
   if (req.method !== 'GET') {
@@ -277,6 +277,28 @@ module.exports = async (req, res) => {
     const buffer = await buildKpiJadwalKegiatanExcelWorkbook(result);
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename="Jadwal Kegiatan ${result.monthTitle}.xlsx"`);
+    return res.status(200).send(Buffer.from(buffer));
+  }
+
+  // 9.2 Laporan Kualitas Air Baku -- data sama persis dengan 18.4 (Level/NTU/
+  // PH harian + status pintu elevasi), beda cuma format unduhan Excel (border
+  // hair, ttd 3 kolom, kode PTMBPP-IR-PRD.SAB/01-02). Lihat kpi.js.
+  if (dataType === 'kpi_9_2') {
+    await ensureKpiTables();
+    const access = await checkVizAccess(req);
+    const result = await getKpi9_2Data(access, req.query.bulan);
+    return res.status(200).json(result);
+  }
+
+  if (dataType === 'kpi_9_2_xlsx') {
+    await ensureKpiTables();
+    const user = requireAdmin(req, res);
+    if (!user) return;
+    const result = await getKpi9_2Data({ granted: true, kind: 'admin' }, req.query.bulan);
+    if (req.query.tanggal) result.meta.signPlaceDate = req.query.tanggal;
+    const buffer = await buildKpi9_2ExcelWorkbook(result);
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="9.2 Laporan Kualitas Air Baku ${result.monthTitle}.xlsx"`);
     return res.status(200).send(Buffer.from(buffer));
   }
 
