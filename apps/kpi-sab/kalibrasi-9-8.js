@@ -182,71 +182,6 @@
   }
 
   // ------------------------------------------------------------------
-  // CETAK PDF -- tampilan cetak identik dengan hasil Excel (kertas legal).
-  // Container #printHost diisi HTML laporan lalu window.print().
-  // ------------------------------------------------------------------
-  function buildPrintHtml() {
-    var m = state.meta || {};
-    var items = (state.items && state.items.length) ? state.items : [{ no: '1', namaAlat: '', noSeri: '', kodeInventaris: '', terakhir: '', berikutnya: '', keterangan: '' }];
-    var td = 'border:1px solid #000;padding:3px 5px;';
-    var h = '<div style="font-family:Calibri,Arial,sans-serif;font-size:12px;color:#000;">';
-    // Kop
-    h += '<div style="text-align:center;font-size:14px;font-weight:bold;">PERUSAHAAN UMUM DAERAH TIRTA MANUNTUNG KOTA BALIKPAPAN</div>';
-    h += '<div style="text-align:center;margin:2px 0 10px;">LAMPIRAN : 9.8 LAPORAN JADWAL KALIBRASI</div>';
-    h += '<table style="width:100%;border-collapse:collapse;font-size:12px;">';
-    h += '<tr><td style="' + td + 'width:14%;">Nomor</td><td style="' + td + 'width:10%;">:</td>' +
-      '<td style="' + td + 'text-align:center;font-weight:bold;" rowspan="2">LAPORAN JADWAL KALIBRASI</td></tr>';
-    h += '<tr><td style="' + td + '">No.Revisi</td><td style="' + td + '">:</td></tr>';
-    h += '<tr><td style="' + td + '">Tgl.Revisi</td><td style="' + td + '">:</td>' +
-      '<td style="' + td + 'text-align:center;">Hal&nbsp;&nbsp;:&nbsp;&nbsp;' + esc(m.halaman || '1') + '&nbsp;&nbsp;Dari&nbsp;&nbsp;:&nbsp;&nbsp;' + esc(m.totalHalaman || '1') + '</td></tr>';
-    h += '<tr><td style="' + td + '">Bagian</td><td style="' + td + '" colspan="2">: Sumber Air Baku</td></tr>';
-    h += '<tr><td style="' + td + '">Lokasi</td><td style="' + td + '" colspan="2">: ' + esc(m.lokasi || 'Waduk Manggar') + '</td></tr>';
-    h += '<tr><td style="' + td + '">Bulan</td><td style="' + td + ';font-weight:bold;" colspan="2">: ' + esc(state.monthTitle) + '</td></tr>';
-    h += '</table>';
-    // Tabel data
-    h += '<table style="width:100%;border-collapse:collapse;margin-top:8px;font-size:12px;">';
-    h += '<thead><tr>' +
-      '<th rowspan="2" style="' + td + '">NO</th>' +
-      '<th rowspan="2" style="' + td + '">NAMA ALAT</th>' +
-      '<th rowspan="2" style="' + td + '">NO.SERI</th>' +
-      '<th rowspan="2" style="' + td + '">KODE INVENTARIS</th>' +
-      '<th colspan="2" style="' + td + '">KALIBRASI EXTERNAL</th>' +
-      '<th rowspan="2" style="' + td + '">KETERANGAN</th>' +
-      '</tr><tr>' +
-      '<th style="' + td + '">TERAKHIR</th>' +
-      '<th style="' + td + '">BERIKUTNYA</th>' +
-      '</tr></thead><tbody>';
-    items.forEach(function (r) {
-      h += '<tr>' +
-        '<td style="' + td + 'text-align:center;">' + esc(r.no) + '</td>' +
-        '<td style="' + td + 'text-align:center;">' + esc(r.namaAlat) + '</td>' +
-        '<td style="' + td + 'text-align:center;">' + esc(r.noSeri) + '</td>' +
-        '<td style="' + td + 'text-align:center;">' + esc(r.kodeInventaris) + '</td>' +
-        '<td style="' + td + 'text-align:center;">' + esc(r.terakhir) + '</td>' +
-        '<td style="' + td + 'text-align:center;">' + esc(r.berikutnya) + '</td>' +
-        '<td style="' + td + 'text-align:center;">' + esc(r.keterangan) + '</td>' +
-        '</tr>';
-    });
-    h += '</tbody></table>';
-    // Tanda tangan 2 kolom
-    h += '<table style="width:100%;border-collapse:collapse;margin-top:32px;font-size:12px;">';
-    h += '<tr><td style="width:14%;"></td><td style="width:24%;">Mengetahui/Menyetujui</td><td style="width:24%;"></td><td style="width:24%;">Dibuat oleh</td><td style="width:14%;"></td></tr>';
-    h += '<tr><td></td><td>' + esc(m.roleMenyetujui || '') + '</td><td></td><td>' + esc(m.roleDibuat || '') + '</td><td></td></tr>';
-    h += '<tr style="height:52px;"><td></td><td></td><td></td><td></td><td></td></tr>';
-    h += '<tr><td></td><td style="font-weight:bold;">' + esc(m.nameMenyetujui || '') + '</td><td></td><td style="font-weight:bold;">' + esc(m.nameDibuat || '') + '</td><td></td></tr>';
-    h += '</table>';
-    // Kode dokumen
-    h += '<div style="margin-top:16px;font-weight:bold;">' + esc(m.footerCode || '') + '</div>';
-    h += '</div>';
-    return h;
-  }
-
-  function printReport() {
-    document.getElementById('printHost').innerHTML = buildPrintHtml();
-    window.print();
-  }
-
-  // ------------------------------------------------------------------
   // EVENTS
   // ------------------------------------------------------------------
   document.getElementById('monthSelect').addEventListener('change', function (e) {
@@ -256,7 +191,6 @@
     reloadSameMonth();
     toast('Data dimuat ulang.');
   });
-  document.getElementById('printBtn').addEventListener('click', printReport);
   document.getElementById('saveItemsBtn').addEventListener('click', saveItems);
   document.getElementById('saveMetaBtn').addEventListener('click', saveMeta);
 
