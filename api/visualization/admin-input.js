@@ -1,7 +1,7 @@
 const { pool, ensureVizTables, ensureKpiTables } = require('../../lib/db');
 const { requireAdmin } = require('../../lib/auth');
 const { DATASETS } = require('../../lib/visualization/columns');
-const { saveDebitAwal, saveMeta, saveApatdMeta, savePengambilanTarget, savePengambilanMeta, saveKualitasElevasi, saveKualitasMeta, saveKpi192Meta, saveLevelSumurMeta, saveLevelStatisDinamisMeta, saveKpi18_5Values, saveKpi18_5Meta, saveKpi18_6Meta, saveKpiActivityPlanRow, saveActivityPlanMeta, saveJadwalKegiatanMeta, saveK92Meta, saveK93Meta, saveK93Disadap, saveK94Meta, saveK94Items } = require('../../lib/visualization/kpi');
+const { saveDebitAwal, saveMeta, saveApatdMeta, savePengambilanTarget, savePengambilanMeta, saveKualitasElevasi, saveKualitasMeta, saveKpi192Meta, saveLevelSumurMeta, saveLevelStatisDinamisMeta, saveKpi18_5Values, saveKpi18_5Meta, saveKpi18_6Meta, saveKpiActivityPlanRow, saveActivityPlanMeta, saveJadwalKegiatanMeta, saveK92Meta, saveK93Meta, saveK93Disadap, saveK94Meta, saveK94Items, saveK97Items, saveK97Meta } = require('../../lib/visualization/kpi');
 
 function toNumOrNull(v) {
   if (v === undefined || v === null || v === '') return null;
@@ -250,6 +250,27 @@ module.exports = async (req, res) => {
       // -- global, lihat kpi.js.
       await ensureKpiTables();
       await saveK94Meta(req.body);
+      return res.status(200).json({ success: true });
+    }
+    if (kind === 'kpi_9_7_items') {
+      // Isian manual 9.7 Laporan Kondisi Air Sumur per (bulan, installation):
+      // rows array [{no, merk, type, namePlate, keterangan}] + catatan (teks).
+      await ensureKpiTables();
+      const { bulan, installation, rows, catatan } = req.body || {};
+      if (!bulan || !/^\d{4}-\d{2}$/.test(bulan)) {
+        return res.status(400).json({ error: 'bulan wajib diisi dengan format YYYY-MM' });
+      }
+      if (!installation || !['gunung_sari', 'prapatan', 'kampung_damai', 'zamp', 'kampung_baru_ulu'].includes(installation)) {
+        return res.status(400).json({ error: 'installation tidak dikenal' });
+      }
+      await saveK97Items(bulan, installation, Array.isArray(rows) ? rows : [], catatan);
+      return res.status(200).json({ success: true });
+    }
+    if (kind === 'kpi_9_7_meta') {
+      // Penandatangan 3 kolom, kode dokumen, total halaman & nomor Hal per IPA
+      // 9.7 -- global, lihat kpi.js.
+      await ensureKpiTables();
+      await saveK97Meta(req.body);
       return res.status(200).json({ success: true });
     }
 

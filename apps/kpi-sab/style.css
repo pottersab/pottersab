@@ -651,3 +651,53 @@ table.jk-table td.jk-ke input.cell:focus{background:var(--edit-pale);}
 .admin-menu .logout{ color:#B97709; }
 .admin-menu .logout:hover{ background:#FBF1DE; }
 @media(max-width:820px){ .admin-chip .name-block{ display:none; } }
+
+/* --- 9.7 Laporan Kondisi Air Sumur --- */
+#ipaTabs{ margin-bottom:14px; }
+.ipa-panel .tablecard{ margin-bottom:0; }
+.k97-tanggal{ color:var(--primary); font-weight:700; }
+.k97-meta-grid{
+  display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px;
+  padding:12px 14px; border-bottom:1px solid var(--line-muted);
+}
+.k97-meta-grid .field{ display:flex; flex-direction:column; gap:4px; }
+.k97-meta-grid label{ font-size:10.5px; text-transform:uppercase; letter-spacing:.05em; color:var(--ink-soft); font-weight:700; }
+.k97-meta-grid input{
+  border:1px solid var(--line-muted); border-radius:8px; padding:7px 9px;
+  font:inherit; font-size:13px; background:var(--surface); color:var(--ink); width:100%; box-sizing:border-box;
+}
+.k97-meta-grid input[readonly]{ background:var(--bg); color:var(--ink-soft); }
+
+table.k97-edit{ border-collapse:collapse; width:100%; min-width:1080px; }
+table.k97-edit th{
+  background:var(--primary-pale); color:var(--primary); font-size:10.5px; text-transform:uppercase;
+  letter-spacing:.04em; padding:8px 10px; text-align:center; border:1px solid var(--line-muted);
+  white-space:nowrap;
+}
+table.k97-edit td{ border:1px solid var(--line-muted); padding:4px; }
+table.k97-edit td.web{ text-align:center; font-family:'IBM Plex Mono',monospace; font-size:13px; color:var(--primary); background:var(--primary-pale); white-space:nowrap; }
+table.k97-edit td.web.lvl{ font-weight:600; }
+table.k97-edit td.web.real{ font-weight:700; }
+table.k97-edit input{
+  width:100%; box-sizing:border-box; border:1px solid transparent; background:var(--edit-pale);
+  border-radius:7px; padding:7px 9px; font:inherit; font-size:13px; color:var(--edit-ink); outline:none;
+}
+table.k97-edit input:focus{ border-color:var(--edit); background:#fff; }
+table.k97-edit input[disabled]{ background:var(--bg); color:var(--ink-soft); }
+table.k97-edit td.keterangan input{ width:100%; }
+table.k97-edit .del-row{
+  background:transparent; border:1px solid var(--line-muted); border-radius:7px; color:var(--low);
+  width:30px; height:30px; cursor:pointer; font-size:14px; line-height:1;
+}
+table.k97-edit .del-row:hover{ background:var(--warn-pale); border-color:var(--warn); color:var(--warn); }
+
+.k97-catatan{ padding:12px 14px; display:flex; flex-direction:column; gap:6px; }
+.k97-catatan label{ font-size:11px; text-transform:uppercase; letter-spacing:.05em; color:var(--ink-soft); font-weight:700; }
+.k97-catatan textarea{
+  width:100%; box-sizing:border-box; border:1px solid var(--line-muted); border-radius:8px;
+  padding:8px 10px; font:inherit; font-size:13px; color:var(--ink); background:var(--surface); resize:vertical;
+}
+.k97-catatan textarea:focus{ border-color:var(--edit); outline:none; }
+
+.k97-sign-card{ margin-top:14px; }
+@media(max-width:860px){ .k97-meta-grid{ grid-template-columns:1fr 1fr; } }
