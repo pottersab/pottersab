@@ -1010,7 +1010,7 @@ function doLogout(){
     kpiLogsLoaded = true;
     var container = document.getElementById('kpiLogsContent');
     container.innerHTML = '<div class="loading">Memuat data...</div>';
-    fetch(API_URL + '/api/history?type=KPI&limit=200&offset=0')
+    fetch(API_URL + '/api/history?type=KPI&limit=200&offset=0', { headers: { 'Authorization': 'Bearer ' + token } })
       .then(function (r) { return r.json(); })
       .then(function (d) {
         if (!d || !d.success) { container.innerHTML = '<div class="table-empty">Gagal memuat riwayat unduhan KPI</div>'; return; }
