@@ -284,6 +284,15 @@ header{
 .hub-grid:not(.hub-deck) .hub-card p{
   display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden;
 }
+/* min-height saja belum cukup: kartu yang isinya melebihi 300px menaikkan
+   seluruh barisnya, jadi baris pertama bisa lebih tinggi dari baris kedua
+   (paling kentara di Development -- baris atas 339px, kartu KPI sendirian di
+   baris bawah 300px). grid-auto-rows:1fr menyamakan tinggi semua baris ke
+   baris tertinggi. Hanya dipakai saat kartu benar-benar bersebelahan; di satu
+   kolom tidak ada yang perlu disamakan dan kartu pendek cuma jadi kosong. */
+@media (min-width:640px){
+  .hub-grid:not(.hub-deck){grid-auto-rows:1fr}
+}
 
 .tag-row{display:flex;gap:6px;flex-wrap:wrap}
 .tag{
@@ -486,6 +495,11 @@ footer{border-top:1px solid var(--mist);padding:26px 20px;text-align:center;font
   /* p diberi tinggi minimum supaya kartu pendek dan panjang tidak terlalu
      beda tinggi ketika berdiri berdampingan di dek. */
   .hub-deck .hub-card p{min-height:84px}
+  /* Tinggi kartu dikunci ke kartu tertinggi di hub yang sama. Nilainya diukur
+     JS lalu ditulis ke --tinggi-kartu, bukan dipatok di sini, karena tinggi
+     isinya berubah tiap teks kartu disunting. Angka cadangan 360px dipakai
+     kalau JS mati -- cukup untuk kartu terpanjang yang ada sekarang. */
+  .hub-deck .hub-card{height:var(--tinggi-kartu,360px)}
   .hub-deck .hub-card > *:not(.hub-glow):not(.hub-wash){z-index:2}
   /* transform kartu diatur JS lewat style inline, jadi hover translateY dari
      aturan grid tidak boleh ikut campur di mode dek. */
@@ -1294,6 +1308,7 @@ function doLogout(){
     grid.style.setProperty('--aksen', tema.aksen);
     grid.style.setProperty('--g1', tema.g1);
     grid.style.setProperty('--g2', tema.g2);
+    samakanTinggi(d);
 
     var prev = document.createElement('button');
     prev.type='button'; prev.className='deck-arw prev';
@@ -1381,6 +1396,32 @@ function doLogout(){
     gambar(d);
   }
 
+  /* Semua kartu satu hub dibuat setinggi kartu tertinggi di hub itu. Diukur,
+     bukan dipatok, supaya ikut menyesuaikan waktu teks kartu disunting.
+     Halaman yang sedang tidak tampil tetap bisa diukur: ia ditampilkan
+     sekejap dalam keadaan tak terlihat, lalu dikembalikan sebelum browser
+     sempat menggambar -- semuanya terjadi di dalam satu putaran yang sama. */
+  function samakanTinggi(d){
+    var page = d.grid.closest('.page');
+    var sembunyi = page && !page.classList.contains('show');
+    if(sembunyi){
+      page.style.display = 'block';
+      page.style.visibility = 'hidden';
+      page.style.position = 'absolute';
+    }
+    /* Tinggi dilepas dulu, kalau tidak yang terukur cuma nilai yang sedang
+       terpasang (atau angka cadangan dari CSS), bukan tinggi isinya. */
+    d.grid.style.setProperty('--tinggi-kartu','auto');
+    var tinggi = 0;
+    d.kartu.forEach(function(k){ if(k.offsetHeight > tinggi) tinggi = k.offsetHeight; });
+    if(tinggi) d.grid.style.setProperty('--tinggi-kartu', tinggi + 'px');
+    if(sembunyi){
+      page.style.display = '';
+      page.style.visibility = '';
+      page.style.position = '';
+    }
+  }
+
   function bongkar(d){
     if(!d.hidup) return;
     var grid = d.grid;
@@ -1400,6 +1441,7 @@ function doLogout(){
     });
     grid.classList.remove('kisi');
     grid.style.height = '';
+    grid.style.removeProperty('--tinggi-kartu');
     grid.style.transitionDuration = '';
     if(d.els.prev) d.els.prev.remove();
     if(d.els.next) d.els.next.remove();
@@ -1620,6 +1662,15 @@ function doLogout(){
     tunda = setTimeout(terapkan, 150);
   });
   terapkan();
+
+  /* Pengukuran pertama bisa jatuh sebelum Space Grotesk selesai dimuat, dan
+     huruf cadangan memberi jumlah baris yang berbeda. Diukur ulang sekali
+     lagi begitu font siap. */
+  if(document.fonts && document.fonts.ready){
+    document.fonts.ready.then(function(){
+      deks.forEach(function(d){ if(d.hidup) samakanTinggi(d); });
+    });
+  }
 })();
 </script>
 
