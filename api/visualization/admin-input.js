@@ -1,7 +1,7 @@
 const { pool, ensureVizTables, ensureKpiTables } = require('../../lib/db');
 const { requireAdmin } = require('../../lib/auth');
 const { DATASETS } = require('../../lib/visualization/columns');
-const { saveDebitAwal, saveMeta, saveApatdMeta, savePengambilanTarget, savePengambilanMeta, saveKualitasElevasi, saveKualitasMeta, saveKpi192Meta, saveLevelSumurMeta, saveLevelStatisDinamisMeta, saveKpi18_5Values, saveKpi18_5Meta, saveKpi18_6Meta, saveKpiActivityPlanRow, saveActivityPlanMeta, saveJadwalKegiatanMeta, saveK92Meta } = require('../../lib/visualization/kpi');
+const { saveDebitAwal, saveMeta, saveApatdMeta, savePengambilanTarget, savePengambilanMeta, saveKualitasElevasi, saveKualitasMeta, saveKpi192Meta, saveLevelSumurMeta, saveLevelStatisDinamisMeta, saveKpi18_5Values, saveKpi18_5Meta, saveKpi18_6Meta, saveKpiActivityPlanRow, saveActivityPlanMeta, saveJadwalKegiatanMeta, saveK92Meta, saveK93Meta, saveK93Disadap } = require('../../lib/visualization/kpi');
 
 function toNumOrNull(v) {
   if (v === undefined || v === null || v === '') return null;
@@ -213,6 +213,25 @@ module.exports = async (req, res) => {
       // & kode dokumen 9.2 Laporan Kualitas Air Baku -- global, lihat kpi.js.
       await ensureKpiTables();
       await saveK92Meta(req.body);
+      return res.status(200).json({ success: true });
+    }
+    if (kind === 'kpi_9_3_meta') {
+      // Penandatangan 3 kolom & kode dokumen 9.3 Laporan Kondisi Air Waduk --
+      // global, lihat kpi.js.
+      await ensureKpiTables();
+      await saveK93Meta(req.body);
+      return res.status(200).json({ success: true });
+    }
+    if (kind === 'kpi_9_3_disadap') {
+      // Nilai harian "Air yang disadap" (m3) 9.3 untuk satu bulan -- DIISI
+      // ADMIN manual lewat form paste (bukan otomatis dari AP). Body: bulan
+      // 'YYYY-MM' + values array (indeks 0 = tanggal 1). Lihat kpi.js.
+      await ensureKpiTables();
+      const { bulan, values } = req.body || {};
+      if (!bulan || !/^\d{4}-\d{2}$/.test(bulan)) {
+        return res.status(400).json({ error: 'bulan wajib diisi dengan format YYYY-MM' });
+      }
+      await saveK93Disadap(bulan, Array.isArray(values) ? values : []);
       return res.status(200).json({ success: true });
     }
 

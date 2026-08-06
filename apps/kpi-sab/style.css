@@ -194,6 +194,7 @@ h1{
 .swatch{width:11px;height:11px;border-radius:3px;flex-shrink:0;}
 .sw-edit{background:var(--edit-pale);border:1.5px solid var(--edit);}
 .sw-web{background:var(--primary-pale);border:1.5px solid var(--primary);}
+.sw-calc{background:var(--good-pale);border:1.5px solid var(--good);}
 .sw-lock{background:var(--bg);border:1.5px solid var(--line-muted);}
 .sw-empty{background:repeating-linear-gradient(45deg,var(--bg) 0 4px,var(--surface) 4px 8px);border:1.5px dashed var(--line-muted);}
 
@@ -255,6 +256,16 @@ table.kpi td.ratio .cellwrap{background:var(--bg);color:var(--ink-soft);justify-
   padding:16px 18px;
 }
 .card h3{margin:0 0 10px;font-size:12.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft);font-family:'Space Grotesk',sans-serif;font-weight:700;}
+.admin-edit{margin-bottom:18px;border-color:var(--edit);}
+.admin-edit textarea{
+  width:100%;min-height:150px;box-sizing:border-box;resize:vertical;
+  border:1px solid var(--line-muted);border-radius:8px;padding:10px 12px;
+  font-family:'IBM Plex Mono',monospace;font-size:13px;line-height:1.5;color:var(--ink);
+  background:var(--edit-pale);outline:none;
+}
+.admin-edit textarea:focus{border-color:var(--edit);}
+.admin-edit .edit-actions{display:flex;align-items:center;gap:12px;margin-top:10px;flex-wrap:wrap;}
+.admin-edit .edit-actions .hint{color:var(--edit-ink);}
 .klist{display:flex;flex-direction:column;gap:7px;}
 .kline{display:flex;align-items:flex-start;gap:8px;}
 .kline .mark{color:var(--ink-faint);margin-top:6px;font-size:11px;}
