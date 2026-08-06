@@ -707,6 +707,7 @@ function doLogout(){
     <button class="tab-btn active" id="tabBtn-history" data-tab="history">Riwayat Surat</button>
     <button class="tab-btn" id="tabBtn-access" data-tab="access">Log Akses Viewer</button>
     <button class="tab-btn" id="tabBtn-downloadKpi" data-tab="downloadKpi">Unduh Excel KPI</button>
+    <button class="tab-btn" id="tabBtn-kpiLogs" data-tab="kpiLogs">Riwayat Unduhan KPI</button>
   </div>
 
   <div class="tab-panel active" id="tabPanel-history">
@@ -795,6 +796,18 @@ function doLogout(){
       <div class="section-desc" style="margin-bottom:0;">Unduh Excel semua laporan KPI (khusus admin) — pilih tahun/bulan lalu klik Unduh.</div>
     </div>
     <div id="kpiDownloadList" class="table-empty">Memuat daftar unduhan...</div>
+  </div>
+
+  <div class="tab-panel" id="tabPanel-kpiLogs">
+    <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:16px;">
+      <div class="section-desc" style="margin-bottom:0;">Riwayat unduhan Excel KPI (khusus admin).</div>
+      <button class="action-btn btn-secondary" id="refreshKpiLogsBtn">Refresh</button>
+    </div>
+    <div class="table-wrapper">
+      <div id="kpiLogsContent" class="table-empty">
+        <div class="loading">Memuat data...</div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -894,15 +907,18 @@ function doLogout(){
     document.getElementById('tabPanel-history').classList.toggle('active', tab === 'history');
     document.getElementById('tabPanel-access').classList.toggle('active', tab === 'access');
     document.getElementById('tabPanel-downloadKpi').classList.toggle('active', tab === 'downloadKpi');
+    document.getElementById('tabPanel-kpiLogs').classList.toggle('active', tab === 'kpiLogs');
 
     if (tab === 'history' && !historyState.loaded) loadHistory(1, {});
     if (tab === 'access' && !accessState.loaded) loadAccessRequests(true);
     if (tab === 'downloadKpi' && !kpiDownloadLoaded) renderKpiDownloadList();
+    if (tab === 'kpiLogs' && !kpiLogsLoaded) loadKpiLogs();
   }
 
   document.getElementById('tabBtn-history').addEventListener('click', () => switchTab('history'));
   document.getElementById('tabBtn-access').addEventListener('click', () => switchTab('access'));
   document.getElementById('tabBtn-downloadKpi').addEventListener('click', () => switchTab('downloadKpi'));
+  document.getElementById('tabBtn-kpiLogs').addEventListener('click', () => switchTab('kpiLogs'));
 
   // ---- Unduh Excel KPI (tab khusus) ----
   var KPI_DOWNLOADS = [
@@ -987,6 +1003,38 @@ function doLogout(){
       .then(function () { btn.disabled = false; btn.textContent = old; })
       .catch(function (err) { showMessage('Gagal unduh: ' + err.message, 'error'); btn.disabled = false; btn.textContent = old; });
   });
+
+  // ---- Riwayat Unduhan KPI (tab khusus) ----
+  var kpiLogsLoaded = false;
+  function loadKpiLogs() {
+    kpiLogsLoaded = true;
+    var container = document.getElementById('kpiLogsContent');
+    container.innerHTML = '<div class="loading">Memuat data...</div>';
+    fetch(API_URL + '/api/history?type=KPI&limit=200&offset=0')
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (!d || !d.success) { container.innerHTML = '<div class="table-empty">Gagal memuat riwayat unduhan KPI</div>'; return; }
+        var rows = d.data || [];
+        if (!rows.length) { container.innerHTML = '<div class="table-empty">Belum ada unduhan KPI.</div>'; return; }
+        container.innerHTML = '<table class="kpi-log-table"><thead><tr><th>Laporan</th><th>Periode</th><th>Diunduh oleh</th><th>Waktu</th></tr></thead><tbody>' +
+          rows.map(function (r) {
+            var det = r.details || {};
+            var periode;
+            if (det.tahun) periode = det.tahun + (det.periode ? (' &middot; ' + (det.periode === '1' ? 'Jan–Jun' : 'Jul–Des')) : '');
+            else if (det.bulan) periode = det.bulan;
+            else periode = '—';
+            var waktu = new Date(r.createdAt).toLocaleString('id-ID');
+            return '<tr>' +
+              '<td>' + (r.documentName || r.documentType || '') + '</td>' +
+              '<td>' + periode + '</td>' +
+              '<td>' + (r.createdBy || '') + '</td>' +
+              '<td>' + waktu + '</td>' +
+              '</tr>';
+          }).join('') + '</tbody></table>';
+      })
+      .catch(function () { container.innerHTML = '<div class="table-empty">Gagal memuat data</div>'; });
+  }
+  document.getElementById('refreshKpiLogsBtn').addEventListener('click', function () { loadKpiLogs(); });
 
   // Tab "Riwayat Surat" aktif secara default begitu halaman dibuka --
   // tab "Log Akses Viewer" baru fetch data saat diklik pertama kali.

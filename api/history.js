@@ -67,6 +67,10 @@ module.exports = async (req, res) => {
     if (type) {
       params.push(type);
       whereClause += ` AND document_type = $${params.length}`;
+    } else {
+      // Daftar "Riwayat Surat" tidak menampilkan unduhan KPI -- KPI punya tab
+      // sendiri (dashboard admin) yang memakai ?type=KPI.
+      whereClause += ` AND document_type != 'KPI'`;
     }
 
     // Hitung total/admin/guest yang cocok filter yang sama (bukan cuma dari
@@ -77,7 +81,7 @@ module.exports = async (req, res) => {
         COUNT(*) FILTER (WHERE role = 'guest') AS guest_count,
         COUNT(*) AS total_count
        FROM history ${whereClause}`;
-    const byTypeQuery = `SELECT document_type, COUNT(*) AS n FROM history ${dateOnlyClause} GROUP BY document_type`;
+    const byTypeQuery = `SELECT document_type, COUNT(*) AS n FROM history ${dateOnlyClause} AND document_type != 'KPI' GROUP BY document_type`;
     const dataQuery = `SELECT * FROM history ${whereClause}
        ORDER BY created_at DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
 

@@ -1,4 +1,4 @@
-const { ensureVizTables, ensureKpiTables, ensurePekerjaanTable } = require('../../lib/db');
+const { pool, ensureVizTables, ensureKpiTables, ensurePekerjaanTable, ensureTable } = require('../../lib/db');
 const { requireAdmin } = require('../../lib/auth');
 const { DATASETS, isValidDataType } = require('../../lib/visualization/columns');
 const { checkVizAccess } = require('../../lib/visualization/viz-auth');
@@ -6,6 +6,47 @@ const { buildDummyRows, buildDummyWideSingleRows, buildDummySumurDebitRows, buil
 const { fetchRealRows, fetchWideSingleRows, fetchSumurWells, fetchSumurDebitRows, fetchSumurLevelRows } = require('../../lib/visualization/repo');
 const { logViewerAction } = require('../../lib/visualization/access-log');
 const { getKpiUkurDebitData, buildKpiExcelWorkbook, getKpiApatdData, buildKpiApatdExcelWorkbook, getKpiPengambilanData, buildKpiPengambilanExcelWorkbook, getKpiKualitasData, buildKpiKualitasExcelWorkbook, getKpi192Data, buildKpi192ExcelWorkbook, getKpiLevelSumurData, buildKpiLevelSumurExcelWorkbook, getKpiLevelStatisDinamisData, buildKpiLevelStatisDinamisExcelWorkbook, getKpi18_5Data, buildKpi18_5ExcelWorkbook, getKpi18_6Data, buildKpi18_6ExcelWorkbook, getKpiActivityPlanData, buildKpiActivityPlanExcelWorkbook, getKpiJadwalKegiatanData, buildKpiJadwalKegiatanExcelWorkbook, getKpi9_2Data, buildKpi9_2ExcelWorkbook, getKpi9_3Data, buildKpi9_3ExcelWorkbook, getKpi9_4Data, buildKpi9_4ExcelWorkbook, getKpi9_7Data, buildKpi9_7ExcelWorkbook, getKpi9_5Data, buildKpi9_5ExcelWorkbook, getKpi9_8Data, buildKpi9_8ExcelWorkbook } = require('../../lib/visualization/kpi');
+
+// Label laporan per dataType unduhan Excel KPI (untuk riwayat unduhan).
+const KPI_XLSX_LABELS = {
+  kpi_18_1a_xlsx: '18.1a Pengukuran Level Sumur',
+  kpi_18_1b_xlsx: '18.1b Pengukuran Statis Dinamis',
+  kpi_ukur_debit_xlsx: '18.2 Pengukuran Debit Sumur',
+  kpi_apatd_xlsx: '18.3a Monitoring Debit AP & ATD',
+  kpi_pengambilan_xlsx: '18.3b Pengambilan Air Baku',
+  kpi_kualitas_xlsx: '18.4 Laporan Kualitas Air Baku',
+  kpi_18_5_xlsx: '18.5 Monitoring Kondisi Peralatan',
+  kpi_18_6_xlsx: '18.6 Jadwal PM Terkendali',
+  kpi_19_2_xlsx: '19.2 Evaluasi Hasil Monitoring',
+  kpi_activity_plan_xlsx: 'Activity Plan SAB',
+  kpi_jadwal_kegiatan_xlsx: 'Jadwal Kegiatan',
+  kpi_9_2_xlsx: '9.2 Laporan Kualitas Air Baku',
+  kpi_9_3_xlsx: '9.3 Laporan Kondisi Air Waduk',
+  kpi_9_4_xlsx: '9.4 Laporan Ketidaksesuaian Debit',
+  kpi_9_5_xlsx: '9.5 Laporan Monitoring Pipa Transmisi',
+  kpi_9_7_xlsx: '9.7 Laporan Kondisi Air Sumur',
+  kpi_9_8_xlsx: '9.8 Laporan Jadwal Kalibrasi'
+};
+
+// Catat unduhan Excel KPI ke tabel history (document_type 'KPI') supaya ada
+// riwayat siapa mengunduh laporan KPI apa & periode apa. Dipanggil dari gate
+// kpi_* di atas (fire-and-forget: kegagalan mencatat tidak menggagalkan unduh).
+async function logKpiDownload(user, dataType, query) {
+  try {
+    await ensureTable();
+    const details = {};
+    if (query.tahun) details.tahun = query.tahun;
+    if (query.bulan) details.bulan = query.bulan;
+    if (query.periode) details.periode = query.periode;
+    await pool.query(
+      `INSERT INTO history (id, document_type, document_name, details, created_by, role)
+       VALUES ($1, 'KPI', $2, $3, $4, 'admin')`,
+      [Date.now(), KPI_XLSX_LABELS[dataType] || dataType, JSON.stringify(details), user.username || 'Admin']
+    );
+  } catch (e) {
+    console.warn('Gagal mencatat unduhan KPI:', e.message);
+  }
+}
 
 module.exports = async (req, res) => {
   if (req.method !== 'GET') {
@@ -22,6 +63,9 @@ module.exports = async (req, res) => {
   if (dataType && /^kpi_/.test(dataType)) {
     const user = requireAdmin(req, res);
     if (!user) return;
+    // Catat unduhan Excel KPI ke riwayat (tabel history, document_type 'KPI')
+    // -- tampil di tab "Riwayat Unduhan KPI" dashboard admin.
+    if (/_xlsx$/.test(dataType)) logKpiDownload(user, dataType, req.query);
   }
 
   // KPI 18.2 Ukur Debit gabungan 5 instalasi -- bukan satu baris di DATASETS
