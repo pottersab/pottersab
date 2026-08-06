@@ -5,7 +5,7 @@ const { checkVizAccess } = require('../../lib/visualization/viz-auth');
 const { buildDummyRows, buildDummyWideSingleRows, buildDummySumurDebitRows, buildDummySumurLevelRows } = require('../../lib/visualization/dummy');
 const { fetchRealRows, fetchWideSingleRows, fetchSumurWells, fetchSumurDebitRows, fetchSumurLevelRows } = require('../../lib/visualization/repo');
 const { logViewerAction } = require('../../lib/visualization/access-log');
-const { getKpiUkurDebitData, buildKpiExcelWorkbook, getKpiApatdData, buildKpiApatdExcelWorkbook, getKpiPengambilanData, buildKpiPengambilanExcelWorkbook, getKpiKualitasData, buildKpiKualitasExcelWorkbook, getKpi192Data, buildKpi192ExcelWorkbook, getKpiLevelSumurData, buildKpiLevelSumurExcelWorkbook, getKpiLevelStatisDinamisData, buildKpiLevelStatisDinamisExcelWorkbook, getKpi18_5Data, buildKpi18_5ExcelWorkbook, getKpi18_6Data, buildKpi18_6ExcelWorkbook, getKpiActivityPlanData, buildKpiActivityPlanExcelWorkbook, getKpiJadwalKegiatanData, buildKpiJadwalKegiatanExcelWorkbook, getKpi9_2Data, buildKpi9_2ExcelWorkbook, getKpi9_3Data, buildKpi9_3ExcelWorkbook } = require('../../lib/visualization/kpi');
+const { getKpiUkurDebitData, buildKpiExcelWorkbook, getKpiApatdData, buildKpiApatdExcelWorkbook, getKpiPengambilanData, buildKpiPengambilanExcelWorkbook, getKpiKualitasData, buildKpiKualitasExcelWorkbook, getKpi192Data, buildKpi192ExcelWorkbook, getKpiLevelSumurData, buildKpiLevelSumurExcelWorkbook, getKpiLevelStatisDinamisData, buildKpiLevelStatisDinamisExcelWorkbook, getKpi18_5Data, buildKpi18_5ExcelWorkbook, getKpi18_6Data, buildKpi18_6ExcelWorkbook, getKpiActivityPlanData, buildKpiActivityPlanExcelWorkbook, getKpiJadwalKegiatanData, buildKpiJadwalKegiatanExcelWorkbook, getKpi9_2Data, buildKpi9_2ExcelWorkbook, getKpi9_3Data, buildKpi9_3ExcelWorkbook, getKpi9_4Data, buildKpi9_4ExcelWorkbook } = require('../../lib/visualization/kpi');
 
 module.exports = async (req, res) => {
   if (req.method !== 'GET') {
@@ -321,6 +321,26 @@ module.exports = async (req, res) => {
     const buffer = await buildKpi9_3ExcelWorkbook(result);
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename="9.3 Laporan Kondisi Air Waduk ${result.monthTitle}.xlsx"`);
+    return res.status(200).send(Buffer.from(buffer));
+  }
+
+  // 9.4 Laporan Ketidaksesuaian Debit -- semua isian manual admin (tidak ada
+  // data vital, semua viewer bisa lihat). Unduhan Excel persis contoh
+  // "9.4 Laporan Ketidaksesuaian debit.xlsx".
+  if (dataType === 'kpi_9_4') {
+    await ensureKpiTables();
+    const result = await getKpi9_4Data({ granted: true }, req.query.bulan);
+    return res.status(200).json(result);
+  }
+
+  if (dataType === 'kpi_9_4_xlsx') {
+    await ensureKpiTables();
+    const user = requireAdmin(req, res);
+    if (!user) return;
+    const result = await getKpi9_4Data({ granted: true, kind: 'admin' }, req.query.bulan);
+    const buffer = await buildKpi9_4ExcelWorkbook(result);
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="9.4 Laporan Ketidaksesuaian Debit ${result.monthTitle}.xlsx"`);
     return res.status(200).send(Buffer.from(buffer));
   }
 

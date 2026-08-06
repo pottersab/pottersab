@@ -1,7 +1,7 @@
 const { pool, ensureVizTables, ensureKpiTables } = require('../../lib/db');
 const { requireAdmin } = require('../../lib/auth');
 const { DATASETS } = require('../../lib/visualization/columns');
-const { saveDebitAwal, saveMeta, saveApatdMeta, savePengambilanTarget, savePengambilanMeta, saveKualitasElevasi, saveKualitasMeta, saveKpi192Meta, saveLevelSumurMeta, saveLevelStatisDinamisMeta, saveKpi18_5Values, saveKpi18_5Meta, saveKpi18_6Meta, saveKpiActivityPlanRow, saveActivityPlanMeta, saveJadwalKegiatanMeta, saveK92Meta, saveK93Meta, saveK93Disadap } = require('../../lib/visualization/kpi');
+const { saveDebitAwal, saveMeta, saveApatdMeta, savePengambilanTarget, savePengambilanMeta, saveKualitasElevasi, saveKualitasMeta, saveKpi192Meta, saveLevelSumurMeta, saveLevelStatisDinamisMeta, saveKpi18_5Values, saveKpi18_5Meta, saveKpi18_6Meta, saveKpiActivityPlanRow, saveActivityPlanMeta, saveJadwalKegiatanMeta, saveK92Meta, saveK93Meta, saveK93Disadap, saveK94Meta, saveK94Items } = require('../../lib/visualization/kpi');
 
 function toNumOrNull(v) {
   if (v === undefined || v === null || v === '') return null;
@@ -232,6 +232,24 @@ module.exports = async (req, res) => {
         return res.status(400).json({ error: 'bulan wajib diisi dengan format YYYY-MM' });
       }
       await saveK93Disadap(bulan, Array.isArray(values) ? values : []);
+      return res.status(200).json({ success: true });
+    }
+    if (kind === 'kpi_9_4_items') {
+      // Daftar ketidaksesuaian debit 9.4 untuk satu bulan -- DIISI ADMIN
+      // manual. Body: bulan 'YYYY-MM' + items array [{ds, di, ket}].
+      await ensureKpiTables();
+      const { bulan, items } = req.body || {};
+      if (!bulan || !/^\d{4}-\d{2}$/.test(bulan)) {
+        return res.status(400).json({ error: 'bulan wajib diisi dengan format YYYY-MM' });
+      }
+      await saveK94Items(bulan, Array.isArray(items) ? items : []);
+      return res.status(200).json({ success: true });
+    }
+    if (kind === 'kpi_9_4_meta') {
+      // Penandatangan 2 kolom & kode dokumen 9.4 Laporan Ketidaksesuaian Debit
+      // -- global, lihat kpi.js.
+      await ensureKpiTables();
+      await saveK94Meta(req.body);
       return res.status(200).json({ success: true });
     }
 

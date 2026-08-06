@@ -266,6 +266,25 @@ table.kpi td.ratio .cellwrap{background:var(--bg);color:var(--ink-soft);justify-
 .admin-edit textarea:focus{border-color:var(--edit);}
 .admin-edit .edit-actions{display:flex;align-items:center;gap:12px;margin-top:10px;flex-wrap:wrap;}
 .admin-edit .edit-actions .hint{color:var(--edit-ink);}
+table.k94-edit{border-collapse:collapse;width:100%;min-width:720px;}
+table.k94-edit th{
+  background:var(--primary-pale);color:var(--primary);font-size:10.5px;text-transform:uppercase;
+  letter-spacing:.04em;padding:8px 10px;text-align:left;border:1px solid var(--line-muted);
+}
+table.k94-edit td{border:1px solid var(--line-muted);padding:4px;}
+table.k94-edit td.no{text-align:center;color:var(--ink-soft);font-weight:600;font-family:'IBM Plex Mono',monospace;}
+table.k94-edit input{
+  width:100%;box-sizing:border-box;border:1px solid transparent;background:var(--edit-pale);
+  border-radius:7px;padding:7px 9px;font:inherit;font-size:13px;color:var(--edit-ink);outline:none;
+}
+table.k94-edit input:focus{border-color:var(--edit);background:#fff;}
+table.k94-edit td.keterangan input{width:100%;}
+table.k94-edit .del-row{
+  background:transparent;border:1px solid var(--line-muted);border-radius:7px;color:var(--low);
+  width:30px;height:30px;cursor:pointer;font-size:14px;line-height:1;
+}
+table.k94-edit .del-row:hover{background:var(--warn-pale);border-color:var(--warn);color:var(--warn);}
+.jk-signs-2{grid-template-columns:1fr 1fr;}
 .klist{display:flex;flex-direction:column;gap:7px;}
 .kline{display:flex;align-items:flex-start;gap:8px;}
 .kline .mark{color:var(--ink-faint);margin-top:6px;font-size:11px;}
