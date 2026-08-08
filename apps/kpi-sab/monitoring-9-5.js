@@ -18,8 +18,11 @@
   // MUAT DATA
   // ------------------------------------------------------------------
   async function fetchApiData(bulan) {
+    var headers = {};
+    var token = currentAccessToken();
+    if (token) headers['Authorization'] = 'Bearer ' + token;
     var url = '/api/visualization/data?dataType=kpi_9_5' + (bulan ? ('&bulan=' + encodeURIComponent(bulan)) : '');
-    var res = await fetch(url);
+    var res = await fetch(url, { headers: headers });
     if (!res.ok) throw new Error('Gagal memuat data (HTTP ' + res.status + ')');
     return res.json();
   }
