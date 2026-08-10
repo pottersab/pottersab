@@ -293,11 +293,9 @@ window.LpjBuilder = (function () {
     const merges=[];
 
     const judul = barisJudul(Object.assign({}, data, { periode }));
-    // Kop: nama perusahaan di baris 1 (logo PERUMDA digambar sebagai gambar,
-    // lihat drawing1.xml di bawah), garis bawah kop di baris 2 (garis header).
-    // Baris 3-6 disisakan untuk letterhead, judul mulai baris 7 seperti contoh.
-    addRow(1,[cell(2,S_KOP,{type:'str',value:'PERUSAHAAN UMUM DAERAH\nTIRTA MANUNTUNG BALIKPAPAN'})], 30);
-    merges.push('B1:F1');
+    // Kop: logo PERUMDA + nama perusahaan digambar sebagai gambar/text-box di
+    // drawing1.xml (persis contoh -- BUKAN teks sel), garis bawah kop di baris 2
+    // (garis header). Baris 3-6 disisakan untuk letterhead, judul mulai baris 7.
     addRow(2,[
       cell(1,S_LINE,{type:'str',value:''}), cell(2,S_LINE,{type:'str',value:''}),
       cell(3,S_LINE,{type:'str',value:''}), cell(4,S_LINE,{type:'str',value:''}),
@@ -524,7 +522,8 @@ ${mergeXml}
 <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="../media/image1.jpg"/>
 </Relationships>`;
 
-    // Drawing logo PERUMDA di pojok kiri-atas (sel A1, ~0,75cm persegi).
+    // Drawing kop: logo PERUMDA (gambar) di A1 + nama perusahaan (text-box)
+    // di B-F -- persis contoh (nama perusahaan BUKAN teks sel).
     const DRAWING_XML = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <xdr:wsDr xmlns:xdr="http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">
 <xdr:oneCellAnchor>
@@ -545,6 +544,31 @@ ${mergeXml}
       <a:noFill/>
     </xdr:spPr>
   </xdr:pic>
+  <xdr:clientData/>
+</xdr:oneCellAnchor>
+<xdr:oneCellAnchor>
+  <xdr:from><xdr:col>1</xdr:col><xdr:colOff>695325</xdr:colOff><xdr:row>0</xdr:row><xdr:rowOff>85725</xdr:rowOff></xdr:from>
+  <xdr:ext cx="4981575" cy="828675"/>
+  <xdr:sp macro="" textlink="">
+    <xdr:nvSpPr>
+      <xdr:cNvPr id="2" name="Shape 1"/>
+      <xdr:cNvSpPr/>
+    </xdr:nvSpPr>
+    <xdr:spPr>
+      <a:xfrm><a:off x="1000125" y="85725"/><a:ext cx="4981575" cy="828675"/></a:xfrm>
+      <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+    </xdr:spPr>
+    <xdr:txBody>
+      <a:bodyPr><a:prstTxWarp prst="textPlain"><a:avLst/></a:prstTxWarp></a:bodyPr>
+      <a:lstStyle/>
+      <a:p>
+        <a:pPr lvl="0" algn="ctr"/>
+        <a:r><a:rPr b="0" i="0"><a:solidFill><a:srgbClr val="000000"/></a:solidFill><a:latin typeface="Arial"/></a:rPr><a:t>PERUSAHAAN UMUM DAERAH </a:t></a:r>
+        <a:br><a:rPr b="0" i="0"><a:solidFill><a:srgbClr val="000000"/></a:solidFill><a:latin typeface="Arial"/></a:rPr></a:br>
+        <a:r><a:rPr b="0" i="0"><a:solidFill><a:srgbClr val="000000"/></a:solidFill><a:latin typeface="Arial"/></a:rPr><a:t>TIRTA MANUNTUNG BALIKPAPAN</a:t></a:r>
+      </a:p>
+    </xdr:txBody>
+  </xdr:sp>
   <xdr:clientData/>
 </xdr:oneCellAnchor>
 </xdr:wsDr>`;
