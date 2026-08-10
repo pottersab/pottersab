@@ -529,7 +529,7 @@ ${mergeXml}
     const DRAWING_XML = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <xdr:wsDr xmlns:xdr="http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">
 <xdr:oneCellAnchor>
-  <xdr:from><xdr:col>0</xdr:col><xdr:colOff>152400</xdr:colOff><xdr:row>0</xdr:row><xdr:rowOff>120000</xdr:rowOff></xdr:from>
+  <xdr:from><xdr:col>0</xdr:col><xdr:colOff>144780</xdr:colOff><xdr:row>0</xdr:row><xdr:rowOff>127620</xdr:rowOff></xdr:from>
   <xdr:ext cx="752475" cy="752475"/>
   <xdr:pic>
     <xdr:nvPicPr>
@@ -541,7 +541,7 @@ ${mergeXml}
       <a:stretch><a:fillRect/></a:stretch>
     </xdr:blipFill>
     <xdr:spPr>
-      <a:xfrm><a:off x="152400" y="120000"/><a:ext cx="752475" cy="752475"/></a:xfrm>
+      <a:xfrm><a:off x="144780" y="127620"/><a:ext cx="752475" cy="752475"/></a:xfrm>
       <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
       <a:noFill/>
     </xdr:spPr>
@@ -549,15 +549,15 @@ ${mergeXml}
   <xdr:clientData/>
 </xdr:oneCellAnchor>
 <xdr:oneCellAnchor>
-  <xdr:from><xdr:col>1</xdr:col><xdr:colOff>695325</xdr:colOff><xdr:row>0</xdr:row><xdr:rowOff>85725</xdr:rowOff></xdr:from>
-  <xdr:ext cx="4981575" cy="828675"/>
+  <xdr:from><xdr:col>1</xdr:col><xdr:colOff>680085</xdr:colOff><xdr:row>0</xdr:row><xdr:rowOff>161925</xdr:rowOff></xdr:from>
+  <xdr:ext cx="4501515" cy="653415"/>
   <xdr:sp macro="" textlink="">
     <xdr:nvSpPr>
       <xdr:cNvPr id="2" name="Shape 1"/>
       <xdr:cNvSpPr/>
     </xdr:nvSpPr>
     <xdr:spPr>
-      <a:xfrm><a:off x="1000125" y="85725"/><a:ext cx="4981575" cy="828675"/></a:xfrm>
+      <a:xfrm><a:off x="680085" y="161925"/><a:ext cx="4501515" cy="653415"/></a:xfrm>
       <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
     </xdr:spPr>
     <xdr:txBody>
