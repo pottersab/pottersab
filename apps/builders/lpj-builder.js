@@ -294,9 +294,10 @@ window.LpjBuilder = (function () {
 
     const judul = barisJudul(Object.assign({}, data, { periode }));
     // Kop: logo PERUMDA + nama perusahaan digambar sebagai gambar/text-box di
-    // drawing1.xml (persis contoh -- BUKAN teks sel), garis bawah kop di baris 2
-    // (garis header). Baris 3-6 disisakan untuk letterhead, judul mulai baris 7.
-    addRow(2,[
+    // drawing1.xml (persis contoh -- BUKAN teks sel). Garis header ditaruh di
+    // BARIS 6 -- di bawah logo & nama perusahaan (yang secara visual menempati
+    // baris 1-5), persis posisi garis di contoh. Judul mulai baris 7.
+    addRow(6,[
       cell(1,S_LINE,{type:'str',value:''}), cell(2,S_LINE,{type:'str',value:''}),
       cell(3,S_LINE,{type:'str',value:''}), cell(4,S_LINE,{type:'str',value:''}),
       cell(5,S_LINE,{type:'str',value:''}), cell(6,S_LINE,{type:'str',value:''}),
