@@ -386,9 +386,16 @@
       </h2>
       <div class="row2">
         <div>
-          <label for="fVoucher">Atas PDK No.</label>
-          <input type="text" id="fVoucher" placeholder="diisi manual, contoh: 36/1421002/7a-I/III/2026">
+          <label for="fNoUrut">No. Urut</label>
+          <input type="text" id="fNoUrut" placeholder="contoh: 36">
         </div>
+        <div>
+          <label for="fPdk">Atas PDK No.</label>
+          <input type="text" id="fPdk" placeholder="contoh: 1421002/7a-I/III/2026">
+        </div>
+      </div>
+      <div class="hint">No. Urut diisi berurutan; bagian "Atas PDK No." adalah awalan tetap yang bisa diubah. Hasilnya: 36/1421002/7a-I/III/2026.</div>
+      <div class="row2">
         <div>
           <label for="fTanggalSurat">Tanggal Surat</label>
           <input type="date" id="fTanggalSurat">
@@ -619,12 +626,23 @@ let cfg = { penandatangan: [] };
 let riwayat = [];
 let state = loadDraft() || blankState();
 
+// Awalan tetap nomor PDK (bagian yang tidak berubah tiap surat) -- diisi
+// sebagai default di form, tinggal ganti No. Urut-nya.
+const PDK_PREFIX_DEFAULT = '1421002/7a-I/III/2026';
+// Pecah nomor gabungan "36/1421002/..." jadi {noUrut, noPdk} -- untuk migrasi
+// draft/riwayat lama yang menyimpan satu string.
+function splitVoucher(v){
+  const m = String(v||'').match(/^(\d+)\/(.+)$/);
+  if(m) return { noUrut:m[1], noPdk:m[2] };
+  return { noUrut:'', noPdk:String(v||'') };
+}
+
 function itemKosong(jenis){
   return { tanggal:'', kegiatan:'', jenis: jenis || 'Konsumsi', jumlah:'' };
 }
 function blankState(){
   const s = {
-    voucherNo:'', tanggalSurat: todayStr(),
+    noUrut:'', noPdk: PDK_PREFIX_DEFAULT, tanggalSurat: todayStr(),
     judul: window.LpjBuilder.JUDUL_DEFAULT,
     // Sub divisi sengaja kosong untuk pengguna umum -- surat mereka bukan
     // surat Sub Divisi Sumber Air Baku.
@@ -649,6 +667,13 @@ function loadDraft(){
     if(raw){
       const d = Object.assign(blankState(), JSON.parse(raw));
       if(!d.items || !d.items.length) d.items = [itemKosong()];
+      // Migrasi draft lama yang menyimpan voucherNo sebagai satu string.
+      if(Object.prototype.hasOwnProperty.call(d, 'voucherNo')
+         && !Object.prototype.hasOwnProperty.call(d, 'noPdk')
+         && !Object.prototype.hasOwnProperty.call(d, 'noUrut')){
+        Object.assign(d, splitVoucher(d.voucherNo));
+      }
+      delete d.voucherNo;
       return d;
     }
   }catch(e){}
@@ -690,7 +715,7 @@ function periodeAktif(){
 
 function currentDoc(){
   return {
-    voucherNo: state.voucherNo,
+    voucherNo: [state.noUrut, state.noPdk].filter(Boolean).join('/'),
     tanggalSurat: state.tanggalSurat,
     judul: state.judul,
     subDivisi: state.subDivisi,
@@ -1123,7 +1148,7 @@ function setStatus(msg, cls){
 
 // ---------------------- isi form dari state ----------------------
 const TEXT_FIELDS = {
-  fVoucher:'voucherNo', fTanggalSurat:'tanggalSurat', fPermintaan:'permintaanDana',
+  fNoUrut:'noUrut', fPdk:'noPdk', fTanggalSurat:'tanggalSurat', fPermintaan:'permintaanDana',
   fJudul:'judul', fSubDivisi:'subDivisi',
   fPemeriksaNama:'pemeriksaNama', fPemeriksaJabatan:'pemeriksaJabatan',
   fPembuatNama:'pembuatNama',     fPembuatJabatan:'pembuatJabatan',
@@ -1169,7 +1194,8 @@ function wire(){
 
   document.getElementById('btnContoh').addEventListener('click', ()=>{
     state.items = JSON.parse(JSON.stringify(CONTOH_ITEMS));
-    state.voucherNo = state.voucherNo || '1421/VII/2025';
+    state.noUrut = state.noUrut || '36';
+    state.noPdk = state.noPdk || PDK_PREFIX_DEFAULT;
     state.permintaanDana = 5000000;
     state.periodeManual = false;
     saveDraft(); fillFormDariState();
@@ -1261,8 +1287,7 @@ function wireDetail(){
     const h = detailEntry();
     if(!h) return;
     const d = h.details;
-    state = Object.assign(blankState(), {
-      voucherNo: d.voucherNo || '',
+    state = Object.assign(blankState(), splitVoucher(d.voucherNo), {
       tanggalSurat: d.tanggalSurat || todayStr(),
       // Judul & sub divisi diambil apa adanya dari surat lama. Entri lama
       // yang belum punya kolom ini dianggap memakai judul bakunya.
