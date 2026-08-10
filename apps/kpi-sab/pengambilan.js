@@ -115,7 +115,7 @@
     var pm = hasData ? (real - angg) : null;
     var pct = hasData ? (real / angg * 100) : null;
     var val = kind === "pm" ? pm : pct;
-    var text = hasData ? (kind === "pm" ? (val >= 0 ? "+" : "") + fmt(val, 2) : fmt(val, 1) + "%") : "–";
+    var text = hasData ? (kind === "pm" ? (val >= 0 ? "+" : "") + fmt(val, 2) : fmt(val, 2) + "%") : "–";
     var cls = ratioClass(hasData ? pct : null);
     var hidePrint = (!hasData && printMode);
     return '<td class="ratio"><div class="cellwrap"><span class="pill ' + (hidePrint ? "" : cls) + '" ' +

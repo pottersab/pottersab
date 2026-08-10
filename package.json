@@ -11,5 +11,25 @@
     "nodemailer": "^6.9.14",
     "pdf-lib": "^1.17.1",
     "pg": "^8.11.3"
-  }
+  },
+  "main": "sw.js",
+  "directories": {
+    "lib": "lib"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pottersab/pottersab.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/pottersab/pottersab/issues"
+  },
+  "homepage": "https://github.com/pottersab/pottersab#readme"
 }
