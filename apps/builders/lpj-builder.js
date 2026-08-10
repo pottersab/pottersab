@@ -240,11 +240,12 @@ window.LpjBuilder = (function () {
 <font><name val="Arial"/><b/><sz val="12"/></font>
 </fonts>
 <fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills>
-<borders count="4">
+<borders count="5">
 <border><left/><right/><top/><bottom/><diagonal/></border>
 <border><left style="thin"><color indexed="64"/></left><right style="thin"><color indexed="64"/></right><top style="thin"><color indexed="64"/></top><bottom style="thin"><color indexed="64"/></bottom><diagonal/></border>
 <border><left style="thin"><color indexed="64"/></left><right style="thin"><color indexed="64"/></right><top/><bottom/><diagonal/></border>
 <border><left/><right/><top style="medium"><color indexed="64"/></top><bottom/><diagonal/></border>
+<border><left/><right/><top/><bottom style="medium"><color indexed="64"/></bottom><diagonal/></border>
 </borders>
 <cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
 <cellXfs count="16">
@@ -263,7 +264,7 @@ window.LpjBuilder = (function () {
 <xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1" applyAlignment="1"><alignment horizontal="right"/></xf>
 <xf numFmtId="0" fontId="4" fillId="0" borderId="0" xfId="0" applyFont="1" applyAlignment="1"><alignment horizontal="center" vertical="middle"/></xf>
 <xf numFmtId="0" fontId="1" fillId="0" borderId="3" xfId="0" applyFont="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="middle"/></xf>
-<xf numFmtId="0" fontId="5" fillId="0" borderId="0" xfId="0" applyFont="1" applyAlignment="1"><alignment horizontal="center" vertical="middle" wrapText="1"/></xf>
+<xf numFmtId="0" fontId="1" fillId="0" borderId="4" xfId="0" applyFont="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="middle"/></xf>
 </cellXfs>
 <cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>
 </styleSheet>`;
@@ -274,8 +275,8 @@ window.LpjBuilder = (function () {
         S_SIDE_BOLD_CENTER=7, S_SIDE_BOLD_LEFT=8,
         S_SIDE_CENTER=9, S_SIDE_LEFT=10, S_SIDE_MONEY=11;
   const S_FOOTER=13; // footer alamat perusahaan (TNR 11, center)
-  const S_LINE=14;   // garis horizontal header/footer (border atas medium)
-  const S_KOP=15;    // nama perusahaan di kop (Arial 12 tebal, center, wrap)
+  const S_LINE=14;   // garis horizontal (border ATAS medium) -- untuk garis footer
+  const S_LINE_B=15; // garis horizontal (border BAWAH medium) -- untuk garis header
 
   function buildWorkbookFiles(data){
     const groups = groupItems(data.items);
@@ -294,20 +295,20 @@ window.LpjBuilder = (function () {
 
     const judul = barisJudul(Object.assign({}, data, { periode }));
     // Kop: logo PERUMDA + nama perusahaan digambar sebagai gambar/text-box di
-    // drawing1.xml (persis contoh -- BUKAN teks sel). Garis header ditaruh di
-    // BARIS 6 -- di bawah logo & nama perusahaan (yang secara visual menempati
-    // baris 1-5), persis posisi garis di contoh. Judul mulai baris 7.
+    // drawing1.xml (persis contoh -- BUKAN teks sel). Garis header = border
+    // BAWAH medium di baris 6 (di bawah logo & nama perusahaan), lalu judul
+    // mulai baris 8 (baris 7 sengaja kosong) -- persis file yang diedit user.
     addRow(6,[
-      cell(1,S_LINE,{type:'str',value:''}), cell(2,S_LINE,{type:'str',value:''}),
-      cell(3,S_LINE,{type:'str',value:''}), cell(4,S_LINE,{type:'str',value:''}),
-      cell(5,S_LINE,{type:'str',value:''}), cell(6,S_LINE,{type:'str',value:''}),
-    ]);
-    addRow(7,[cell(1,S_BOLD_CENTER,{type:'str',value:judul[0]})]);
-    addRow(8,[cell(1,S_BOLD_CENTER,{type:'str',value:judul[1]})]);
-    addRow(9,[cell(1,S_BOLD_CENTER,{type:'str',value:`Atas PDK No. ${data.voucherNo||''}`})]);
-    merges.push('A7:F7','A8:F8','A9:F9');
+      cell(1,S_LINE_B,{type:'str',value:''}), cell(2,S_LINE_B,{type:'str',value:''}),
+      cell(3,S_LINE_B,{type:'str',value:''}), cell(4,S_LINE_B,{type:'str',value:''}),
+      cell(5,S_LINE_B,{type:'str',value:''}), cell(6,S_LINE_B,{type:'str',value:''}),
+    ], 16.2);
+    addRow(8,[cell(1,S_BOLD_CENTER,{type:'str',value:judul[0]})], 13.8);
+    addRow(9,[cell(1,S_BOLD_CENTER,{type:'str',value:judul[1]})], 13.8);
+    addRow(10,[cell(1,S_BOLD_CENTER,{type:'str',value:`Atas PDK No. ${data.voucherNo||''}`})], 13.8);
+    merges.push('A8:F8','A9:F9','A10:F10');
 
-    const HEADER_ROW=11;
+    const HEADER_ROW=12;
     addRow(HEADER_ROW,[
       cell(1,S_BOX_BOLD_CENTER,{type:'str',value:'No'}),
       cell(2,S_BOX_BOLD_CENTER,{type:'str',value:'Tanggal'}),
