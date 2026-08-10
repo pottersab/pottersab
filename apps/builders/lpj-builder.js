@@ -232,19 +232,19 @@ window.LpjBuilder = (function () {
 <styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
 <numFmts count="1"><numFmt numFmtId="164" formatCode="_(* #,##0_);_(* \\(#,##0\\);_(* &quot;-&quot;_);_(@_)"/></numFmts>
 <fonts count="6">
-<font><sz val="10"/><name val="Arial"/></font>
-<font><sz val="12"/><name val="Times New Roman"/><family val="1"/></font>
-<font><b/><sz val="12"/><name val="Times New Roman"/><family val="1"/></font>
-<font><b/><sz val="12"/><name val="Times New Roman"/><family val="1"/></font>
-<font><sz val="11"/><name val="Times New Roman"/><family val="1"/></font>
-<font><b/><sz val="12"/><name val="Arial"/></font>
+<font><name val="Arial"/><sz val="10"/></font>
+<font><name val="Times New Roman"/><family val="1"/><sz val="12"/></font>
+<font><name val="Times New Roman"/><family val="1"/><b/><sz val="12"/></font>
+<font><name val="Times New Roman"/><family val="1"/><b/><sz val="12"/></font>
+<font><name val="Times New Roman"/><family val="1"/><sz val="11"/></font>
+<font><name val="Arial"/><b/><sz val="12"/></font>
 </fonts>
 <fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills>
 <borders count="4">
 <border><left/><right/><top/><bottom/><diagonal/></border>
 <border><left style="thin"><color indexed="64"/></left><right style="thin"><color indexed="64"/></right><top style="thin"><color indexed="64"/></top><bottom style="thin"><color indexed="64"/></bottom><diagonal/></border>
 <border><left style="thin"><color indexed="64"/></left><right style="thin"><color indexed="64"/></right><top/><bottom/><diagonal/></border>
-<border><top style="medium"><color indexed="64"/></top><left/><right/><bottom/><diagonal/></border>
+<border><left/><right/><top style="medium"><color indexed="64"/></top><bottom/><diagonal/></border>
 </borders>
 <cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
 <cellXfs count="16">
