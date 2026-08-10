@@ -467,7 +467,7 @@ window.LpjBuilder = (function () {
       : '';
 
     const sheetXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
 <sheetPr><pageSetUpPr fitToPage="1"/></sheetPr>
 <dimension ref="A1:F${LAST_ROW}"/>
 <sheetViews><sheetView showGridLines="0" workbookViewId="0"/></sheetViews>
