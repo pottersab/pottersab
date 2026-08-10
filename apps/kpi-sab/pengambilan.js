@@ -91,7 +91,10 @@
 
   function cellAngg(group, mi) {
     var v = group.angg[mi];
-    var hasData = v !== null && v !== undefined;
+    // Anggar disembunyikan juga kalau data real bulan itu belum diinput --
+    // konsisten dengan unduhan Excel (revisi user).
+    var real = group.real[mi];
+    var hasData = v !== null && v !== undefined && real !== null && real !== undefined;
     var val = hasData ? fmt(v, 0) : "";
     var hidePrint = (!hasData && printMode);
     return '<td class="angg"><div class="cellwrap"><input class="cell" type="text" value="' + val + '" readonly ' +
