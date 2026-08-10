@@ -121,10 +121,11 @@ window.LpjBuilder = (function () {
   function totalOperasional(items){
     return groupItems(items).reduce((s,g)=>s+g.subtotal,0);
   }
-  // Tiga baris judul di kepala surat. Sub divisi dipisah supaya bisa diganti
-  // (atau dikosongkan untuk pengguna umum) tanpa mengetik ulang seluruh
-  // judulnya -- kalau kosong, kata "SUB DIVISI" ikut hilang supaya tidak
-  // tertinggal menggantung.
+  // Judul kepala surat mengikuti contoh "LPJ Operasional.xlsx": SATU baris
+  // judul (isi form "Judul surat" + "BIAYA OPERASIONAL SUB DIVISI X"), lalu
+  // "BULAN ..." di baris berikutnya. Sub divisi dipisah supaya bisa diganti
+  // (atau dikosongkan untuk pengguna umum) -- kalau kosong, kata "SUB DIVISI"
+  // ikut hilang supaya tidak tertinggal menggantung.
   const JUDUL_DEFAULT = 'LAPORAN PERTANGGUNG JAWABAN';
   const SUB_DIVISI_DEFAULT = 'SUMBER AIR BAKU';
   function barisJudul(data){
@@ -132,9 +133,10 @@ window.LpjBuilder = (function () {
     // periodeOtomatis map+sort semua item -- dihitung sekali, dipakai dua kali
     // di ekspresi di bawah (sebelumnya dipanggil ganda tiap baris judul).
     const periode = data.periode || periodeOtomatis(data.items);
+    const judulSurat = String(data.judul == null ? JUDUL_DEFAULT : data.judul).trim();
+    const judulOps = sub ? `BIAYA OPERASIONAL SUB DIVISI ${sub}` : 'BIAYA OPERASIONAL';
     return [
-      String(data.judul == null ? JUDUL_DEFAULT : data.judul).trim(),
-      sub ? `BIAYA OPERASIONAL SUB DIVISI ${sub}` : 'BIAYA OPERASIONAL',
+      judulSurat ? `${judulSurat} ${judulOps}` : judulOps,
       periode ? `BULAN ${periode}` : ''
     ];
   }
@@ -154,12 +156,14 @@ window.LpjBuilder = (function () {
   // TOTAL_MAKS menjaga tabel tetap muat satu halaman potrait (Legal, margin
   // kiri-kanan 0,7"): kalau kelebihan, kolom Kegiatan yang dipersempit karena
   // dia satu-satunya yang teksnya boleh dibungkus ke baris berikutnya.
-  const TOTAL_MAKS = 93, MIN_KEGIATAN = 24;
+  const TOTAL_MAKS = 102, MIN_KEGIATAN = 24;
   function lebarKolom(data, gs){
     // gs = hasil groupItems() -- di-pass dari buildWorkbookFiles supaya
     // grouping yang mahal (filter+slice+sort+reduce) tidak dihitung dua kali
-    // dalam satu generateBytes.
-    const tanggal=['Tanggal'], kegiatan=['Kegiatan'], jenis=['Keterangan'], jumlah=['Jumlah'];
+    // dalam satu generateBytes. Pratinjau memanggil tanpa gs, jadi dihitung
+    // di sini kalau tidak dikirim.
+    if(!gs) gs = groupItems(data.items);
+    const tanggal=['Tanggal'], kegiatan=['Kegiatan'], jenis=['Keterangan'], nota=['Nota'], jumlah=['Jumlah'];
     let nomorMaks = 1, totalOps = 0;
     gs.forEach(g=>{
       nomorMaks = Math.max(nomorMaks, g.items.length);
@@ -171,6 +175,7 @@ window.LpjBuilder = (function () {
         tanggal.push(formatTanggalIndo(it.tanggal));
         kegiatan.push(it.kegiatan||'');
         jenis.push(it.jenis||'');
+        nota.push('');
         jumlah.push(pisahRibu(it.jumlah));
       });
     });
@@ -182,22 +187,24 @@ window.LpjBuilder = (function () {
     let a = Math.max(4.44, String(nomorMaks).length + 3);
     let b = panjang(tanggal) + 3;
     let d = panjang(jenis) + 3;
+    // Kolom Nota kosong (tidak ada isian di form) -- selebar kepala kolomnya.
+    let e = Math.max(panjang(nota) + 3, 9);
     // Format akuntansi menyisakan ruang di kiri-kanan angka, jadi kolom
     // Jumlah perlu tambahan lebih banyak daripada kolom teks biasa.
-    let e = Math.max(panjang(jumlah) + 5, 12);
-    // Blok tanda tangan kanan memakai gabungan kolom D+E, dan sel gabungan
+    let f = Math.max(panjang(jumlah) + 5, 12);
+    // Blok tanda tangan kanan memakai gabungan kolom D+E+F, dan sel gabungan
     // memotong teks yang kelebihan -- jadi lebarnya dijaga di sini.
     const kanan = panjang(['Dibuat Oleh', data.pembuatJabatan||'', data.pembuatNama||'']) + 2;
-    if(d + e < kanan) e += kanan - (d + e);
+    if(d + e + f < kanan) f += kanan - (d + e + f);
 
     // Kegiatan selebar uraian terpanjangnya. Kalau sisa lebar halaman tidak
     // cukup, kolom ini yang dipersempit -- dia satu-satunya yang teksnya
     // boleh dibungkus ke baris berikutnya.
-    const sisa = TOTAL_MAKS - (a + b + d + e);
+    const sisa = TOTAL_MAKS - (a + b + d + e + f);
     const c = Math.min(Math.max(panjang(kegiatan) + 3, MIN_KEGIATAN), Math.max(MIN_KEGIATAN, sisa));
 
     const bulat = n => Math.round(n*100)/100;
-    return { a:bulat(a), b:bulat(b), c:bulat(c), d:bulat(d), e:bulat(e) };
+    return { a:bulat(a), b:bulat(b), c:bulat(c), d:bulat(d), e:bulat(e), f:bulat(f) };
   }
 
   // Periode surat ("JUNI - JULI 2025") dihitung dari tanggal item paling awal
@@ -221,11 +228,12 @@ window.LpjBuilder = (function () {
   const STYLES_XML = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
 <numFmts count="1"><numFmt numFmtId="164" formatCode="_(* #,##0_);_(* \\(#,##0\\);_(* &quot;-&quot;_);_(@_)"/></numFmts>
-<fonts count="4">
+<fonts count="5">
 <font><sz val="10"/><name val="Arial"/></font>
 <font><sz val="12"/><name val="Times New Roman"/><family val="1"/></font>
 <font><b/><sz val="12"/><name val="Times New Roman"/><family val="1"/></font>
-<font><b/><u/><sz val="12"/><name val="Times New Roman"/><family val="1"/></font>
+<font><b/><sz val="12"/><name val="Times New Roman"/><family val="1"/></font>
+<font><sz val="11"/><name val="Times New Roman"/><family val="1"/></font>
 </fonts>
 <fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills>
 <borders count="3">
@@ -234,12 +242,12 @@ window.LpjBuilder = (function () {
 <border><left style="thin"><color indexed="64"/></left><right style="thin"><color indexed="64"/></right><top/><bottom/><diagonal/></border>
 </borders>
 <cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
-<cellXfs count="13">
+<cellXfs count="14">
 <xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>
 <xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1" applyAlignment="1"><alignment horizontal="center"/></xf>
 <xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1" applyAlignment="1"><alignment horizontal="left"/></xf>
-<xf numFmtId="0" fontId="2" fillId="0" borderId="0" xfId="0" applyFont="1" applyAlignment="1"><alignment horizontal="center"/></xf>
-<xf numFmtId="0" fontId="3" fillId="0" borderId="0" xfId="0" applyFont="1" applyAlignment="1"><alignment horizontal="center"/></xf>
+<xf numFmtId="0" fontId="2" fillId="0" borderId="0" xfId="0" applyFont="1" applyAlignment="1"><alignment horizontal="center" vertical="middle" wrapText="1"/></xf>
+<xf numFmtId="0" fontId="3" fillId="0" borderId="0" xfId="0" applyFont="1" applyAlignment="1"><alignment horizontal="center" vertical="middle" wrapText="1"/></xf>
 <xf numFmtId="0" fontId="2" fillId="0" borderId="1" xfId="0" applyFont="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>
 <xf numFmtId="164" fontId="2" fillId="0" borderId="1" xfId="0" applyNumberFormat="1" applyFont="1" applyBorder="1" applyAlignment="1"><alignment vertical="center"/></xf>
 <xf numFmtId="0" fontId="2" fillId="0" borderId="2" xfId="0" applyFont="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>
@@ -248,6 +256,7 @@ window.LpjBuilder = (function () {
 <xf numFmtId="0" fontId="1" fillId="0" borderId="2" xfId="0" applyFont="1" applyBorder="1" applyAlignment="1"><alignment horizontal="left" vertical="center" wrapText="1"/></xf>
 <xf numFmtId="164" fontId="1" fillId="0" borderId="2" xfId="0" applyNumberFormat="1" applyFont="1" applyBorder="1" applyAlignment="1"><alignment vertical="center"/></xf>
 <xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1" applyAlignment="1"><alignment horizontal="right"/></xf>
+<xf numFmtId="0" fontId="4" fillId="0" borderId="0" xfId="0" applyFont="1" applyAlignment="1"><alignment horizontal="center" vertical="middle"/></xf>
 </cellXfs>
 <cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>
 </styleSheet>`;
@@ -257,6 +266,7 @@ window.LpjBuilder = (function () {
         S_BOX_BOLD_CENTER=5, S_BOX_BOLD_MONEY=6,
         S_SIDE_BOLD_CENTER=7, S_SIDE_BOLD_LEFT=8,
         S_SIDE_CENTER=9, S_SIDE_LEFT=10, S_SIDE_MONEY=11;
+  const S_FOOTER=13; // footer alamat perusahaan (TNR 11, center)
 
   function buildWorkbookFiles(data){
     const groups = groupItems(data.items);
@@ -274,39 +284,50 @@ window.LpjBuilder = (function () {
     const merges=[];
 
     const judul = barisJudul(Object.assign({}, data, { periode }));
-    addRow(2,[cell(1,S_BOLD_CENTER,{type:'str',value:judul[0]})]);
-    addRow(3,[cell(1,S_BOLD_CENTER,{type:'str',value:judul[1]})]);
-    addRow(4,[cell(1,S_BOLD_CENTER,{type:'str',value:judul[2]})]);
-    addRow(5,[cell(1,S_BOLD_CENTER,{type:'str',value:`Atas Voucher No. ${data.voucherNo||''}`})]);
-    merges.push('A2:E2','A3:E3','A4:E4','A5:E5');
+    // Kepala surat mengikuti contoh: baris 7-9 (judul, BULAN, Atas PDK No.)
+    // di-merge selebar tabel (A:F); baris 1-6 dibiarkan untuk kop/letterhead.
+    addRow(7,[cell(1,S_BOLD_CENTER,{type:'str',value:judul[0]})]);
+    addRow(8,[cell(1,S_BOLD_CENTER,{type:'str',value:judul[1]})]);
+    addRow(9,[cell(1,S_BOLD_CENTER,{type:'str',value:`Atas PDK No. ${data.voucherNo||''}`})]);
+    merges.push('A7:F7','A8:F8','A9:F9');
 
-    const HEADER_ROW=7;
+    const HEADER_ROW=11;
     addRow(HEADER_ROW,[
       cell(1,S_BOX_BOLD_CENTER,{type:'str',value:'No'}),
       cell(2,S_BOX_BOLD_CENTER,{type:'str',value:'Tanggal'}),
       cell(3,S_BOX_BOLD_CENTER,{type:'str',value:'Kegiatan'}),
       cell(4,S_BOX_BOLD_CENTER,{type:'str',value:'Keterangan'}),
-      cell(5,S_BOX_BOLD_CENTER,{type:'str',value:'Jumlah'}),
+      cell(5,S_BOX_BOLD_CENTER,{type:'str',value:'Nota'}),
+      cell(6,S_BOX_BOLD_CENTER,{type:'str',value:'Jumlah'}),
     ]);
 
     // Baris item ditulis berurutan dari HEADER_ROW+1. Nomor baris tiap bagian
     // dicatat supaya rumus SUM di baris total menunjuk ke rentang yang benar.
     // Semua sel di area ini bergaris kiri-kanan saja -- garis penutup bawahnya
     // datang dari garis atas baris "Jumlah Biaya Operasional".
-    let rn = HEADER_ROW + 1;
+    let rn = HEADER_ROW + 1;  // baris 12: pemisah di bawah kepala kolom (contoh)
+    addRow(rn,[
+      cell(1,S_SIDE_CENTER,{type:'str',value:''}),
+      cell(2,S_SIDE_CENTER,{type:'str',value:''}),
+      cell(3,S_SIDE_LEFT,{type:'str',value:''}),
+      cell(4,S_SIDE_CENTER,{type:'str',value:''}),
+      cell(5,S_SIDE_CENTER,{type:'str',value:''}),
+      cell(6,S_SIDE_MONEY,{type:'str',value:''}),
+    ]);
+    rn++;
     const rentangItem = [];
     groups.forEach(g=>{
-      // Judul bagian TIDAK menggabung B:C -- kalau digabung, garis pemisah
-      // Tanggal|Kegiatan putus di baris ini dan tidak lurus dengan baris
-      // item di bawahnya. Lebar kolom B sudah ikut memperhitungkan judul
-      // bagian (lihat lebarKolom) supaya tetap muat tanpa penggabungan.
+      // Judul bagian (I Biaya Konsumsi, dst): A=romawi, B:C di-merge -- persis
+      // contoh. Kolom D (Keterangan), E (Nota), F (Jumlah) tetap bergaris samping.
       addRow(rn,[
         cell(1,S_SIDE_BOLD_CENTER,{type:'str',value:g.romawi}),
         cell(2,S_SIDE_BOLD_LEFT,{type:'str',value:g.judul}),
         cell(3,S_SIDE_BOLD_LEFT,{type:'str',value:''}),
         cell(4,S_SIDE_CENTER,{type:'str',value:''}),
-        cell(5,S_SIDE_MONEY,{type:'str',value:''}),
+        cell(5,S_SIDE_CENTER,{type:'str',value:''}),
+        cell(6,S_SIDE_MONEY,{type:'str',value:''}),
       ]);
+      merges.push(`B${rn}:C${rn}`);
       rn++;
       const awal = rn;
       g.items.forEach((it,i)=>{
@@ -315,26 +336,27 @@ window.LpjBuilder = (function () {
           cell(2,S_SIDE_CENTER,{type:'str',value:formatTanggalIndo(it.tanggal)}),
           cell(3,S_SIDE_LEFT,{type:'str',value:it.kegiatan||''}),
           cell(4,S_SIDE_CENTER,{type:'str',value:it.jenis||''}),
-          cell(5,S_SIDE_MONEY,{type:'num',value:angka(it.jumlah)}),
+          cell(5,S_SIDE_CENTER,{type:'str',value:''}),   // Nota (tidak ada isian form)
+          cell(6,S_SIDE_MONEY,{type:'num',value:angka(it.jumlah)}),
         ]);
         rn++;
       });
-      rentangItem.push(`E${awal}:E${rn-1}`);
+      rentangItem.push(`F${awal}:F${rn-1}`);
+      // Baris kosong pemisah antar bagian (dan sebelum total) -- seperti contoh.
+      addRow(rn,[
+        cell(1,S_SIDE_CENTER,{type:'str',value:''}),
+        cell(2,S_SIDE_CENTER,{type:'str',value:''}),
+        cell(3,S_SIDE_LEFT,{type:'str',value:''}),
+        cell(4,S_SIDE_CENTER,{type:'str',value:''}),
+        cell(5,S_SIDE_CENTER,{type:'str',value:''}),
+        cell(6,S_SIDE_MONEY,{type:'str',value:''}),
+      ]);
+      rn++;
     });
-
-    // Baris kosong pemisah, sama seperti format aslinya.
-    addRow(rn,[
-      cell(1,S_SIDE_CENTER,{type:'str',value:''}),
-      cell(2,S_SIDE_CENTER,{type:'str',value:''}),
-      cell(3,S_SIDE_LEFT,{type:'str',value:''}),
-      cell(4,S_SIDE_CENTER,{type:'str',value:''}),
-      cell(5,S_SIDE_MONEY,{type:'str',value:''}),
-    ]);
-    rn++;
 
     const rowOps = rn, rowMinta = rn+1, rowSisa = rn+2;
     const rumusTotal = rentangItem.length ? `SUM(${rentangItem.join(',')})` : '';
-    // Kolom B-D ikut ditulis (kosong) walaupun nanti di-merge dengan A:
+    // Kolom B-E ikut ditulis (kosong) walaupun nanti di-merge dengan A:
     // Excel menggambar garis kotak dari sel penyusunnya, kalau selnya tidak
     // ada garis kanan/bawah baris totalnya hilang sebagian.
     function barisTotal(rowNum, label, sel){
@@ -343,14 +365,15 @@ window.LpjBuilder = (function () {
         cell(2,S_BOX_BOLD_CENTER,{type:'str',value:''}),
         cell(3,S_BOX_BOLD_CENTER,{type:'str',value:''}),
         cell(4,S_BOX_BOLD_CENTER,{type:'str',value:''}),
+        cell(5,S_BOX_BOLD_CENTER,{type:'str',value:''}),
         sel,
       ]);
     }
-    barisTotal(rowOps,'Jumlah Biaya Operasional', cell(5,S_BOX_BOLD_MONEY, rumusTotal
+    barisTotal(rowOps,'Jumlah Biaya Operasional', cell(6,S_BOX_BOLD_MONEY, rumusTotal
       ? {type:'formula',formula:rumusTotal,value:totalOps}
       : {type:'num',value:totalOps}));
-    barisTotal(rowMinta,'Jumlah Permintaan Dana', cell(5,S_BOX_BOLD_MONEY,{type:'num',value:permintaan}));
-    barisTotal(rowSisa,'Sisa Dana', cell(5,S_BOX_BOLD_MONEY,{type:'formula',formula:`E${rowMinta}-E${rowOps}`,value:sisa}));
+    barisTotal(rowMinta,'Jumlah Permintaan Dana', cell(6,S_BOX_BOLD_MONEY,{type:'num',value:permintaan}));
+    barisTotal(rowSisa,'Sisa Dana', cell(6,S_BOX_BOLD_MONEY,{type:'formula',formula:`F${rowMinta}-F${rowOps}`,value:sisa}));
     merges.push(`A${rowOps}:D${rowOps}`,`A${rowMinta}:D${rowMinta}`,`A${rowSisa}:D${rowSisa}`);
 
     // ---- blok tanda tangan ----
@@ -364,13 +387,13 @@ window.LpjBuilder = (function () {
 
     const koma = s => s ? s + ',' : '';
     // Surat dibagi dua: separuh kiri (A:C) untuk "Diperiksa Oleh", separuh
-    // kanan (D:E) untuk "Dibuat Oleh", dan "Disetujui Oleh" digabung selebar
-    // tabel (A:E). Isinya rata tengah di dalam gabungannya masing-masing --
+    // kanan (D:F) untuk "Dibuat Oleh", dan "Disetujui Oleh" digabung selebar
+    // tabel (A:F). Isinya rata tengah di dalam gabungannya masing-masing --
     // yang membuat versi sebelumnya kelihatan berpencar bukan perataannya,
     // tapi gabungan yang belum membelah surat jadi dua bagian utuh.
     // Tanggal surat rata kanan supaya menempel di tepi kanan tabel.
     addRow(rTgl,[cell(4,S_RIGHT,{type:'str',value:`Balikpapan, ${formatTanggalIndo(data.tanggalSurat)||''}`})]);
-    merges.push(`C${rTgl}:E${rTgl}`);
+    merges.push(`C${rTgl}:F${rTgl}`);
 
     addRow(rLabel,[
       cell(1,S_BOLD_CENTER,{type:'str',value:'Diperiksa Oleh'}),
@@ -384,16 +407,23 @@ window.LpjBuilder = (function () {
       cell(1,S_NAME,{type:'str',value:data.pemeriksaNama||''}),
       cell(4,S_NAME,{type:'str',value:data.pembuatNama||''}),
     ]);
-    merges.push(`A${rLabel}:C${rLabel}`,`D${rLabel}:E${rLabel}`,
-                `A${rJabatan}:C${rJabatan}`,`D${rJabatan}:E${rJabatan}`,
-                `A${rNama}:C${rNama}`,`D${rNama}:E${rNama}`);
+    merges.push(`A${rLabel}:C${rLabel}`,`D${rLabel}:F${rLabel}`,
+                `A${rJabatan}:C${rJabatan}`,`D${rJabatan}:F${rJabatan}`,
+                `A${rNama}:C${rNama}`,`D${rNama}:F${rNama}`);
 
     addRow(rLabel2,[cell(1,S_BOLD_CENTER,{type:'str',value:'Disetujui Oleh'})]);
     addRow(rJabatan2,[cell(1,S_CENTER,{type:'str',value:koma(data.penyetujuJabatan)})]);
     addRow(rNama2,[cell(1,S_NAME,{type:'str',value:data.penyetujuNama||''})]);
-    merges.push(`A${rLabel2}:E${rLabel2}`,`A${rJabatan2}:E${rJabatan2}`,`A${rNama2}:E${rNama2}`);
+    merges.push(`A${rLabel2}:F${rLabel2}`,`A${rJabatan2}:F${rJabatan2}`,`A${rNama2}:F${rNama2}`);
 
-    const LAST_ROW = rNama2 + 1;
+    // ---- footer alamat perusahaan (persis contoh) ----
+    const rFooter = rNama2 + 2;
+    addRow(rFooter,[cell(1,S_FOOTER,{type:'str',value:'Graha Tirta Jl. Ruhui Rahayu I, Balikpapan, Kalimantan Timur'})]);
+    addRow(rFooter+1,[cell(1,S_FOOTER,{type:'str',value:'Telp. (0542) 7218831- 7218832 Fax. (0542) 7218863'})]);
+    addRow(rFooter+2,[cell(1,S_FOOTER,{type:'str',value:'E-mail : humas@tirtamanuntung.co.id - http//:www.tirtamanuntung.co.id'})]);
+    merges.push(`A${rFooter}:F${rFooter}`,`A${rFooter+1}:F${rFooter+1}`,`A${rFooter+2}:F${rFooter+2}`);
+
+    const LAST_ROW = rFooter + 2;
 
     rows.sort((a,b)=>a.rn-b.rn);
 
@@ -415,7 +445,7 @@ window.LpjBuilder = (function () {
     const sheetXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
 <sheetPr><pageSetUpPr fitToPage="1"/></sheetPr>
-<dimension ref="A1:E${LAST_ROW}"/>
+<dimension ref="A1:F${LAST_ROW}"/>
 <sheetViews><sheetView showGridLines="0" workbookViewId="0"/></sheetViews>
 <sheetFormatPr defaultColWidth="9.109375" defaultRowHeight="15.6"/>
 <cols>
@@ -424,6 +454,7 @@ window.LpjBuilder = (function () {
 <col min="3" max="3" width="${W.c}" customWidth="1"/>
 <col min="4" max="4" width="${W.d}" customWidth="1"/>
 <col min="5" max="5" width="${W.e}" customWidth="1"/>
+<col min="6" max="6" width="${W.f}" customWidth="1"/>
 </cols>
 <sheetData>${sheetData}</sheetData>
 ${mergeXml}
@@ -447,7 +478,7 @@ ${mergeXml}
 
     const WORKBOOK_XML = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
-<sheets><sheet name="LPJ" sheetId="1" r:id="rId1"/></sheets>
+<sheets><sheet name="LPJ Operasional" sheetId="1" r:id="rId1"/></sheets>
 </workbook>`;
 
     const WORKBOOK_RELS = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>

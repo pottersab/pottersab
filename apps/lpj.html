@@ -381,13 +381,13 @@
   <div>
 
     <div class="card">
-      <h2>Voucher &amp; Periode
+      <h2>PDK &amp; Periode
         <button type="button" class="mini-btn" id="btnContoh">Isi contoh</button>
       </h2>
       <div class="row2">
         <div>
-          <label for="fVoucher">Atas Voucher No.</label>
-          <input type="text" id="fVoucher" placeholder="diisi manual, contoh: 1421/VII/2025">
+          <label for="fVoucher">Atas PDK No.</label>
+          <input type="text" id="fVoucher" placeholder="diisi manual, contoh: 36/1421002/7a-I/III/2026">
         </div>
         <div>
           <label for="fTanggalSurat">Tanggal Surat</label>
@@ -713,55 +713,56 @@ function docHtml(d){
   // Lebar kolom pratinjau memakai hitungan yang sama dengan file .xlsx,
   // tinggal diubah dari satuan Excel ke persen supaya proporsinya sama.
   const w = window.LpjBuilder.lebarKolom(d);
-  const wTotal = w.a + w.b + w.c + w.d + w.e;
+  const wTotal = w.a + w.b + w.c + w.d + w.e + w.f;
   const pct = {};
   Object.keys(w).forEach(k=>{ pct[k] = Math.round(w[k]/wTotal*1000)/10; });
 
   let body = '';
   if(!gs.length){
-    body = `<tr><td colspan="5"><div class="doc-empty">Belum ada item terisi.</div></td></tr>`;
+    body = `<tr><td colspan="6"><div class="doc-empty">Belum ada item terisi.</div></td></tr>`;
   }else{
     gs.forEach(g=>{
       // Tanpa colspan supaya garis kolomnya lurus dengan baris item di
       // bawahnya -- sama seperti di file .xlsx.
-      body += `<tr class="sect"><td class="center">${esc(g.romawi)}</td><td class="tgl">${esc(g.judul)}</td><td></td><td></td><td></td></tr>`;
+      body += `<tr class="sect"><td class="center">${esc(g.romawi)}</td><td class="tgl">${esc(g.judul)}</td><td></td><td></td><td></td><td></td></tr>`;
       g.items.forEach((it,i)=>{
         body += `<tr>
           <td class="center">${i+1}</td>
           <td class="tgl">${esc(window.LpjBuilder.formatTanggalIndo(it.tanggal))}</td>
           <td>${esc(it.kegiatan||'')}</td>
           <td class="center">${esc(it.jenis||'')}</td>
+          <td></td>
           <td class="money">${fmtAngka(angka(it.jumlah))}</td>
         </tr>`;
       });
     });
-    body += `<tr><td></td><td></td><td></td><td></td><td></td></tr>`;
+    body += `<tr><td></td><td></td><td></td><td></td><td></td><td></td></tr>`;
   }
 
   const judul = window.LpjBuilder.barisJudul(d);
   return `
     <div class="doc-title">
       ${esc(judul[0])}<br>
-      ${esc(judul[1])}<br>
-      ${judul[2] ? esc(judul[2]) : '&nbsp;'}
+      ${judul[1] ? esc(judul[1]) : '&nbsp;'}
     </div>
-    <div class="doc-voucher">Atas Voucher No. ${esc(d.voucherNo||'')}</div>
+    <div class="doc-voucher">Atas PDK No. ${esc(d.voucherNo||'')}</div>
     <table class="doc-table">
       <tr>
         <th style="width:${pct.a}%;">No</th>
         <th style="width:${pct.b}%;">Tanggal</th>
         <th style="width:${pct.c}%;">Kegiatan</th>
         <th style="width:${pct.d}%;">Keterangan</th>
-        <th style="width:${pct.e}%;">Jumlah</th>
+        <th style="width:${pct.e}%;">Nota</th>
+        <th style="width:${pct.f}%;">Jumlah</th>
       </tr>
       ${body}
-      <tr class="total"><td class="lbl" colspan="4">Jumlah Biaya Operasional</td><td class="money">${fmtAngka(totalOps)}</td></tr>
-      <tr class="total"><td class="lbl" colspan="4">Jumlah Permintaan Dana</td><td class="money">${fmtAngka(permintaan)}</td></tr>
-      <tr class="total"><td class="lbl" colspan="4">Sisa Dana</td><td class="money">${fmtAngka(sisa)}</td></tr>
+      <tr class="total"><td class="lbl" colspan="5">Jumlah Biaya Operasional</td><td class="money">${fmtAngka(totalOps)}</td></tr>
+      <tr class="total"><td class="lbl" colspan="5">Jumlah Permintaan Dana</td><td class="money">${fmtAngka(permintaan)}</td></tr>
+      <tr class="total"><td class="lbl" colspan="5">Sisa Dana</td><td class="money">${fmtAngka(sisa)}</td></tr>
     </table>
 
     <div class="doc-sign-date">Balikpapan, ${formatTanggalIndo(d.tanggalSurat) || '...'}</div>
-    <div class="doc-sign" style="grid-template-columns:${w.a + w.b + w.c}fr ${w.d + w.e}fr;">
+    <div class="doc-sign" style="grid-template-columns:${w.a + w.b + w.c}fr ${w.d + w.e + w.f}fr;">
       <div>
         <div class="lbl">Diperiksa Oleh</div>
         <div>${esc(d.pemeriksaJabatan||'')}${d.pemeriksaJabatan?',':''}</div>
@@ -1013,7 +1014,7 @@ function renderHistory(){
   }
   box.innerHTML = `
     <table class="hist-table">
-      <thead><tr><th>Voucher</th><th>Periode</th><th class="right">Biaya Operasional</th></tr></thead>
+      <thead><tr><th>PDK</th><th>Periode</th><th class="right">Biaya Operasional</th></tr></thead>
       <tbody>${riwayat.map(h=>{
         const d = h.details || {};
         const total = window.LpjBuilder.totalOperasional(d.items);
