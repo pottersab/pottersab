@@ -624,10 +624,10 @@ function uid(prefix){
 // ---------------------- state ----------------------
 let cfg = { penandatangan: [] };
 let riwayat = [];
-let state = loadDraft() || blankState();
-
 // Awalan tetap nomor PDK (bagian yang tidak berubah tiap surat) -- diisi
-// sebagai default di form, tinggal ganti No. Urut-nya.
+// sebagai default di form, tinggal ganti No. Urut-nya. Dideklarasikan SEBELUM
+// `state = loadDraft() || blankState()` karena blankState() memakainya -- kalau
+// tidak, const-nya masih di Temporal Dead Zone saat dipanggil dan script error.
 const PDK_PREFIX_DEFAULT = '1421002/7a-I/III/2026';
 // Pecah nomor gabungan "36/1421002/..." jadi {noUrut, noPdk} -- untuk migrasi
 // draft/riwayat lama yang menyimpan satu string.
@@ -636,6 +636,8 @@ function splitVoucher(v){
   if(m) return { noUrut:m[1], noPdk:m[2] };
   return { noUrut:'', noPdk:String(v||'') };
 }
+
+let state = loadDraft() || blankState();
 
 function itemKosong(jenis){
   return { tanggal:'', kegiatan:'', jenis: jenis || 'Konsumsi', jumlah:'' };
