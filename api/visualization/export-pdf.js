@@ -87,8 +87,15 @@ module.exports = async (req, res) => {
 
   // Grafik selalu menempel di section pertama -- section berikutnya (mis.
   // Statis/Dinamis pada level sumur) tetap tabel polos.
+  //
+  // Debit & Level Sumur TIDAK pernah diberi grafik, sekalipun klien mengirim
+  // PNG (mis. dari klien lama yang masih menangkap grafik waduk yang terakhir
+  // dibuka -- sumur tidak punya grafik sendiri, jadi PNG yang terkirim tidak
+  // relate dengan data sumur). `source` baru diisi di bawah, tapi bikinPdf
+  // dipanggil setelahnya, jadi aman.
   const bikinPdf = (opts) => {
-    if (chartPng && opts.sections && opts.sections[0]) opts.sections[0].chartPng = chartPng;
+    const sumur = source.kind === 'sumur-debit' || source.kind === 'sumur-level';
+    if (!sumur && chartPng && opts.sections && opts.sections[0]) opts.sections[0].chartPng = chartPng;
     return buildTablePdf(opts);
   };
 
