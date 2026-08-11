@@ -830,13 +830,18 @@ function tulisExcelBergrafik(wb, namaBerkas, opsiGrafik) {
 // dikirim, filter bulan tidak didukung server jadi diabaikan (tetap unduh
 // satu tahun penuh).
 //
-// Grafiknya ikut: Chart.js sudah menggambarnya di canvas halaman ini, jadi
-// hasil canvas itu yang dikirim ke server sebagai PNG untuk disisipkan di
-// atas tabel -- server tidak perlu menggambar ulang. Karena gambarnya harus
-// ikut terkirim, unduhannya lewat POST + blob, bukan lagi mengarahkan alamat
-// browser seperti dulu.
+// Grafiknya ikut untuk data WADUK: Chart.js sudah menggambarnya di canvas
+// halaman ini, jadi hasil canvas itu yang dikirim ke server sebagai PNG untuk
+// disisipkan di atas tabel -- server tidak perlu menggambar ulang. Karena
+// gambarnya harus ikut terkirim, unduhannya lewat POST + blob.
+//
+// Untuk data SUMUR grafik SENGAJA TIDAK diikutkan: sumur tidak punya grafik
+// sendiri (halaman sumur tidak membuat Chart.js), jadi tanpa penjagaan ini
+// `chart` masih menunjuk grafik waduk yang terakhir dibuka -- PNG yang ikut
+// terkirim jadi grafik waduk yang TIDAK relate dengan data debit/level sumur.
 // ---------------------------------------------------------------------------
 function grafikPng() {
+  if (currentGroup === 'sumur') return null;
   if (!chart) return null;
   try {
     // Jangan langsung toBase64Image(). Chart.js menggambar lewat animation
