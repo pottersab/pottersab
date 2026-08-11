@@ -225,64 +225,85 @@ module.exports = async (req, res) => {
   } else if (source.kind === 'sumur-debit') {
     const { wells, rows: allRows } = await fetchSumurDebitRows(source);
     const years = yearsInRows(allRows, 'Bulan');
-    const activeYear = pickYear(years, year);
-    const yearRows = allRows.filter(r => r.Bulan.startsWith(`${activeYear}-`));
-    const byMonth = {};
-    yearRows.forEach(r => { byMonth[Number(r.Bulan.slice(5, 7))] = r; });
-    const monthTotals = new Array(12).fill(0);
-    const monthHas = new Array(12).fill(false);
-    const tableRows = wells.map(w => {
-      const values = MONTHS_SHORT.map((_, i) => {
-        const r = byMonth[i + 1];
-        const v = r ? r[w] : null;
-        if (v !== null && v !== undefined) { monthTotals[i] += v; monthHas[i] = true; }
-        return fmtDesimal(v);
+    // "Semua Data" (parameter tahun tidak dikirim / 'all') -> seluruh tahun
+    // dimuat, bukan cuma tahun terbaru -- persis seperti mode rekap AP/ATD
+    // (wide) di atas. Dua tahun per halaman lanskap: tabel debit per tahun
+    // cuma 8 baris (7 sumur + Jumlah), jadi 2 muat dengan jeda antar-tahun.
+    const semuaTahun = !year || String(year).toLowerCase() === 'all';
+    const tahunDipakai = semuaTahun ? years : [pickYear(years, year)];
+
+    const bikinSectionTahun = (activeYear) => {
+      const yearRows = allRows.filter(r => r.Bulan.startsWith(`${activeYear}-`));
+      const byMonth = {};
+      yearRows.forEach(r => { byMonth[Number(r.Bulan.slice(5, 7))] = r; });
+      const monthTotals = new Array(12).fill(0);
+      const monthHas = new Array(12).fill(false);
+      const tableRows = wells.map(w => {
+        const values = MONTHS_SHORT.map((_, i) => {
+          const r = byMonth[i + 1];
+          const v = r ? r[w] : null;
+          if (v !== null && v !== undefined) { monthTotals[i] += v; monthHas[i] = true; }
+          return fmtDesimal(v);
+        });
+        return [w.replace(/_/g, ' '), ...values];
       });
-      return [w.replace(/_/g, ' '), ...values];
-    });
-    const totalRow = monthTotals.map((t, i) => fmtDesimal(monthHas[i] ? t : null));
-    tableRows.push(['Jumlah', ...totalRow]);
-    pdfBytes = await bikinPdf({
-      landscape: true,
-      sections: [{
+      const totalRow = monthTotals.map((t, i) => fmtDesimal(monthHas[i] ? t : null));
+      tableRows.push(['Jumlah', ...totalRow]);
+      return {
         title: 'Data Waduk dan Sumur — Rekapitulasi',
         subtitle: `${source.label}  |  Tahun ${activeYear}  |  Satuan ${source.unit}`,
         columns: [{ header: 'Sumur', weight: 1.8 }, ...MONTHS_SHORT.map(m => ({ header: m, weight: 1 }))],
         rows: tableRows,
         totalRowIndex: tableRows.length - 1
-      }]
-    });
-    filename = `${dataType}_${activeYear}.pdf`;
-  } else if (source.kind === 'sumur-level') {
-    const { wells, rows: allRows } = await fetchSumurLevelRows(source);
-    const years = yearsInRows(allRows, 'Bulan');
-    const activeYear = pickYear(years, year);
-    const yearRows = allRows.filter(r => r.Bulan.startsWith(`${activeYear}-`));
-    const byMonth = {};
-    yearRows.forEach(r => { byMonth[Number(r.Bulan.slice(5, 7))] = r; });
-
-    function buildVariantSection(variant) {
-      const tableRows = wells.map(w => {
-        const values = MONTHS_SHORT.map((_, i) => {
-          const r = byMonth[i + 1];
-          const v = r ? r[w + '_' + variant] : null;
-          return fmtDesimal(v);
-        });
-        return [w.replace(/_/g, ' '), ...values];
-      });
-      return {
-        title: 'Data Waduk dan Sumur — Rekapitulasi',
-        subtitle: `${source.label} — ${variant}  |  Tahun ${activeYear}  |  Satuan m`,
-        columns: [{ header: 'Sumur', weight: 1.8 }, ...MONTHS_SHORT.map(m => ({ header: m, weight: 1 }))],
-        rows: tableRows
       };
-    }
+    };
 
     pdfBytes = await bikinPdf({
       landscape: true,
-      sections: [buildVariantSection('Statis'), buildVariantSection('Dinamis')]
+      sections: tahunDipakai.map((t, i) => ({
+        ...bikinSectionTahun(t),
+        sambung: i % 2 === 1
+      }))
     });
-    filename = `${dataType}_${activeYear}.pdf`;
+    filename = semuaTahun ? `${dataType}_semua-tahun.pdf` : `${dataType}_${tahunDipakai[0]}.pdf`;
+  } else if (source.kind === 'sumur-level') {
+    const { wells, rows: allRows } = await fetchSumurLevelRows(source);
+    const years = yearsInRows(allRows, 'Bulan');
+    const semuaTahun = !year || String(year).toLowerCase() === 'all';
+    const tahunDipakai = semuaTahun ? years : [pickYear(years, year)];
+
+    // Satu tahun = dua tabel (Statis & Dinamis), sama seperti sebelumnya.
+    // Tabel kedua tahun yang sama menumpang di halaman yang sama (sambung),
+    // tahun berikutnya mulai di halaman baru -- dua tahun tidak muat karena
+    // tiap tahun sudah memakai dua tabel. Ini yang paling rapi untuk level.
+    const sections = [];
+    tahunDipakai.forEach((t) => {
+      const yearRows = allRows.filter(r => r.Bulan.startsWith(`${t}-`));
+      const byMonth = {};
+      yearRows.forEach(r => { byMonth[Number(r.Bulan.slice(5, 7))] = r; });
+      ['Statis', 'Dinamis'].forEach((variant) => {
+        const tableRows = wells.map(w => {
+          const values = MONTHS_SHORT.map((_, i) => {
+            const r = byMonth[i + 1];
+            const v = r ? r[w + '_' + variant] : null;
+            return fmtDesimal(v);
+          });
+          return [w.replace(/_/g, ' '), ...values];
+        });
+        sections.push({
+          title: 'Data Waduk dan Sumur — Rekapitulasi',
+          subtitle: `${source.label} — ${variant}  |  Tahun ${t}  |  Satuan m`,
+          columns: [{ header: 'Sumur', weight: 1.8 }, ...MONTHS_SHORT.map(m => ({ header: m, weight: 1 }))],
+          rows: tableRows
+        });
+      });
+    });
+
+    pdfBytes = await bikinPdf({
+      landscape: true,
+      sections: sections.map((s, i) => ({ ...s, sambung: i % 2 === 1 }))
+    });
+    filename = semuaTahun ? `${dataType}_semua-tahun.pdf` : `${dataType}_${tahunDipakai[0]}.pdf`;
   } else {
     return res.status(500).json({ error: 'Kind dataset tidak dikenal' });
   }
