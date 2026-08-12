@@ -433,7 +433,10 @@ function doLogout(){
 
 <script>
 // ============== KONFIGURASI ==============
-// Ganti dengan URL Web App hasil deploy Apps Script kamu (lihat Code.gs)
+// Backup ke Google Sheet lewat Apps Script (lihat Code.gs). HANYA cadangan:
+// kiriman utama masuk ke database /api/pekerjaan. Kalau endpoint ini mati atau
+// tidak dipakai lagi, laporan TETAP tersimpan di database -- backupnya hanya
+// dilewati. Isi dengan string kosong untuk menonaktifkan backup sepenuhnya.
 const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw8B3ts6p93DuAW-cYbh_hoHXKb1jZgIs2GeXWY5Sw0sIot9IfFFdFh_VGpxyQt9iTX/exec";
 // ==========================================
 
@@ -860,14 +863,38 @@ async function simpanKeDatabase(){
   }
 }
 
+// Backup ke Google Sheet lewat Apps Script, NON-BLOCKING. Dulu endpoint ini
+// jadi pintu masuk yang memblokir kiriman -- dan ketika mati, muncul error
+// mentah "Unexpected token '<', DOCTYPE..." karena responsnya halaman HTML
+// bukan JSON. Sekarang hasil database yang utama: gagalnya backup TIDAK boleh
+// menahan laporan yang sudah tersimpan. Kalau Sheet diperbaiki nanti, cadangan
+// ini otomatis hidup lagi tanpa perubahan lain.
+async function kirimKeSheetBestEffort(payload){
+  if(!SCRIPT_URL || SCRIPT_URL.indexOf('GANTI_DENGAN')===0 || SCRIPT_URL.includes('GANTI_DENGAN')){
+    return false; // URL belum diisi: backup dilewati diam-diam
+  }
+  try{
+    const res = await fetch(SCRIPT_URL, {
+      method:'POST',
+      headers:{ 'Content-Type':'text/plain;charset=utf-8' }, // hindari CORS preflight
+      body: JSON.stringify(payload)
+    });
+    // Endpoint lama membalas {status:'ok'}. Bisa saja yang datang malah
+    // halaman HTML (mis. halaman error Google) -- itu bukan tanggung jawab
+    // laporan, jadi dibaca sebagai teks dan hanya dicatat apakah Sheet
+    // benar-benar menerimanya.
+    const text = await res.text();
+    let data = null;
+    try { data = JSON.parse(text); } catch(_) { /* bukan JSON: diabaikan */ }
+    return !!(data && data.status === 'ok');
+  }catch(err){
+    return false; // backup gagal, laporan tetap aman di database
+  }
+}
+
 async function submitForm(){
   const btn = document.getElementById('nextBtn');
   const msg = document.getElementById('statusMsg');
-  if(SCRIPT_URL.indexOf('GANTI_DENGAN')===0 || SCRIPT_URL.includes('GANTI_DENGAN')){
-    msg.textContent = 'SCRIPT_URL belum diisi di dalam kode HTML ini.';
-    msg.className = 'status-msg error';
-    return;
-  }
   btn.disabled = true;
   btn.innerHTML = '<span class="spinner"></span>Mengirim...';
   msg.textContent=''; msg.className='status-msg';
@@ -892,37 +919,25 @@ async function submitForm(){
     foto: { base64: state.fotoBase64, mimeType: state.fotoMime, filename: state.fotoName }
   };
 
-  try{
-    const res = await fetch(SCRIPT_URL, {
-      method:'POST',
-      headers:{ 'Content-Type':'text/plain;charset=utf-8' }, // hindari CORS preflight
-      body: JSON.stringify(payload)
-    });
-    const data = await res.json();
-    if(data.status==='ok'){
-      // Google Sheet sudah menerima laporannya. Sekarang dicatat juga ke
-      // database supaya muncul di halaman Riwayat Pekerjaan SAB. Sengaja
-      // ditulis ganda selama masa peralihan: kalau database bermasalah,
-      // laporannya tetap aman di Sheet dan staf tidak perlu mengisi ulang.
-      const hasilDb = await simpanKeDatabase();
-      if(hasilDb.ok){
-        msg.textContent = 'Laporan berhasil dikirim. Terima kasih!';
-        msg.className='status-msg ok';
-      } else {
-        msg.textContent = 'Laporan tersimpan, tapi belum masuk daftar riwayat ('
-          + hasilDb.error + '). Beri tahu admin — datanya tidak hilang.';
-        msg.className='status-msg';
-      }
-      btn.textContent = 'Terkirim';
-    } else {
-      throw new Error(data.message || 'Gagal tanpa keterangan');
-    }
-  }catch(err){
-    msg.textContent = 'Gagal mengirim: ' + err.message;
+  // Simpan ke DATABASE dulu -- inilah yang muncul di halaman Riwayat Pekerjaan
+  // SAB. Kalau ini gagal, kiriman memang belum sampai: tampilkan pesannya.
+  const hasilDb = await simpanKeDatabase();
+  if(!hasilDb.ok){
+    msg.textContent = 'Gagal mengirim: ' + hasilDb.error;
     msg.className='status-msg error';
     btn.disabled = false;
     btn.textContent = 'Kirim Laporan';
+    return;
   }
+
+  // Kiriman database berhasil. Backup Google Sheet dicoba menyusul; kalau gagal
+  // (atau Sheet sedang mati), laporan TETAP tersimpan di database dan staf
+  // tidak perlu mengisi ulang.
+  kirimKeSheetBestEffort(payload);
+
+  msg.textContent = 'Laporan berhasil dikirim. Terima kasih!';
+  msg.className='status-msg ok';
+  btn.textContent = 'Terkirim';
 }
 
 render();
