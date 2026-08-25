@@ -2,6 +2,7 @@ const { pool, ensureVizTables, ensureSignersTable, ensureSpdTables, ensureSumber
 const { requireAdmin } = require('../../lib/auth');
 const { DATASETS } = require('../../lib/visualization/columns');
 const { fetchSumurWells } = require('../../lib/visualization/repo');
+const { getK97PumpType } = require('../../lib/visualization/kpi');
 const { put, del } = require('@vercel/blob');
 
 // Endpoint gabungan untuk semua input admin apps/library (dulu 3 file
@@ -1040,18 +1041,9 @@ async function autoFillSumur(sumurId, installation) {
     }
   } catch (e) { /* auto-fill tidak wajib: form tetap bisa diisi manual */ }
 
-  try {
-    const nomor = nomorDariSumurId(sumurId);
-    const { rows } = await pool.query(
-      `SELECT rows FROM kpi_9_7_items WHERE installation = $1 ORDER BY bulan DESC LIMIT 1`,
-      [installation]
-    );
-    if (rows.length && nomor !== null) {
-      const arr = Array.isArray(rows[0].rows) ? rows[0].rows : [];
-      const baris = arr.find(r => String(r.no) === String(nomor) || String(r.no) === String(nomor).padStart(2, '0'));
-      if (baris && baris.type) auto.jenisPompa = String(baris.type);
-    }
-  } catch (e) { /* auto-fill tidak wajib */ }
+  // Jenis pompa dari KPI 9.7 Laporan Kondisi Air Sumur (isian admin terbaru
+  // kalau ada, jatuh ke default contoh 9.7). Hanya 5 IPA yang dicakup 9.7.
+  auto.jenisPompa = await getK97PumpType(installation, nomorDariSumurId(sumurId));
 
   return auto;
 }
