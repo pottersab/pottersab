@@ -90,17 +90,22 @@
   }
   .photo-btn:hover{background:var(--accent-soft);}
 
-  .lanjut-item{
-    display:flex;flex-direction:column;align-items:flex-start;gap:2px;
-    width:100%;text-align:left;border:1px solid var(--line);border-radius:8px;
-    background:#fff;padding:11px 13px;margin-bottom:8px;cursor:pointer;
-    font-family:inherit;
+  .lanjut-item{display:flex;gap:8px;align-items:stretch;margin-bottom:8px;}
+  .lanjut-main{
+    flex:1;display:flex;flex-direction:column;align-items:flex-start;gap:2px;
+    text-align:left;border:1px solid var(--line);border-radius:8px;
+    background:#fff;padding:11px 13px;cursor:pointer;font-family:inherit;
   }
-  .lanjut-item:hover{border-color:var(--navy);background:var(--accent-soft);}
+  .lanjut-main:hover{border-color:var(--navy);background:var(--accent-soft);}
   .lanjut-tgl{font-size:11.5px;color:var(--muted);}
   .lanjut-judul{font-size:14px;font-weight:600;color:var(--navy-dark);}
   .lanjut-meta{font-size:12px;color:var(--muted);}
   .lanjut-cta{font-size:12.5px;font-weight:700;color:var(--navy);margin-top:4px;}
+  .lanjut-hapus{
+    flex:0 0 42px;border:1px solid var(--line);border-radius:8px;background:#fff;
+    color:var(--danger);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;
+  }
+  .lanjut-hapus:hover{border-color:var(--danger);background:#FAEDEA;}
 
   .photo-drop{
     border:1.5px dashed var(--line);border-radius:8px;padding:16px;text-align:center;
@@ -477,12 +482,21 @@ const state = {
   namaKontraktor:'',
   adaPengadaan:'', barangPengadaan:'',
   adaGudangInduk:'', barangGudangInduk:'',
-  jamMulai:'', jamSelesai:'',
+  tanggalMulai:'', jamMulai:'',
+  tanggalSelesai:'', jamSelesai:'',
   id:null,                // id laporan yang sedang dilanjutkan (null = laporan baru)
-  belumSelesai:true,      // jam selesai belum diisi -> boleh disimpan & dilanjutkan nanti
+  belumSelesai:true,      // tanggal+jam selesai belum diisi -> boleh disimpan & dilanjutkan nanti
   fotoBase64:'', fotoMime:'', fotoName:'',
   gpsLat:null, gpsLng:null, gpsAccuracy:null
 };
+
+// Tanggal hari ini format "YYYY-MM-DD" (pakai komponen lokal, bukan UTC,
+// supaya tidak geser sehari saat mendekati tengah malam).
+function hariIni(){
+  const d = new Date();
+  return [d.getFullYear(), String(d.getMonth()+1).padStart(2,'0'), String(d.getDate()).padStart(2,'0')].join('-');
+}
+state.tanggalMulai = hariIni();
 
 // Definisi seluruh step. "show" menentukan apakah step ini relevan (logika percabangan).
 const steps = [
@@ -656,11 +670,17 @@ function renderStep(id){
 
     case 'durasi':
       return `<div class="card"><h2>Durasi Pekerjaan</h2>
-        <p class="hint">Kalau pekerjaan belum selesai, biarkan tercentang &ldquo;Belum selesai&rdquo; — laporan tetap bisa disimpan lalu dilanjutkan kapan saja.</p>
-        <label class="field">Pekerjaan Dari Jam</label>
-        <input type="time" id="jamMulai" value="${state.jamMulai}">
-        <label class="field">Pekerjaan Selesai Jam</label>
-        <input type="time" id="jamSelesai" ${state.belumSelesai ? 'disabled' : ''} value="${state.belumSelesai ? '' : state.jamSelesai}">
+        <p class="hint">Tanggal mulai sudah otomatis hari ini, bisa diubah. Kalau pekerjaan belum selesai, biarkan tercentang &ldquo;Belum selesai&rdquo; — laporan tetap bisa disimpan lalu dilanjutkan kapan saja.</p>
+        <label class="field">Pekerjaan Mulai</label>
+        <div class="row2">
+          <input type="date" id="tanggalMulai" value="${state.tanggalMulai}">
+          <input type="time" id="jamMulai" value="${state.jamMulai}">
+        </div>
+        <label class="field">Pekerjaan Selesai</label>
+        <div class="row2">
+          <input type="date" id="tanggalSelesai" ${state.belumSelesai ? 'disabled' : ''} value="${state.belumSelesai ? '' : state.tanggalSelesai}">
+          <input type="time" id="jamSelesai" ${state.belumSelesai ? 'disabled' : ''} value="${state.belumSelesai ? '' : state.jamSelesai}">
+        </div>
         <label class="${state.belumSelesai ? 'opt checked' : 'opt'}" style="margin-top:14px;">
           <input type="checkbox" id="belumSelesai" ${state.belumSelesai ? 'checked' : ''}> Belum selesai (lanjut esok / nanti)
         </label>
@@ -674,7 +694,7 @@ function renderStep(id){
           <img class="photo-preview" id="photoPreview" style="${state.fotoBase64 ? 'display:block' : ''}" src="${state.fotoBase64 ? 'data:'+state.fotoMime+';base64,'+state.fotoBase64 : ''}">
         </div>
         <input type="file" id="fotoInput" accept="image/*" capture="environment" style="display:none">
-        <button type="button" class="photo-btn" id="galeriBtn">🖼️ Pilih dari Galeri HP</button>
+        <button type="button" class="photo-btn" id="galeriBtn">Pilih dari Galeri HP</button>
         <input type="file" id="galeriInput" accept="image/*" style="display:none">
 
         <h2 style="margin-top:18px;">Koordinat GPS</h2>
@@ -703,7 +723,7 @@ function renderStep(id){
         ${reviewRow('Kontraktor', state.namaKontraktor)}
         ${reviewRow('Barang Pengadaan', state.adaPengadaan==='Ya' ? state.barangPengadaan : 'Tidak ada')}
         ${reviewRow('Barang Gudang Induk', state.adaGudangInduk==='Ya' ? state.barangGudangInduk : 'Tidak ada')}
-        ${reviewRow('Jam Kerja', (state.jamMulai||'-')+' – '+(state.belumSelesai ? 'Belum selesai' : (state.jamSelesai||'-')))}
+        ${reviewRow('Waktu Kerja', (state.tanggalMulai||'-')+' '+(state.jamMulai||'-')+' – '+(state.belumSelesai ? 'Belum selesai' : ((state.tanggalSelesai||state.tanggalMulai||'')+' '+(state.jamSelesai||'-'))))}
         ${reviewRow('Foto', state.fotoName || 'Belum ada')}
         ${reviewRow('GPS', state.gpsLat
           ? state.gpsLat.toFixed(6)+', '+state.gpsLng.toFixed(6) +
@@ -735,6 +755,8 @@ function attachStepEvents(id){
     kontraktor:v=>state.namaKontraktor=v,
     pengadaanDetail:v=>state.barangPengadaan=v,
     gudangDetail:v=>state.barangGudangInduk=v,
+    tanggalMulai:v=>state.tanggalMulai=v,
+    tanggalSelesai:v=>state.tanggalSelesai=v,
     jamMulai:v=>state.jamMulai=v,
     jamSelesai:v=>state.jamSelesai=v,
   };
@@ -748,7 +770,10 @@ function attachStepEvents(id){
   const bs = document.getElementById('belumSelesai');
   if(bs) bs.addEventListener('change', e=>{
     state.belumSelesai = e.target.checked;
-    if(state.belumSelesai) state.jamSelesai = '';
+    if(state.belumSelesai){ state.jamSelesai=''; state.tanggalSelesai=''; }
+    // Begitu "Belum selesai" dilepas, tanggal selesai diisi otomatis tanggal
+    // mulai kalau masih kosong -- biasanya selesainya di hari yang sama.
+    else if(!state.tanggalSelesai) state.tanggalSelesai = state.tanggalMulai;
     render();
   });
 
@@ -845,6 +870,7 @@ function validateCurrent(){
     case 'gudangYN': return state.adaGudangInduk ? '' : 'Pilih salah satu.';
     case 'gudangDetail': return state.barangGudangInduk.trim() ? '' : 'Isi detail barang gudang induk.';
     case 'durasi':
+      if(!state.tanggalMulai) return 'Isi tanggal mulai dulu ya.';
       if(!state.jamMulai) return 'Isi jam mulai dulu ya.';
       if(!state.belumSelesai && !state.jamSelesai) return 'Isi jam selesai, atau centang "Belum selesai".';
       return '';
@@ -908,9 +934,11 @@ async function simpanKeDatabase(){
     diameter_nilai: dia.nilai,
     diameter_satuan: dia.satuan,
     kontraktor: state.namaKontraktor,
+    tanggal: state.tanggalMulai, // tanggal mulai; default hari ini
     jam_mulai: state.jamMulai,
-    // Belum selesai -> kosongkan jam selesai (server simpan NULL). Selesai
-    // -> kirim jam yang diisi.
+    // Belum selesai -> tanggal & jam selesai dikosongkan (server simpan NULL).
+    // Selesai -> kirim tanggal selesai (fallback tanggal mulai) + jam.
+    tanggal_selesai: state.belumSelesai ? '' : (state.tanggalSelesai || state.tanggalMulai),
     jam_selesai: state.belumSelesai ? '' : state.jamSelesai,
     barang_pengadaan: state.adaPengadaan==='Ya' ? state.barangPengadaan : null,
     barang_gudang: state.adaGudangInduk==='Ya' ? state.barangGudangInduk : null,
@@ -987,8 +1015,10 @@ async function submitForm(){
     barangPengadaan: state.barangPengadaan,
     adaBarangGudangInduk: state.adaGudangInduk,
     barangGudangInduk: state.barangGudangInduk,
+    tanggalMulai: state.tanggalMulai,
     jamMulai: state.jamMulai,
-    jamSelesai: state.jamSelesai,
+    tanggalSelesai: state.belumSelesai ? '' : (state.tanggalSelesai || state.tanggalMulai),
+    jamSelesai: state.belumSelesai ? '' : state.jamSelesai,
     gpsLat: state.gpsLat,
     gpsLng: state.gpsLng,
     gpsAccuracy: state.gpsAccuracy,
@@ -1041,15 +1071,21 @@ async function muatLaporanBelumSelesai(){
     card.style.display='';
     list.innerHTML = rows.map(r=>{
       const bidangLabel = BIDANG_LABEL_KU[r.bidang] || r.bidang;
-      return `<button type="button" class="lanjut-item" data-id="${r.id}">
-        <span class="lanjut-tgl">${r.tanggal} · mulai ${r.jam_mulai || '--:--'}</span>
-        <span class="lanjut-judul">${escapeHtml(r.uraian || '(tanpa judul)')}</span>
-        <span class="lanjut-meta">${escapeHtml(bidangLabel)}${r.instalasi ? ' · '+escapeHtml(r.instalasi) : ''}</span>
-        <span class="lanjut-cta">Lanjutkan &rarr;</span>
-      </button>`;
+      return `<div class="lanjut-item">
+        <button type="button" class="lanjut-main" data-id="${r.id}">
+          <span class="lanjut-tgl">${r.tanggal} · mulai ${r.jam_mulai || '--:--'}</span>
+          <span class="lanjut-judul">${escapeHtml(r.uraian || '(tanpa judul)')}</span>
+          <span class="lanjut-meta">${escapeHtml(bidangLabel)}${r.instalasi ? ' · '+escapeHtml(r.instalasi) : ''}</span>
+          <span class="lanjut-cta">Lanjutkan &rarr;</span>
+        </button>
+        <button type="button" class="lanjut-hapus" data-id="${r.id}" title="Hapus laporan ini">✕</button>
+      </div>`;
     }).join('');
-    list.querySelectorAll('.lanjut-item').forEach(b=>{
+    list.querySelectorAll('.lanjut-main').forEach(b=>{
       b.addEventListener('click', ()=> lanjutkanLaporan(Number(b.dataset.id)));
+    });
+    list.querySelectorAll('.lanjut-hapus').forEach(b=>{
+      b.addEventListener('click', ()=> hapusLaporanBelumSelesai(Number(b.dataset.id)));
     });
   }catch(_){ /* diam */ }
 }
@@ -1077,6 +1113,24 @@ async function lanjutkanLaporan(id){
   }catch(err){
     if(msg){ msg.textContent = 'Gagal memuat laporan: '+err.message; msg.className='status-msg error'; }
   }
+}
+
+// Hapus laporan yang belum selesai (tombol ✕ di kartu). Soft delete di server
+// -- sama seperti "Batalkan laporan" di halaman Berita Acara: datanya tidak
+// benar-benar hilang, cuma ditandai dibatalkan.
+async function hapusLaporanBelumSelesai(id){
+  if(!confirm('Hapus laporan yang belum selesai ini?')) return;
+  const token = localStorage.getItem('token');
+  if(!token) return;
+  try{
+    const res = await fetch('/api/pekerjaan?id='+id, {
+      method:'DELETE',
+      headers:{ 'Authorization':'Bearer '+token }
+    });
+    const d = await res.json().catch(()=>({}));
+    if(!res.ok){ alert(d.error || ('Gagal menghapus ('+res.status+')')); return; }
+    muatLaporanBelumSelesai();
+  }catch(err){ alert('Gagal menghapus: '+err.message); }
 }
 
 // Terjemahkan baris database kembali ke isian form. Arah instalasi tersimpan
@@ -1109,9 +1163,12 @@ function isiStateDariDraft(p){
   state.adaGudangInduk = p.barang_gudang ? 'Ya' : 'Tidak';
   state.barangGudangInduk = p.barang_gudang || '';
 
+  state.tanggalMulai = p.tanggal || hariIni();
   state.jamMulai = p.jam_mulai || '';
+  state.tanggalSelesai = p.tanggal_selesai || '';
   state.jamSelesai = p.jam_selesai || '';
-  state.belumSelesai = !state.jamSelesai;
+  // "Belum selesai" selama tanggal DAN jam selesainya belum ada.
+  state.belumSelesai = !state.tanggalSelesai && !state.jamSelesai;
 
   state.gpsLat = p.gps_lat;
   state.gpsLng = p.gps_lng;

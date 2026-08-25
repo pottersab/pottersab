@@ -188,6 +188,12 @@ function jamAtauNull(v) {
   return s && /^\d{2}:\d{2}$/.test(s) ? s : null;
 }
 
+// Tanggal dari <input type="date"> berbentuk "YYYY-MM-DD". Yang lain ditolak.
+function tanggalAtauNull(v) {
+  const s = teksAtauNull(v);
+  return s && /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : null;
+}
+
 module.exports = async (req, res) => {
   // --- Simpan laporan lapangan sebagai draft ---
   if (req.method === 'POST') {
@@ -203,16 +209,18 @@ module.exports = async (req, res) => {
     await ensurePekerjaanTable();
     const { rows } = await pool.query(
       `INSERT INTO pekerjaan
-         (tanggal, bidang, jenis, instalasi, gps_lat, gps_lng, gps_akurasi,
-          material, diameter_nilai, diameter_satuan, uraian, kontraktor,
-          jam_mulai, jam_selesai, barang_pengadaan, barang_gudang, foto_urls,
-          status, sumber, created_by)
+         (tanggal, tanggal_selesai, bidang, jenis, instalasi, gps_lat, gps_lng,
+          gps_akurasi, material, diameter_nilai, diameter_satuan, uraian,
+          kontraktor, jam_mulai, jam_selesai, barang_pengadaan, barang_gudang,
+          foto_urls, status, sumber, created_by)
        VALUES
-         ((now() AT TIME ZONE 'Asia/Makassar')::date,
-          $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,
-          'draft', 'formulir-sab', $17)
+         (COALESCE($1::date, (now() AT TIME ZONE 'Asia/Makassar')::date),
+          $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15,
+          $16, $17, $18, 'draft', 'formulir-sab', $19)
        RETURNING id`,
       [
+        tanggalAtauNull(b.tanggal),        // tanggal mulai dari form (fallback: hari ini WITA)
+        tanggalAtauNull(b.tanggal_selesai), // kosong kalau belum selesai
         b.bidang,
         teksAtauNull(b.jenis, 80),
         teksAtauNull(b.instalasi, 80),
@@ -256,19 +264,23 @@ module.exports = async (req, res) => {
     await ensurePekerjaanTable();
     const { rowCount } = await pool.query(
       `UPDATE pekerjaan SET
-         bidang = $1,
-         jenis = $2,
-         instalasi = $3,
-         gps_lat = $4, gps_lng = $5, gps_akurasi = $6,
-         material = $7,
-         diameter_nilai = $8, diameter_satuan = $9,
-         uraian = $10, kontraktor = $11,
-         jam_mulai = $12, jam_selesai = $13,
-         barang_pengadaan = $14, barang_gudang = $15,
-         foto_urls = $16,
-         updated_by = $17, updated_at = now()
-       WHERE id = $18 AND status = 'draft' AND deleted_at IS NULL`,
+         tanggal = COALESCE($1::date, tanggal),
+         tanggal_selesai = $2,
+         bidang = $3,
+         jenis = $4,
+         instalasi = $5,
+         gps_lat = $6, gps_lng = $7, gps_akurasi = $8,
+         material = $9,
+         diameter_nilai = $10, diameter_satuan = $11,
+         uraian = $12, kontraktor = $13,
+         jam_mulai = $14, jam_selesai = $15,
+         barang_pengadaan = $16, barang_gudang = $17,
+         foto_urls = $18,
+         updated_by = $19, updated_at = now()
+       WHERE id = $20 AND status = 'draft' AND deleted_at IS NULL`,
       [
+        tanggalAtauNull(b.tanggal),         // kalau tidak dikirim, tanggal asli dipertahankan
+        tanggalAtauNull(b.tanggal_selesai), // kosongkan (NULL) kalau masih belum selesai
         b.bidang,
         teksAtauNull(b.jenis, 80),
         teksAtauNull(b.instalasi, 80),
@@ -396,6 +408,7 @@ module.exports = async (req, res) => {
     const { rows } = await pool.query(
       `SELECT ${SELECT_COLS}, jenis, instalasi_asli, gps_akurasi, kontraktor,
               jam_mulai::text AS jam_mulai, jam_selesai::text AS jam_selesai,
+              to_char(tanggal_selesai, 'YYYY-MM-DD') AS tanggal_selesai,
               barang_pengadaan, barang_gudang, foto_urls, sumber, created_by,
               to_char(created_at, 'YYYY-MM-DD') AS dibuat
        FROM pekerjaan
@@ -408,6 +421,7 @@ module.exports = async (req, res) => {
     return res.status(200).json({
       pekerjaan: Object.assign(toRow(r), {
         instalasi_asli: r.instalasi_asli,
+        tanggal_selesai: r.tanggal_selesai,
         gps_akurasi: r.gps_akurasi !== null ? Number(r.gps_akurasi) : null,
         kontraktor: r.kontraktor,
         jam_mulai: r.jam_mulai ? r.jam_mulai.slice(0, 5) : null,
@@ -437,6 +451,7 @@ module.exports = async (req, res) => {
     const { rows } = await pool.query(
       `SELECT ${SELECT_COLS}, jenis, instalasi_asli, gps_akurasi, kontraktor,
               jam_mulai::text AS jam_mulai, jam_selesai::text AS jam_selesai,
+              to_char(tanggal_selesai, 'YYYY-MM-DD') AS tanggal_selesai,
               barang_pengadaan, barang_gudang, foto_urls, sumber, created_by,
               to_char(created_at, 'YYYY-MM-DD') AS dibuat
        FROM pekerjaan
@@ -449,6 +464,7 @@ module.exports = async (req, res) => {
     return res.status(200).json({
       pekerjaan: Object.assign(toRow(r), {
         instalasi_asli: r.instalasi_asli,
+        tanggal_selesai: r.tanggal_selesai,
         gps_akurasi: r.gps_akurasi !== null ? Number(r.gps_akurasi) : null,
         kontraktor: r.kontraktor,
         jam_mulai: r.jam_mulai ? r.jam_mulai.slice(0, 5) : null,
@@ -500,7 +516,8 @@ module.exports = async (req, res) => {
               jam_mulai::text AS jam_mulai,
               uraian, instalasi, bidang, jenis, kontraktor
        FROM pekerjaan
-       WHERE deleted_at IS NULL AND status = 'draft' AND jam_selesai IS NULL
+       WHERE deleted_at IS NULL AND status = 'draft'
+         AND jam_selesai IS NULL AND tanggal_selesai IS NULL
        ORDER BY tanggal DESC, id DESC`
     );
     return res.status(200).json({

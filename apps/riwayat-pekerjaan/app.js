@@ -514,7 +514,13 @@ async function bukaDetail(id) {
 
 function renderDetail(r) {
   const dia = r.diameter_nilai ? esc(r.diameter_nilai + ' ' + (r.diameter_satuan || '')) : null;
-  const jam = (r.jam_mulai || r.jam_selesai) ? esc((r.jam_mulai || '?') + ' – ' + (r.jam_selesai || '?')) : null;
+  // Tanggal mulai/selesai ikut ditampilkan (kolom baru tanggal_selesai). Untuk
+  // laporan lama yang belum punya tanggal selesai, cukup jam selesainya saja.
+  const mulai = (r.tanggal ? fmtDate(r.tanggal) + ' ' : '') + (r.jam_mulai || '');
+  const selesai = (r.tanggal_selesai ? fmtDate(r.tanggal_selesai) + ' ' : '') + (r.jam_selesai || '');
+  const jam = (mulai || selesai)
+    ? esc((mulai.trim() || '?') + ' – ' + (selesai.trim() || 'Belum selesai'))
+    : null;
   // Akurasi saat laporan dikirim ikut ditampilkan: Formulir SAB memang
   // memperingatkan pengisinya kalau titiknya kasar, tapi laporannya tetap
   // boleh dikirim -- jadi di arsip pun angkanya perlu kelihatan supaya titik
