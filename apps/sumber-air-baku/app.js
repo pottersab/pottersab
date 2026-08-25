@@ -369,8 +369,8 @@ function editSumber(jenis, id) {
     jenis, id,
     installation: (lok && lok.installation) ? lok.installation : '',
     fotoUrl: null, fotoPath: null, fotoDataUrl: null, hapusFoto: false,
-    loggingUrl: null, loggingPath: null, loggingDataUrl: null, hapusLogging: false,
-    pumpingUrl: null, pumpingPath: null, pumpingDataUrl: null, hapusPumping: false
+    loggingUrl: null, loggingPath: null, loggingBytes: null, loggingName: null, loggingMime: null, hapusLogging: false,
+    pumpingUrl: null, pumpingPath: null, pumpingBytes: null, pumpingName: null, pumpingMime: null, hapusPumping: false
   };
 
   $('editTitle').textContent = jenis === 'waduk' ? 'Detail Waduk' : 'Detail Sumur';
@@ -400,8 +400,10 @@ function editSumber(jenis, id) {
     $('sKeterangan').value = d.keterangan || '';
     edit.loggingUrl = d.lampiran_logging_url || null;
     edit.loggingPath = d.lampiran_logging_pathname || null;
+    edit.loggingBytes = null; edit.loggingName = null; edit.loggingMime = null;
     edit.pumpingUrl = d.lampiran_pumping_url || null;
     edit.pumpingPath = d.lampiran_pumping_pathname || null;
+    edit.pumpingBytes = null; edit.pumpingName = null; edit.pumpingMime = null;
     $('sLogging').value = '';
     $('sPumping').value = '';
     $('sLoggingNama').textContent = d.lampiran_logging_url ? 'Lampiran tersimpan.' : 'Belum ada lampiran.';
@@ -458,6 +460,25 @@ async function simpanEdit() {
     });
     if (edit.fotoDataUrl) body.foto_dataUrl = edit.fotoDataUrl;
   } else {
+    // Lampiran PDF baru diunggah dulu sebagai file mentah (bukan base64 --
+    // base64 menambah ±33% dan melewati batas body Vercel), baru url/pathname
+    // hasilnya ikut di metadata. Lihat ?action=sumber&upload=1 di server.
+    try {
+      if (edit.loggingBytes) {
+        const up = await unggahLampiranFile(edit.loggingBytes, edit.loggingMime, 'logging', edit.id);
+        edit.loggingUrl = up.url; edit.loggingPath = up.pathname;
+        edit.hapusLogging = false;
+      }
+      if (edit.pumpingBytes) {
+        const up = await unggahLampiranFile(edit.pumpingBytes, edit.pumpingMime, 'pumping', edit.id);
+        edit.pumpingUrl = up.url; edit.pumpingPath = up.pathname;
+        edit.hapusPumping = false;
+      }
+    } catch (err) {
+      msg.textContent = 'Gagal mengunggah lampiran: ' + err.message;
+      msg.className = 'status-msg error';
+      return;
+    }
     Object.assign(body, {
       sumur_id: edit.id,
       installation: edit.installation,
@@ -470,8 +491,6 @@ async function simpanEdit() {
       lampiran_pumping_url: edit.pumpingUrl, lampiran_pumping_pathname: edit.pumpingPath,
       hapusLogging: !!edit.hapusLogging, hapusPumping: !!edit.hapusPumping
     });
-    if (edit.loggingDataUrl) body.lampiranLogging_dataUrl = edit.loggingDataUrl;
-    if (edit.pumpingDataUrl) body.lampiranPumping_dataUrl = edit.pumpingDataUrl;
   }
 
   if (!body.nama) { msg.textContent = 'Nama wajib diisi.'; msg.className = 'status-msg error'; return; }
@@ -513,6 +532,34 @@ function bacaFileDataUrl(file, maxBytes, cb) {
   fr.readAsDataURL(file);
 }
 
+// Baca file PDF sebagai byte mentah (bukan dataURL): supaya bisa diunggah
+// sebagai body biner dan muat di batas 4,5 MB Vercel walau base64-nya lebih
+// besar. Batas file PDF = 4 MB (hasil kompresi umumnya muat).
+function bacaFileBytes(file, maxBytes, cb) {
+  if (!file) return;
+  if (file.size > maxBytes) {
+    alert('File terlalu besar. Maksimal ' + Math.round(maxBytes / 1024 / 1024) + ' MB.');
+    return;
+  }
+  file.arrayBuffer().then(buf => cb(buf, file)).catch(e => alert('Gagal membaca file: ' + e.message));
+}
+
+// Unggah lampiran PDF mentah ke server -> Vercel Blob, dapat url/pathname.
+async function unggahLampiranFile(bytes, mime, lampiran, sumurId) {
+  const t = currentAccessToken();
+  const res = await fetch(`${ADMIN_URL}?action=sumber&upload=1&jenis=sumur&lampiran=${lampiran}&id=${encodeURIComponent(sumurId)}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': mime || 'application/octet-stream',
+      ...(t ? { 'Authorization': 'Bearer ' + t } : {})
+    },
+    body: bytes
+  });
+  const d = await res.json().catch(() => ({}));
+  if (!res.ok || !d.success) throw new Error(d.error || ('Gagal mengunggah (' + res.status + ')'));
+  return { url: d.url, pathname: d.pathname };
+}
+
 function onFotoDipilih() {
   const f = $('wFoto').files[0];
   if (!f) return;
@@ -533,9 +580,11 @@ function onFotoDipilih() {
 function onLoggingDipilih() {
   const f = $('sLogging').files[0];
   if (!f) return;
-  edit.hapusLogging = false;
-  bacaFileDataUrl(f, 3 * 1024 * 1024, url => {
-    edit.loggingDataUrl = url;
+  edit.hapusLogging = false; // file baru mengalahkan flag "hapus"
+  bacaFileBytes(f, 4 * 1024 * 1024, (buf) => {
+    edit.loggingBytes = buf;
+    edit.loggingName = f.name;
+    edit.loggingMime = f.type || 'application/pdf';
     $('sLoggingNama').textContent = f.name + ' (siap unggah)';
   });
 }
@@ -543,9 +592,11 @@ function onLoggingDipilih() {
 function onPumpingDipilih() {
   const f = $('sPumping').files[0];
   if (!f) return;
-  edit.hapusPumping = false;
-  bacaFileDataUrl(f, 3 * 1024 * 1024, url => {
-    edit.pumpingDataUrl = url;
+  edit.hapusPumping = false; // file baru mengalahkan flag "hapus"
+  bacaFileBytes(f, 4 * 1024 * 1024, (buf) => {
+    edit.pumpingBytes = buf;
+    edit.pumpingName = f.name;
+    edit.pumpingMime = f.type || 'application/pdf';
     $('sPumpingNama').textContent = f.name + ' (siap unggah)';
   });
 }

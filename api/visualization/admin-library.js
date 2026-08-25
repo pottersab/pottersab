@@ -1018,6 +1018,19 @@ async function hapusBlobSumber(pathname) {
   try { await del(pathname); } catch (e) { /* diabaikan: file bisa sudah hilang */ }
 }
 
+// Baca body request mentah (file biner) jadi Buffer. Vercel otomatis mengurai
+// JSON ke req.body, tapi untuk Content-Type lain (mis. application/pdf)
+// req.body kosong dan byte-nya ada di stream req -- dipegang keduanya.
+async function bacaBodyMentah(req) {
+  if (Buffer.isBuffer(req.body)) return req.body;
+  if (typeof req.body === 'string') return Buffer.from(req.body, 'binary');
+  const chunks = [];
+  try {
+    for await (const c of req) chunks.push(Buffer.isBuffer(c) ? c : Buffer.from(c));
+  } catch (e) { /* stream sudah habis dibaca framework */ }
+  return Buffer.concat(chunks);
+}
+
 // Konteks auto-fill untuk form edit sumur: nilai yang sebaiknya diambil dari
 // data yang SUDAH ada di web, supaya admin tidak mengetik ulang:
 //   statis/dinamis -> pembacaan terbaru sumur_level_readings untuk sumur ini
@@ -1052,6 +1065,41 @@ async function handleSumber(req, res) {
   const user = requireAdmin(req, res);
   if (!user) return;
   await ensureSumberTables();
+
+  // Upload lampiran MENTAH (file biner, bukan base64) ke Vercel Blob.
+  // Dipakai file PDF yang lebih besar: base64 menambah ±33% ukuran (file
+  // 3,8 MB jadi ~5 MB) dan melewati batas body serverless Vercel (4,5 MB),
+  // padahal file mentah 3,8 MB masih muat. Alur: client unggah file dulu di
+  // sini -> dapat url/pathname -> baru simpan metadata lewat POST biasa.
+  //   POST ?action=sumber&upload=1&jenis=sumur&lampiran=logging|pumping&id=<sumur_id>
+  //   Content-Type: application/pdf (atau mime file), body = byte file.
+  if (req.query.upload !== undefined) {
+    if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+    const jenis = String(req.query.jenis || '');
+    const lampiran = String(req.query.lampiran || '');
+    const id = String(req.query.id || '');
+    if (jenis !== 'sumur' || !['logging', 'pumping'].includes(lampiran) || !id) {
+      return res.status(400).json({ error: 'jenis=sumur, lampiran (logging/pumping), dan id wajib diisi' });
+    }
+    const isi = await bacaBodyMentah(req);
+    if (!isi || !isi.length) return res.status(400).json({ error: 'File kosong.' });
+    if (isi.length > MAKS_LAMPIRAN) {
+      return res.status(413).json({ error: 'File terlalu besar, maksimal 4 MB.' });
+    }
+    const contentType = String(req.headers['content-type'] || '').split(';')[0] || 'application/octet-stream';
+    try {
+      const hasil = await put(`sumber/sumur-${lampiran}/${Date.now()}-lampiran`, isi, {
+        access: 'public', contentType, addRandomSuffix: true
+      });
+      return res.status(200).json({ success: true, url: hasil.url, pathname: hasil.pathname });
+    } catch (err) {
+      return res.status(500).json({
+        error: process.env.BLOB_READ_WRITE_TOKEN
+          ? 'Gagal mengunggah file ke penyimpanan: ' + err.message
+          : 'Penyimpanan file belum aktif. Buat Blob Store di dashboard Vercel dulu.'
+      });
+    }
+  }
 
   if (req.method === 'GET') {
     const jenis = req.query.jenis;
