@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<script src="../../assets/js/sesi.js"></script>
+<link rel="stylesheet" href="/assets/css/merek.css">
+<link rel="stylesheet" href="/assets/css/layout.css">
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#0E8E96">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png">
+<script defer src="/assets/js/pwa.js"></script>
+<script defer src="../../assets/js/kompres-foto.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Daftar Sumber Air Baku</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="ptmb-navbar">
+  <div class="ptmb-nav-inner">
+    <a class="ptmb-brand" href="../../index.html">
+      <span class="ptmb-brand-mark">PT</span>
+      <span>PTMB<small>Portal Internal · SAB</small></span>
+    </a>
+    <nav class="ptmb-nav-links" id="navLinks">
+      <a href="../../index.html"><svg class="ptmb-nav-ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0A6A72" stroke-width="2" stroke-linecap="round"><path d="M3 12l9-9 9 9"/><path d="M5 10v10h14V10"/></svg>Beranda</a>
+      <a href="../../index.html?page=tools"><svg class="ptmb-nav-ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0E8E96" stroke-width="2" stroke-linecap="round"><path d="M14 3v5h5"/><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/></svg>Tools</a>
+      <a href="../../index.html?page=data" class="active"><svg class="ptmb-nav-ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#E8791D" stroke-width="2" stroke-linecap="round"><path d="M3 20h18"/><path d="M5 20V12M10 20V7M15 20v-9M20 20V4"/></svg>Data &amp; Visualisasi</a>
+      <a href="../../index.html?page=dev"><svg class="ptmb-nav-ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0F8E7E" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M4.9 4.9l2.8 2.8M16.3 16.3l2.8 2.8M2 12h4M18 12h4M4.9 19.1l2.8-2.8M16.3 7.7l2.8-2.8"/></svg>Development</a>
+      <a href="../../about.html"><svg class="ptmb-nav-ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#7C5CD6" stroke-width="2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"/><circle cx="10" cy="7" r="4"/></svg>About SAB</a>
+    </nav>
+    <div class="nav-right">
+      <a class="ptmb-btn-login" id="navLoginBtn" href="../../login.html" style="display:none">Login</a>
+      <div class="admin-wrap" id="adminWrap" style="display:none">
+        <button class="admin-chip" onclick="toggleAdminMenu()">
+          <span class="admin-avatar" id="adminAvatar">P</span>
+          <span class="name-block">
+            <span id="adminName">Potter</span>
+            <span class="role" id="adminRole">Admin · SAB</span>
+          </span>
+          <span class="admin-caret"></span>
+        </button>
+        <div class="admin-menu">
+          <a href="../../admin-dashboard.html">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>
+            Dashboard Admin
+          </a>
+          <button class="logout" onclick="doLogout()">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>
+            Logout
+          </button>
+        </div>
+      </div>
+    </div>
+    <button class="ptmb-nav-toggle" id="navToggle" aria-label="Buka menu">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+</header>
+<div class="ptmb-nav-backdrop" id="navBackdrop"></div>
+
+<script>
+function toggleAdminMenu(){
+  document.getElementById('adminWrap').classList.toggle('open');
+}
+document.addEventListener('click', function(e){
+  var wrap = document.getElementById('adminWrap');
+  if(wrap && !wrap.contains(e.target)) wrap.classList.remove('open');
+});
+
+(function(){
+  var toggle = document.getElementById('navToggle');
+  var navLinksEl = document.getElementById('navLinks');
+  var backdrop = document.getElementById('navBackdrop');
+  if(!toggle || !navLinksEl) return;
+  toggle.addEventListener('click', function(){
+    var willOpen = !navLinksEl.classList.contains('open');
+    toggle.classList.toggle('open', willOpen);
+    navLinksEl.classList.toggle('open', willOpen);
+    if(backdrop) backdrop.classList.toggle('open', willOpen);
+  });
+  if(backdrop) backdrop.addEventListener('click', function(){
+    toggle.classList.remove('open');
+    navLinksEl.classList.remove('open');
+    backdrop.classList.remove('open');
+  });
+})();
+
+function doLogout(){
+  if(!confirm('Keluar dari akun admin?')) return;
+  localStorage.removeItem('token');
+  localStorage.removeItem('role');
+  localStorage.removeItem('username');
+  localStorage.removeItem('displayName');
+  localStorage.removeItem('avatarInitial');
+  window.location.href = '../../login.html';
+}
+
+(function(){
+  var token = localStorage.getItem('token');
+  var role = localStorage.getItem('role');
+  var loginBtn = document.getElementById('navLoginBtn');
+  var adminWrap = document.getElementById('adminWrap');
+  if(!loginBtn || !adminWrap) return;
+  if(token && role === 'admin'){
+    var displayName = localStorage.getItem('displayName') || localStorage.getItem('username') || 'Admin';
+    var avatarInitial = localStorage.getItem('avatarInitial') || displayName.charAt(0).toUpperCase();
+    document.getElementById('adminName').textContent = displayName;
+    document.getElementById('adminAvatar').textContent = avatarInitial;
+    adminWrap.style.display = '';
+  } else {
+    loginBtn.style.display = '';
+  }
+})();
+</script>
+
+<header class="page-top">
+  <div class="title-block">
+    <h1>Daftar Sumber Air Baku</h1>
+    <p>Sub Divisi Sumber Air Baku — profil waduk &amp; sumur: koordinat, spesifikasi, foto, dan lampiran</p>
+  </div>
+  <div class="menu-tabs">
+    <button class="menu-btn active" data-menu="waduk">Waduk</button>
+    <button class="menu-btn m-sumur" data-menu="sumur">Sumur</button>
+  </div>
+</header>
+
+<main class="wrap" id="app">
+  <div class="loading-note">Memuat data…</div>
+</main>
+
+<!-- ===== Gerbang Minta Akses ===== -->
+<div class="modal" id="accessModal" style="display:none">
+  <div class="modal-card">
+    <h2>Minta Akses Data</h2>
+    <p class="hint" id="accessHint">Detail sumber air baku terlindungi. Isi nama &amp; alasan, admin akan menerima permintaan lewat email.</p>
+    <label class="field">Nama</label>
+    <input type="text" id="accessNama" placeholder="Nama kamu">
+    <label class="field">Alasan (opsional)</label>
+    <textarea id="accessAlasan" placeholder="Contoh: butuh untuk laporan bulanan"></textarea>
+    <div class="modal-actions">
+      <button class="btn-ghost" id="accessBatal">Batal</button>
+      <button class="btn-primary" id="accessKirim">Kirim Permintaan</button>
+    </div>
+    <div class="status-msg" id="accessStatus"></div>
+  </div>
+</div>
+
+<!-- ===== Modal Tambah (pilih sumber yang belum ada datanya) ===== -->
+<div class="modal" id="tambahModal" style="display:none">
+  <div class="modal-card">
+    <h2 id="tambahTitle">Tambah Data</h2>
+    <p class="hint">Pilih sumber yang ingin diisi detailnya.</p>
+    <label class="field">Pilih</label>
+    <select id="tambahSelect"></select>
+    <div class="modal-actions">
+      <button class="btn-ghost" id="tambahBatal">Batal</button>
+      <button class="btn-primary" id="tambahLanjut">Lanjut</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Modal Edit ===== -->
+<div class="modal" id="editModal" style="display:none">
+  <div class="modal-card">
+    <h2 id="editTitle">Edit</h2>
+    <p class="hint" id="editHint"></p>
+
+    <h3>Identitas</h3>
+    <label class="field">Nama</label>
+    <input type="text" id="fNama" readonly>
+    <label class="field">Koordinat (dari peta)</label>
+    <input type="text" id="fKoordinat" readonly>
+
+    <!-- ===== Field Waduk ===== -->
+    <div id="wadukFields" style="display:none">
+      <h3>Detail Waduk</h3>
+      <div class="form-row">
+        <div><label class="field">Luas</label><input type="text" id="wLuas" placeholder="mis. 12 ha"></div>
+        <div><label class="field">Kapasitas</label><input type="text" id="wKapasitas" placeholder="mis. 1.200.000 m³"></div>
+      </div>
+      <div class="form-row">
+        <div><label class="field">Limpasan</label><input type="text" id="wLimpasan" placeholder="mis. elevasi puncak / debit"></div>
+        <div></div>
+      </div>
+      <label class="field">Keterangan</label>
+      <textarea id="wKeterangan"></textarea>
+      <label class="field">Foto Waduk</label>
+      <div class="lampiran-box">
+        <span class="cur" id="wFotoNama">Belum ada foto.</span>
+        <input type="file" id="wFoto" accept="image/*">
+        <button type="button" class="mini-btn danger" id="wFotoHapus">Hapus foto</button>
+      </div>
+    </div>
+
+    <!-- ===== Field Sumur ===== -->
+    <div id="sumurFields" style="display:none">
+      <h3>Detail Sumur</h3>
+      <p class="hint">Statis/dinamis &amp; jenis pompa terisi otomatis dari data web — bisa kamu sesuaikan.</p>
+      <div class="form-row">
+        <div><label class="field">Tahun Dibuat</label><input type="text" id="sTahun"></div>
+        <div><label class="field">Pipa Hisap</label><input type="text" id="sPipa" placeholder="mis. 6 inch"></div>
+      </div>
+      <div class="form-row">
+        <div><label class="field">Kedalaman Sumur</label><input type="text" id="sKedalaman" placeholder="mis. 120 m"></div>
+        <div><label class="field">Panjang Pipa</label><input type="text" id="sPanjang" placeholder="mis. 60 m"></div>
+      </div>
+      <div class="form-row">
+        <div><label class="field">Statis (m)</label><input type="text" id="sStatis"></div>
+        <div><label class="field">Dinamis (m)</label><input type="text" id="sDinamis"></div>
+      </div>
+      <label class="field">Jenis Pompa</label>
+      <input type="text" id="sJenisPompa" placeholder="mis. Submersible 7,5 kW">
+      <label class="field">Keterangan</label>
+      <textarea id="sKeterangan"></textarea>
+      <label class="field">Lampiran Data Logging</label>
+      <div class="lampiran-box">
+        <span class="cur" id="sLoggingNama">Belum ada lampiran.</span>
+        <input type="file" id="sLogging" accept=".pdf,application/pdf">
+        <button type="button" class="mini-btn danger" id="sLoggingHapus">Hapus lampiran</button>
+      </div>
+      <label class="field">Lampiran Pumping Test</label>
+      <div class="lampiran-box">
+        <span class="cur" id="sPumpingNama">Belum ada lampiran.</span>
+        <input type="file" id="sPumping" accept=".pdf,application/pdf">
+        <button type="button" class="mini-btn danger" id="sPumpingHapus">Hapus lampiran</button>
+      </div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn-ghost" id="editBatal">Batal</button>
+      <button class="btn-primary" id="editSimpan">Simpan</button>
+    </div>
+    <div class="status-msg" id="editStatus"></div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>

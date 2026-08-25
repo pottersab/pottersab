@@ -1,7 +1,8 @@
-const { pool, ensureVizTables, ensureSignersTable, ensureSpdTables, ensureTable: ensureHistoryTable } = require('../../lib/db');
+const { pool, ensureVizTables, ensureSignersTable, ensureSpdTables, ensureSumberTables, ensureTable: ensureHistoryTable } = require('../../lib/db');
 const { requireAdmin } = require('../../lib/auth');
 const { DATASETS } = require('../../lib/visualization/columns');
 const { fetchSumurWells } = require('../../lib/visualization/repo');
+const { put, del } = require('@vercel/blob');
 
 // Endpoint gabungan untuk semua input admin apps/library (dulu 3 file
 // terpisah: admin-library-daily.js, admin-library-sumur.js,
@@ -951,6 +952,265 @@ async function handleLpj(req, res) {
   return res.status(405).json({ error: 'Method/what tidak dikenal (what=template)' });
 }
 
+// ===========================================================================
+// action=sumber -- Daftar Sumber Air Baku (apps/sumber-air-baku)
+// ===========================================================================
+// CRUD detail waduk & sumur. Daftar lokasi (nama + koordinat) dipegang
+// client dari data/lokasi.json -- di sini cuma detail referensi + lampiran.
+// Foto waduk & lampiran sumur (data logging, pumping test) ditaruh di Vercel
+// Blob; yang disimpan di DB cuma url + pathname (pola sama tabel galeri).
+//
+//   GET    ?action=sumber&jenis=sumur&id=<id>[&context=1]  -> { detail, auto }
+//   GET    ?action=sumber&jenis=waduk&id=<id>              -> { detail }
+//   POST   ?action=sumber  body:{jenis, id, nama, ...fields, *_dataUrl, hapus*}
+//   DELETE ?action=sumber&jenis=waduk|sumur&id=<id>
+
+// Data URL yang diterima lampiran: foto (jpeg/png/webp) atau PDF.
+const POLA_LAMPIRAN = /^data:(image\/jpeg|image\/png|image\/webp|application\/pdf);base64,([A-Za-z0-9+/=]+)$/;
+const MAKS_LAMPIRAN = 4 * 1024 * 1024;
+
+function teksSumber(v) {
+  if (v === undefined || v === null) return null;
+  const s = String(v).trim();
+  return s ? s : null;
+}
+
+// Nomor sumur dari id "{installation}_{NN}" -> 01 -> 1 (buat cocok ke no di
+// kpi_9_7_items yang memakai nomor sumur dari data web).
+function nomorDariSumurId(sumurId) {
+  const m = String(sumurId).match(/_(\d+)$/);
+  return m ? parseInt(m[1], 10) : null;
+}
+
+// Instalasi dari id sumur: "gunung_sari_01" -> "gunung_sari".
+function installationDariSumurId(sumurId) {
+  return String(sumurId).replace(/_\d+$/, '');
+}
+
+// Unggah satu lampiran (data URL) ke Vercel Blob. Kembalikan { url, pathname }
+// atau { error }. kalau dataUrl kosong -> null (tidak ada lampiran baru).
+async function unggahLampiran(dataUrl, folder) {
+  if (dataUrl === undefined || dataUrl === null || dataUrl === '') return null;
+  const cocok = POLA_LAMPIRAN.exec(String(dataUrl));
+  if (!cocok) return { error: 'File harus berupa foto (JPEG/PNG/WEBP) atau PDF.' };
+  const tipe = cocok[1];
+  const isi = Buffer.from(cocok[2], 'base64');
+  if (!isi.length) return { error: 'Isi file kosong.' };
+  if (isi.length > MAKS_LAMPIRAN) return { error: 'File terlalu besar, maksimal 4 MB.' };
+  const ekst = tipe === 'image/jpeg' ? 'jpg' : tipe === 'application/pdf' ? 'pdf' : tipe.split('/')[1];
+  try {
+    const hasil = await put(`sumber/${folder}/${Date.now()}-${ekst}`, isi, {
+      access: 'public', contentType: tipe, addRandomSuffix: true
+    });
+    return { url: hasil.url, pathname: hasil.pathname };
+  } catch (err) {
+    return {
+      error: process.env.BLOB_READ_WRITE_TOKEN
+        ? 'Gagal mengunggah file ke penyimpanan: ' + err.message
+        : 'Penyimpanan file belum aktif. Buat Blob Store di dashboard Vercel dulu.'
+    };
+  }
+}
+
+async function hapusBlobSumber(pathname) {
+  if (!pathname) return;
+  try { await del(pathname); } catch (e) { /* diabaikan: file bisa sudah hilang */ }
+}
+
+// Konteks auto-fill untuk form edit sumur: nilai yang sebaiknya diambil dari
+// data yang SUDAH ada di web, supaya admin tidak mengetik ulang:
+//   statis/dinamis -> pembacaan terbaru sumur_level_readings untuk sumur ini
+//   jenisPompa     -> kolom `type` baris terbaru kpi_9_7_items instalasi ini
+// Dipakai sebagai "saran" awal di form; admin tetap boleh mengubahnya.
+async function autoFillSumur(sumurId, installation) {
+  const auto = { statis: null, dinamis: null, jenisPompa: null };
+  if (!installation || !sumurId) return auto;
+  try {
+    const { rows } = await pool.query(
+      `SELECT DISTINCT ON (well_name) well_name, statis, dinamis
+       FROM sumur_level_readings
+       WHERE installation = $1 AND (statis IS NOT NULL OR dinamis IS NOT NULL)
+       ORDER BY well_name, bulan DESC`,
+      [installation]
+    );
+    const cocok = rows.find(r => wellIdFromName(installation, r.well_name) === sumurId);
+    if (cocok) {
+      if (cocok.statis !== null && cocok.statis !== undefined) auto.statis = String(cocok.statis);
+      if (cocok.dinamis !== null && cocok.dinamis !== undefined) auto.dinamis = String(cocok.dinamis);
+    }
+  } catch (e) { /* auto-fill tidak wajib: form tetap bisa diisi manual */ }
+
+  try {
+    const nomor = nomorDariSumurId(sumurId);
+    const { rows } = await pool.query(
+      `SELECT rows FROM kpi_9_7_items WHERE installation = $1 ORDER BY bulan DESC LIMIT 1`,
+      [installation]
+    );
+    if (rows.length && nomor !== null) {
+      const arr = Array.isArray(rows[0].rows) ? rows[0].rows : [];
+      const baris = arr.find(r => String(r.no) === String(nomor) || String(r.no) === String(nomor).padStart(2, '0'));
+      if (baris && baris.type) auto.jenisPompa = String(baris.type);
+    }
+  } catch (e) { /* auto-fill tidak wajib */ }
+
+  return auto;
+}
+
+async function handleSumber(req, res) {
+  const user = requireAdmin(req, res);
+  if (!user) return;
+  await ensureSumberTables();
+
+  if (req.method === 'GET') {
+    const jenis = req.query.jenis;
+    const id = String(req.query.id || '');
+    if (jenis === 'sumur' && id) {
+      const { rows } = await pool.query(`SELECT * FROM sumber_sumur WHERE sumur_id = $1`, [id]);
+      const detail = rows[0] || null;
+      const auto = req.query.context !== undefined
+        ? await autoFillSumur(id, detail ? detail.installation : installationDariSumurId(id))
+        : {};
+      return res.status(200).json({ detail, auto });
+    }
+    if (jenis === 'waduk' && id) {
+      const { rows } = await pool.query(`SELECT * FROM sumber_waduk WHERE waduk_id = $1`, [id]);
+      return res.status(200).json({ detail: rows[0] || null });
+    }
+    return res.status(400).json({ error: 'jenis (waduk/sumur) dan id wajib diisi' });
+  }
+
+  if (req.method === 'POST') {
+    const b = req.body || {};
+    const admin = user.username || 'admin';
+
+    if (b.jenis === 'waduk') {
+      const id = teksSumber(b.waduk_id);
+      const nama = teksSumber(b.nama);
+      if (!id || !nama) return res.status(400).json({ error: 'id dan nama wajib diisi' });
+
+      let fotoUrl = teksSumber(b.foto_url) || null;
+      let fotoPath = teksSumber(b.foto_pathname) || null;
+      // Urutan dicek dataUrl dulu: kalau ada file baru, itu yang menang
+      // (hapus flag cuma berlaku kalau TIDAK ada file pengganti).
+      if (b.foto_dataUrl) {
+        const unggah = await unggahLampiran(b.foto_dataUrl, 'waduk');
+        if (unggah && unggah.error) return res.status(400).json({ error: unggah.error });
+        await hapusBlobSumber(fotoPath);
+        fotoUrl = unggah ? unggah.url : null;
+        fotoPath = unggah ? unggah.pathname : null;
+      } else if (b.hapusFoto) {
+        await hapusBlobSumber(fotoPath);
+        fotoUrl = null; fotoPath = null;
+      }
+
+      await pool.query(
+        `INSERT INTO sumber_waduk
+           (waduk_id, nama, luas, kapasitas, limpasan, foto_url, foto_pathname,
+            keterangan, urutan, created_by, updated_at)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,COALESCE($9,0),$10, now())
+         ON CONFLICT (waduk_id) DO UPDATE SET
+           nama = EXCLUDED.nama, luas = EXCLUDED.luas, kapasitas = EXCLUDED.kapasitas,
+           limpasan = EXCLUDED.limpasan, foto_url = EXCLUDED.foto_url,
+           foto_pathname = EXCLUDED.foto_pathname, keterangan = EXCLUDED.keterangan,
+           urutan = EXCLUDED.urutan, updated_at = now()`,
+        [id, nama, teksSumber(b.luas), teksSumber(b.kapasitas), teksSumber(b.limpasan),
+         fotoUrl, fotoPath, teksSumber(b.keterangan), toNumOrNull(b.urutan), admin]
+      );
+      return res.status(200).json({ success: true });
+    }
+
+    if (b.jenis === 'sumur') {
+      const id = teksSumber(b.sumur_id);
+      const installation = teksSumber(b.installation);
+      const nama = teksSumber(b.nama);
+      if (!id || !installation || !nama) {
+        return res.status(400).json({ error: 'id, installation, dan nama wajib diisi' });
+      }
+
+      // Lampiran: upload baru (data URL) menggantikan yang lama, atau hapus.
+      let loggingUrl = teksSumber(b.lampiran_logging_url) || null;
+      let loggingPath = teksSumber(b.lampiran_logging_pathname) || null;
+      if (b.lampiranLogging_dataUrl) {
+        const unggah = await unggahLampiran(b.lampiranLogging_dataUrl, 'sumur-logging');
+        if (unggah && unggah.error) return res.status(400).json({ error: unggah.error });
+        await hapusBlobSumber(loggingPath);
+        loggingUrl = unggah ? unggah.url : null;
+        loggingPath = unggah ? unggah.pathname : null;
+      } else if (b.hapusLogging) {
+        await hapusBlobSumber(loggingPath);
+        loggingUrl = null; loggingPath = null;
+      }
+
+      let pumpingUrl = teksSumber(b.lampiran_pumping_url) || null;
+      let pumpingPath = teksSumber(b.lampiran_pumping_pathname) || null;
+      if (b.lampiranPumping_dataUrl) {
+        const unggah = await unggahLampiran(b.lampiranPumping_dataUrl, 'sumur-pumping');
+        if (unggah && unggah.error) return res.status(400).json({ error: unggah.error });
+        await hapusBlobSumber(pumpingPath);
+        pumpingUrl = unggah ? unggah.url : null;
+        pumpingPath = unggah ? unggah.pathname : null;
+      } else if (b.hapusPumping) {
+        await hapusBlobSumber(pumpingPath);
+        pumpingUrl = null; pumpingPath = null;
+      }
+
+      await pool.query(
+        `INSERT INTO sumber_sumur
+           (sumur_id, installation, nama, tahun_dibuat, pipa_hisap, kedalaman,
+            panjang_pipa, statis, dinamis, jenis_pompa,
+            lampiran_logging_url, lampiran_logging_pathname,
+            lampiran_pumping_url, lampiran_pumping_pathname,
+            keterangan, urutan, created_by, updated_at)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,
+                 COALESCE($16,0),$17, now())
+         ON CONFLICT (sumur_id) DO UPDATE SET
+           installation = EXCLUDED.installation, nama = EXCLUDED.nama,
+           tahun_dibuat = EXCLUDED.tahun_dibuat, pipa_hisap = EXCLUDED.pipa_hisap,
+           kedalaman = EXCLUDED.kedalaman, panjang_pipa = EXCLUDED.panjang_pipa,
+           statis = EXCLUDED.statis, dinamis = EXCLUDED.dinamis,
+           jenis_pompa = EXCLUDED.jenis_pompa,
+           lampiran_logging_url = EXCLUDED.lampiran_logging_url,
+           lampiran_logging_pathname = EXCLUDED.lampiran_logging_pathname,
+           lampiran_pumping_url = EXCLUDED.lampiran_pumping_url,
+           lampiran_pumping_pathname = EXCLUDED.lampiran_pumping_pathname,
+           keterangan = EXCLUDED.keterangan, urutan = EXCLUDED.urutan,
+           updated_at = now()`,
+        [id, installation, nama, teksSumber(b.tahun_dibuat), teksSumber(b.pipa_hisap),
+         teksSumber(b.kedalaman), teksSumber(b.panjang_pipa), teksSumber(b.statis),
+         teksSumber(b.dinamis), teksSumber(b.jenis_pompa),
+         loggingUrl, loggingPath, pumpingUrl, pumpingPath,
+         teksSumber(b.keterangan), toNumOrNull(b.urutan), admin]
+      );
+      return res.status(200).json({ success: true });
+    }
+
+    return res.status(400).json({ error: 'jenis (waduk/sumur) wajib diisi' });
+  }
+
+  if (req.method === 'DELETE') {
+    const jenis = req.query.jenis;
+    const id = String(req.query.id || '');
+    if (!id || !jenis) return res.status(400).json({ error: 'jenis dan id wajib diisi' });
+    if (jenis === 'waduk') {
+      const { rows } = await pool.query(`DELETE FROM sumber_waduk WHERE waduk_id = $1 RETURNING foto_pathname`, [id]);
+      if (rows.length) await hapusBlobSumber(rows[0].foto_pathname);
+    } else if (jenis === 'sumur') {
+      const { rows } = await pool.query(
+        `DELETE FROM sumber_sumur WHERE sumur_id = $1 RETURNING lampiran_logging_pathname, lampiran_pumping_pathname`, [id]
+      );
+      if (rows.length) {
+        await hapusBlobSumber(rows[0].lampiran_logging_pathname);
+        await hapusBlobSumber(rows[0].lampiran_pumping_pathname);
+      }
+    } else {
+      return res.status(400).json({ error: 'jenis harus waduk atau sumur' });
+    }
+    return res.status(200).json({ success: true });
+  }
+
+  return res.status(405).json({ error: 'Method not allowed' });
+}
+
 module.exports = async (req, res) => {
   await ensureVizTables();
 
@@ -972,6 +1232,7 @@ module.exports = async (req, res) => {
   if (action === 'signers') return handleSigners(req, res);
   if (action === 'spd') return handleSpd(req, res);
   if (action === 'lpj') return handleLpj(req, res);
+  if (action === 'sumber') return handleSumber(req, res);
 
-  return res.status(400).json({ error: 'action wajib diisi (daily/daily-history/sumur/sumur-history/bulk/wells/signers/spd/lpj/map-latest)' });
+  return res.status(400).json({ error: 'action wajib diisi (daily/daily-history/sumur/sumur-history/bulk/wells/signers/spd/lpj/sumber/map-latest)' });
 };

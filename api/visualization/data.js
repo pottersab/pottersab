@@ -1,4 +1,4 @@
-const { pool, ensureVizTables, ensureKpiTables, ensurePekerjaanTable, ensureTable } = require('../../lib/db');
+const { pool, ensureVizTables, ensureKpiTables, ensurePekerjaanTable, ensureTable, ensureSumberTables } = require('../../lib/db');
 const { requireAdmin } = require('../../lib/auth');
 const { DATASETS, isValidDataType } = require('../../lib/visualization/columns');
 const { checkVizAccess } = require('../../lib/visualization/viz-auth');
@@ -457,6 +457,23 @@ module.exports = async (req, res) => {
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename="9.8 Laporan Jadwal Kalibrasi ${result.monthTitle}.xlsx"`);
     return res.status(200).send(Buffer.from(buffer));
+  }
+
+  // --- Daftar Sumber Air Baku (halaman apps/sumber-air-baku) ---
+  // Detail referensi waduk & sumur. Ini data "vital" seperti halaman data lain:
+  // tanpa akses dikembalikan { locked:true } (halaman menampilkan gerbang
+  // Minta Akses), dengan akses viewer/admin dikembalikan record detail.
+  // Daftar lokasinya sendiri (nama + koordinat) dipegang client dari
+  // data/lokasi.json; di sini cuma detail yang pernah diisi admin.
+  if (dataType === 'sumber_waduk' || dataType === 'sumber_sumur') {
+    await ensureSumberTables();
+    const access = await checkVizAccess(req);
+    if (!access.granted) {
+      return res.status(200).json({ locked: true, rows: [] });
+    }
+    const table = dataType === 'sumber_waduk' ? 'sumber_waduk' : 'sumber_sumur';
+    const { rows } = await pool.query(`SELECT * FROM ${table} ORDER BY urutan, nama`);
+    return res.status(200).json({ locked: false, rows: rows.map(r => Object.assign({}, r)) });
   }
 
   if (!isValidDataType(dataType)) {
