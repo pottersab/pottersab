@@ -3,3 +3,6 @@ node_modules/
 .env.local
 .vercel
 .claude/
+
+# Video promo dipakai di luar website, tidak perlu masuk repo.
+video-materials/promo-resmi-rilis.mp4
