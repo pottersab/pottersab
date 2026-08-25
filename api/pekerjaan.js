@@ -11,8 +11,14 @@ const { checkVizAccess } = require('../lib/visualization/viz-auth');
 //   GET  /api/pekerjaan?export=csv  -> unduh CSV (admin saja)
 //   GET  /api/pekerjaan?draft=1     -> { count, rows } laporan lapangan yang
 //                                      belum dibuatkan berita acara (admin)
+//   GET  /api/pekerjaan?unfinished=1 -> daftar draft yang jam selesainya masih
+//                                      kosong, buat kartu "Lanjutkan" (admin)
+//   GET  /api/pekerjaan?edit=<id>   -> muat satu draft utuh buat disunting ulang
+//                                      lewat Formulir SAB (admin saja)
 //   POST /api/pekerjaan             -> simpan laporan Formulir SAB sebagai
 //                                      draft (admin)
+//   PATCH /api/pekerjaan?id=<id>    -> perbarui isian draft (dipakai fitur
+//                                      "Lanjutkan laporan"), status tetap draft
 //
 // Tiga tingkat akses, persis mekanisme yang sudah dipakai halaman data lain:
 //   publik        -> locked:true, yang dikirim data CONTOH
@@ -230,6 +236,63 @@ module.exports = async (req, res) => {
     return res.status(200).json({ success: true, id: Number(rows[0].id) });
   }
 
+  // --- Perbarui isian laporan draft (fitur "Lanjutkan laporan") ---
+  // Formulir SAB boleh disimpan dengan jam selesai kosong (status "belum
+  // selesai"), lalu dibuka lagi esok/setelahnya untuk mengisi jam selesainya
+  // atau memperbaiki isian lain. Khusus draft yang belum dihapus; statusnya
+  // tetap 'draft' -- berita acara yang tetap menentukan kapan jadi final.
+  if (req.method === 'PATCH') {
+    const cek = periksaAdmin(req);
+    if (!cek.user) return res.status(cek.status).json({ error: cek.error });
+    const user = cek.user;
+
+    const id = String(req.query.id || '').trim();
+    if (!/^\d+$/.test(id)) return res.status(400).json({ error: 'id wajib diisi' });
+    const b = req.body || {};
+    if (b.bidang && !BIDANG_VALID.includes(b.bidang)) {
+      return res.status(400).json({ error: 'bidang tidak dikenal' });
+    }
+
+    await ensurePekerjaanTable();
+    const { rowCount } = await pool.query(
+      `UPDATE pekerjaan SET
+         bidang = $1,
+         jenis = $2,
+         instalasi = $3,
+         gps_lat = $4, gps_lng = $5, gps_akurasi = $6,
+         material = $7,
+         diameter_nilai = $8, diameter_satuan = $9,
+         uraian = $10, kontraktor = $11,
+         jam_mulai = $12, jam_selesai = $13,
+         barang_pengadaan = $14, barang_gudang = $15,
+         foto_urls = $16,
+         updated_by = $17, updated_at = now()
+       WHERE id = $18 AND status = 'draft' AND deleted_at IS NULL`,
+      [
+        b.bidang,
+        teksAtauNull(b.jenis, 80),
+        teksAtauNull(b.instalasi, 80),
+        angkaAtauNull(b.gps_lat),
+        angkaAtauNull(b.gps_lng),
+        angkaAtauNull(b.gps_akurasi),
+        teksAtauNull(b.material, 40),
+        angkaAtauNull(b.diameter_nilai),
+        teksAtauNull(b.diameter_satuan, 10),
+        teksAtauNull(b.uraian, 500),
+        teksAtauNull(b.kontraktor, 200),
+        jamAtauNull(b.jam_mulai),
+        jamAtauNull(b.jam_selesai),
+        teksAtauNull(b.barang_pengadaan, 1000),
+        teksAtauNull(b.barang_gudang, 1000),
+        Array.isArray(b.foto_urls) ? b.foto_urls.filter(u => typeof u === 'string').slice(0, 10) : [],
+        user.username || 'admin',
+        id
+      ]
+    );
+    if (!rowCount) return res.status(404).json({ error: 'Laporan tidak ditemukan atau sudah diproses' });
+    return res.status(200).json({ success: true });
+  }
+
   // --- Tandai draft jadi final setelah berita acaranya dibuat ---
   // Satu berita acara bisa mencakup beberapa titik pekerjaan sekaligus,
   // makanya id-nya berupa daftar.
@@ -359,6 +422,47 @@ module.exports = async (req, res) => {
     });
   }
 
+  // --- Muat ulang satu laporan DRAFT untuk disunting lewat Formulir SAB ---
+  // Mirip ?detail=, tapi dua bedanya: khusus admin (bukan viewer) dan khusus
+  // draft yang masih bisa disunting (status 'draft', belum dihapus). Dipakai
+  // kartu "Lanjutkan laporan belum selesai" di halaman formulir.
+  if (req.query.edit !== undefined) {
+    const cek = periksaAdmin(req);
+    if (!cek.user) return res.status(cek.status).json({ error: cek.error });
+
+    const id = String(req.query.edit).trim();
+    if (!/^\d+$/.test(id)) return res.status(400).json({ error: 'id tidak valid' });
+
+    await ensurePekerjaanTable();
+    const { rows } = await pool.query(
+      `SELECT ${SELECT_COLS}, jenis, instalasi_asli, gps_akurasi, kontraktor,
+              jam_mulai::text AS jam_mulai, jam_selesai::text AS jam_selesai,
+              barang_pengadaan, barang_gudang, foto_urls, sumber, created_by,
+              to_char(created_at, 'YYYY-MM-DD') AS dibuat
+       FROM pekerjaan
+       WHERE id = $1 AND deleted_at IS NULL AND status = 'draft'`,
+      [id]
+    );
+    if (!rows.length) return res.status(404).json({ error: 'Draft tidak ditemukan' });
+
+    const r = rows[0];
+    return res.status(200).json({
+      pekerjaan: Object.assign(toRow(r), {
+        instalasi_asli: r.instalasi_asli,
+        gps_akurasi: r.gps_akurasi !== null ? Number(r.gps_akurasi) : null,
+        kontraktor: r.kontraktor,
+        jam_mulai: r.jam_mulai ? r.jam_mulai.slice(0, 5) : null,
+        jam_selesai: r.jam_selesai ? r.jam_selesai.slice(0, 5) : null,
+        barang_pengadaan: r.barang_pengadaan,
+        barang_gudang: r.barang_gudang,
+        foto_urls: r.foto_urls || [],
+        sumber: r.sumber,
+        created_by: r.created_by,
+        dibuat: r.dibuat
+      })
+    });
+  }
+
   // --- Foto laporan lapangan, diambil terpisah ---
   // Sengaja tidak ikut di ?draft=1: daftar itu dimuat lonceng notifikasi di
   // SETIAP halaman, jadi tidak boleh menyeret gambar. Foto cuma diambil saat
@@ -379,6 +483,37 @@ module.exports = async (req, res) => {
     );
     return res.status(200).json({
       rows: rows.map(r => ({ id: Number(r.id), foto_urls: r.foto_urls || [] }))
+    });
+  }
+
+  // --- Laporan "belum selesai": draft yang jam selesainya masih kosong ---
+  // Bahan kartu "Lanjutkan laporan belum selesai" di Formulir SAB. Sengaja
+  // ringan: tanpa foto dan kolom berat, karena kartu ini dimuat tiap kali
+  // halaman formulir dibuka di HP. Urut yang paling baru di atas.
+  if (req.query.unfinished !== undefined) {
+    const cek = periksaAdmin(req);
+    if (!cek.user) return res.status(cek.status).json({ error: cek.error });
+
+    await ensurePekerjaanTable();
+    const { rows } = await pool.query(
+      `SELECT id, to_char(tanggal, 'YYYY-MM-DD') AS tanggal,
+              jam_mulai::text AS jam_mulai,
+              uraian, instalasi, bidang, jenis, kontraktor
+       FROM pekerjaan
+       WHERE deleted_at IS NULL AND status = 'draft' AND jam_selesai IS NULL
+       ORDER BY tanggal DESC, id DESC`
+    );
+    return res.status(200).json({
+      rows: rows.map(r => ({
+        id: Number(r.id),
+        tanggal: r.tanggal,
+        jam_mulai: r.jam_mulai ? r.jam_mulai.slice(0, 5) : null,
+        uraian: r.uraian,
+        instalasi: r.instalasi,
+        bidang: r.bidang,
+        jenis: r.jenis,
+        kontraktor: r.kontraktor
+      }))
     });
   }
 

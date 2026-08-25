@@ -83,6 +83,24 @@
     margin-top:8px;background:none;border:1px solid var(--navy);color:var(--navy);
     padding:6px 10px;border-radius:6px;font-size:12.5px;cursor:pointer;
   }
+  .photo-btn{
+    width:100%;margin-top:10px;padding:11px;border-radius:8px;
+    border:1.5px solid var(--navy);background:#fff;color:var(--navy);
+    font-size:13.5px;font-weight:600;cursor:pointer;font-family:inherit;
+  }
+  .photo-btn:hover{background:var(--accent-soft);}
+
+  .lanjut-item{
+    display:flex;flex-direction:column;align-items:flex-start;gap:2px;
+    width:100%;text-align:left;border:1px solid var(--line);border-radius:8px;
+    background:#fff;padding:11px 13px;margin-bottom:8px;cursor:pointer;
+    font-family:inherit;
+  }
+  .lanjut-item:hover{border-color:var(--navy);background:var(--accent-soft);}
+  .lanjut-tgl{font-size:11.5px;color:var(--muted);}
+  .lanjut-judul{font-size:14px;font-weight:600;color:var(--navy-dark);}
+  .lanjut-meta{font-size:12px;color:var(--muted);}
+  .lanjut-cta{font-size:12.5px;font-weight:700;color:var(--navy);margin-top:4px;}
 
   .photo-drop{
     border:1.5px dashed var(--line);border-radius:8px;padding:16px;text-align:center;
@@ -383,6 +401,14 @@ function doLogout(){
   </div>
 
   <div class="wrap">
+    <div id="lanjutCard" style="display:none;margin-bottom:16px;">
+      <div class="card" style="min-height:0;">
+        <h2>Lanjutkan Laporan Belum Selesai</h2>
+        <p class="hint">Pekerjaan yang jam selesainya belum diisi. Ketuk salah satu untuk melanjutkan.</p>
+        <div id="lanjutList"></div>
+      </div>
+    </div>
+
     <div class="progress-row">
       <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
       <div class="progress-label" id="progressLabel">Bagian 1</div>
@@ -452,6 +478,8 @@ const state = {
   adaPengadaan:'', barangPengadaan:'',
   adaGudangInduk:'', barangGudangInduk:'',
   jamMulai:'', jamSelesai:'',
+  id:null,                // id laporan yang sedang dilanjutkan (null = laporan baru)
+  belumSelesai:true,      // jam selesai belum diisi -> boleh disimpan & dilanjutkan nanti
   fotoBase64:'', fotoMime:'', fotoName:'',
   gpsLat:null, gpsLng:null, gpsAccuracy:null
 };
@@ -495,7 +523,10 @@ function render(){
   document.getElementById('statusMsg').textContent='';
   document.getElementById('statusMsg').className='status-msg';
 
-  if(def.id==='fotoGps') requestGps();
+  // GPS cuma diminta kalau belum ada. Saat melanjutkan laporan lama, koordinat
+  // titik lapangan yang tersimpan TIDAK ditimpa oleh posisi saat ini (admin
+  // bisa saja mengisi jam selesai dari rumah/ruang kerja).
+  if(def.id==='fotoGps' && state.gpsLat == null) requestGps();
 }
 
 function optHtml(name, value, current, extra){
@@ -535,6 +566,14 @@ const BIDANG_KODE = {
   'Service Sumur':'service-sumur',
   'Pekerjaan Lainnya':'lainnya'
 };
+// Kebalikan BIDANG_KODE: dari kode database kembali ke label pilihan form.
+const BIDANG_LABEL_KU = Object.fromEntries(Object.entries(BIDANG_KODE).map(([k,v])=>[v,k]));
+
+// Untuk isian pengguna yang ditampilkan di kartu daftar (judul dll), jangan
+// dibiarkan mentah: kalau judul mengandung tanda < > bisa merusak HTML.
+function escapeHtml(s){
+  return String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
 const JENIS_OPTIONS = {
   'Service Sumur': ['Pompa & Service Sumur','Sarana Sumur'],
   'Pekerjaan Lainnya': [
@@ -617,30 +656,43 @@ function renderStep(id){
 
     case 'durasi':
       return `<div class="card"><h2>Durasi Pekerjaan</h2>
+        <p class="hint">Kalau pekerjaan belum selesai, biarkan tercentang &ldquo;Belum selesai&rdquo; — laporan tetap bisa disimpan lalu dilanjutkan kapan saja.</p>
         <label class="field">Pekerjaan Dari Jam</label>
         <input type="time" id="jamMulai" value="${state.jamMulai}">
         <label class="field">Pekerjaan Selesai Jam</label>
-        <input type="time" id="jamSelesai" value="${state.jamSelesai}">
+        <input type="time" id="jamSelesai" ${state.belumSelesai ? 'disabled' : ''} value="${state.belumSelesai ? '' : state.jamSelesai}">
+        <label class="${state.belumSelesai ? 'opt checked' : 'opt'}" style="margin-top:14px;">
+          <input type="checkbox" id="belumSelesai" ${state.belumSelesai ? 'checked' : ''}> Belum selesai (lanjut esok / nanti)
+        </label>
       </div>`;
 
     case 'fotoGps':
       return `<div class="card">
-        <h2>Foto Perbaikan</h2><p class="hint">Landscape, ukuran file akan dikecilkan otomatis.</p>
+        <h2>Foto Perbaikan</h2><p class="hint">Landscape, ukuran file akan dikecilkan otomatis. Foto dibuka langsung dari kamera; pakai tombol galeri untuk memilih dari HP.</p>
         <div class="photo-drop" onclick="document.getElementById('fotoInput').click()">
-          <span id="photoLabel">${state.fotoName ? state.fotoName : 'Ketuk untuk ambil / pilih foto'}</span>
+          <span id="photoLabel">${state.fotoName ? state.fotoName : 'Ketuk untuk ambil foto'}</span>
           <img class="photo-preview" id="photoPreview" style="${state.fotoBase64 ? 'display:block' : ''}" src="${state.fotoBase64 ? 'data:'+state.fotoMime+';base64,'+state.fotoBase64 : ''}">
         </div>
         <input type="file" id="fotoInput" accept="image/*" capture="environment" style="display:none">
+        <button type="button" class="photo-btn" id="galeriBtn">🖼️ Pilih dari Galeri HP</button>
+        <input type="file" id="galeriInput" accept="image/*" style="display:none">
 
         <h2 style="margin-top:18px;">Koordinat GPS</h2>
-        <div class="gps-box" id="gpsBox">
-          <div class="status" id="gpsStatus">Mengambil lokasi...</div>
+        <div class="gps-box ${state.gpsLat && state.gpsAccuracy > AMBANG_AKURASI_M ? 'kasar' : state.gpsLat ? 'ok' : ''}" id="gpsBox">
+          ${state.gpsLat
+            ? `<div class="coord">${state.gpsLat.toFixed(6)}, ${state.gpsLng.toFixed(6)}</div>
+               <div class="status">Akurasi ±${Math.round(state.gpsAccuracy||0)} meter${state.id ? ' · titik dari laporan asli' : ''}</div>
+               ${state.gpsAccuracy > AMBANG_AKURASI_M
+                 ? `<div class="peringatan">Titik ini masih kasar — bisa meleset sampai ±${Math.round(state.gpsAccuracy)} meter. Tekan &ldquo;Ambil ulang lokasi&rdquo; kalau kamu sedang di lokasi.</div>`
+                 : ''}`
+            : `<div class="status" id="gpsStatus">Mengambil lokasi...</div>`}
         </div>
         <button type="button" class="gps-retry" id="gpsRetry">Ambil ulang lokasi</button>
       </div>`;
 
     case 'review':
       return `<div class="card"><h2>Periksa Kembali</h2><p class="hint">Pastikan data sudah benar sebelum dikirim.</p>
+        ${state.id ? `<div style="background:var(--accent-soft);border:1px solid var(--accent);border-radius:8px;padding:10px 12px;font-size:13px;margin-bottom:12px;">Melanjutkan laporan #${state.id}. Kirim untuk memperbarui jam selesai / isian laporan ini (tidak membuat laporan baru).</div>` : ''}
         ${reviewRow('Judul Perbaikan', state.judulPerbaikan)}
         ${reviewRow('Arah Instalasi Pengolahan', state.arahInstalasi)}
         ${reviewRow('Bidang Pekerjaan', state.itemPerbaikan)}
@@ -651,7 +703,7 @@ function renderStep(id){
         ${reviewRow('Kontraktor', state.namaKontraktor)}
         ${reviewRow('Barang Pengadaan', state.adaPengadaan==='Ya' ? state.barangPengadaan : 'Tidak ada')}
         ${reviewRow('Barang Gudang Induk', state.adaGudangInduk==='Ya' ? state.barangGudangInduk : 'Tidak ada')}
-        ${reviewRow('Jam Kerja', (state.jamMulai||'-')+' – '+(state.jamSelesai||'-'))}
+        ${reviewRow('Jam Kerja', (state.jamMulai||'-')+' – '+(state.belumSelesai ? 'Belum selesai' : (state.jamSelesai||'-')))}
         ${reviewRow('Foto', state.fotoName || 'Belum ada')}
         ${reviewRow('GPS', state.gpsLat
           ? state.gpsLat.toFixed(6)+', '+state.gpsLng.toFixed(6) +
@@ -691,8 +743,19 @@ function attachStepEvents(id){
     if(el) el.addEventListener('input', e=>map[k](e.target.value));
   });
 
+  // Centang "Belum selesai": jam selesai dikosongkan & inputnya dimatikan.
+  // Dicentang ulang -> input aktif lagi buat mengisi jam selesai.
+  const bs = document.getElementById('belumSelesai');
+  if(bs) bs.addEventListener('change', e=>{
+    state.belumSelesai = e.target.checked;
+    if(state.belumSelesai) state.jamSelesai = '';
+    render();
+  });
+
   if(id==='fotoGps'){
     document.getElementById('fotoInput').addEventListener('change', handlePhoto);
+    document.getElementById('galeriInput').addEventListener('change', handlePhoto);
+    document.getElementById('galeriBtn').addEventListener('click', ()=> document.getElementById('galeriInput').click());
     document.getElementById('gpsRetry').addEventListener('click', requestGps);
   }
 
@@ -781,7 +844,10 @@ function validateCurrent(){
     case 'pengadaanDetail': return state.barangPengadaan.trim() ? '' : 'Isi detail barang pengadaan.';
     case 'gudangYN': return state.adaGudangInduk ? '' : 'Pilih salah satu.';
     case 'gudangDetail': return state.barangGudangInduk.trim() ? '' : 'Isi detail barang gudang induk.';
-    case 'durasi': return (state.jamMulai && state.jamSelesai) ? '' : 'Isi jam mulai dan selesai.';
+    case 'durasi':
+      if(!state.jamMulai) return 'Isi jam mulai dulu ya.';
+      if(!state.belumSelesai && !state.jamSelesai) return 'Isi jam selesai, atau centang "Belum selesai".';
+      return '';
     case 'fotoGps':
       if(!state.fotoBase64) return 'Ambil / pilih foto perbaikan dulu.';
       if(!state.gpsLat) return 'Koordinat GPS belum berhasil diambil.';
@@ -825,39 +891,49 @@ function diameterUntukDb(){
 // Laporan masuk sebagai DRAFT: belum muncul di Riwayat Pekerjaan SAB sampai
 // admin membuatkan berita acaranya. Jumlah draft inilah yang dihitung lonceng
 // notifikasi di navbar.
+//
+// Kalau state.id terisi, artinya ini kelanjutan laporan yang sudah ada:
+// datanya DIPERBARUI lewat PATCH (tidak membuat baris baru). Ini yang dipakai
+// fitur "Lanjutkan Laporan Belum Selesai" untuk mengisi jam selesai kemudian.
 async function simpanKeDatabase(){
   const token = localStorage.getItem('token');
   if(!token) return { ok:false, error:'sesi admin habis' };
   const dia = diameterUntukDb();
+  const body = {
+    bidang: BIDANG_KODE[state.itemPerbaikan],
+    jenis: state.jenisPekerjaan || null,
+    instalasi: instalasiBaku(state.arahInstalasi),
+    uraian: state.judulPerbaikan,
+    material: (state.itemPerbaikan==='Pipa Transmisi'||state.itemPerbaikan==='Pipa Sumur') ? state.materialPipa : null,
+    diameter_nilai: dia.nilai,
+    diameter_satuan: dia.satuan,
+    kontraktor: state.namaKontraktor,
+    jam_mulai: state.jamMulai,
+    // Belum selesai -> kosongkan jam selesai (server simpan NULL). Selesai
+    // -> kirim jam yang diisi.
+    jam_selesai: state.belumSelesai ? '' : state.jamSelesai,
+    barang_pengadaan: state.adaPengadaan==='Ya' ? state.barangPengadaan : null,
+    barang_gudang: state.adaGudangInduk==='Ya' ? state.barangGudangInduk : null,
+    gps_lat: state.gpsLat,
+    gps_lng: state.gpsLng,
+    gps_akurasi: state.gpsAccuracy,
+    // Foto ikut disimpan (sudah dikompres ~250 KB) supaya admin tidak
+    // perlu meminta ulang -- langsung jadi lampiran saat berita acaranya
+    // dibuat. Aslinya tetap tersimpan di Google Drive lewat Apps Script.
+    foto_urls: state.fotoBase64 ? ['data:' + state.fotoMime + ';base64,' + state.fotoBase64] : []
+  };
+  const method = state.id ? 'PATCH' : 'POST';
+  const url = state.id ? ('/api/pekerjaan?id=' + state.id) : '/api/pekerjaan';
   try{
-    const res = await fetch('/api/pekerjaan', {
-      method:'POST',
+    const res = await fetch(url, {
+      method,
       headers:{ 'Content-Type':'application/json', 'Authorization':'Bearer '+token },
-      body: JSON.stringify({
-        bidang: BIDANG_KODE[state.itemPerbaikan],
-        jenis: state.jenisPekerjaan || null,
-        instalasi: instalasiBaku(state.arahInstalasi),
-        uraian: state.judulPerbaikan,
-        material: (state.itemPerbaikan==='Pipa Transmisi'||state.itemPerbaikan==='Pipa Sumur') ? state.materialPipa : null,
-        diameter_nilai: dia.nilai,
-        diameter_satuan: dia.satuan,
-        kontraktor: state.namaKontraktor,
-        jam_mulai: state.jamMulai,
-        jam_selesai: state.jamSelesai,
-        barang_pengadaan: state.adaPengadaan==='Ya' ? state.barangPengadaan : null,
-        barang_gudang: state.adaGudangInduk==='Ya' ? state.barangGudangInduk : null,
-        gps_lat: state.gpsLat,
-        gps_lng: state.gpsLng,
-        gps_akurasi: state.gpsAccuracy,
-        // Foto ikut disimpan (sudah dikompres ~250 KB) supaya admin tidak
-        // perlu meminta ulang -- langsung jadi lampiran saat berita acaranya
-        // dibuat. Aslinya tetap tersimpan di Google Drive lewat Apps Script.
-        foto_urls: state.fotoBase64 ? ['data:' + state.fotoMime + ';base64,' + state.fotoBase64] : []
-      })
+      body: JSON.stringify(body)
     });
     const d = await res.json().catch(()=>({}));
     if(!res.ok || !d.success) return { ok:false, error: d.error || ('HTTP '+res.status) };
-    return { ok:true, id:d.id };
+    // POST mengembalikan id baru; PATCH tidak -- pakai id yang sedang dilanjutkan.
+    return { ok:true, id: d.id !== undefined ? d.id : state.id };
   }catch(err){
     return { ok:false, error: err.message };
   }
@@ -935,12 +1011,134 @@ async function submitForm(){
   // tidak perlu mengisi ulang.
   kirimKeSheetBestEffort(payload);
 
-  msg.textContent = 'Laporan berhasil dikirim. Terima kasih!';
+  // Segarkan kartu "Lanjutkan Laporan Belum Selesai": laporan yang tadi masih
+  // kosong jam selesainya, kalau sudah diisi, tidak boleh muncul lagi.
+  muatLaporanBelumSelesai();
+
+  msg.textContent = state.id ? 'Laporan berhasil diperbarui. Terima kasih!' : 'Laporan berhasil dikirim. Terima kasih!';
   msg.className='status-msg ok';
   btn.textContent = 'Terkirim';
 }
 
+// ============== LANJUTKAN LAPORAN BELUM SELESAI ==============
+// Kartu di atas wizard berisi draft yang jam selesainya masih kosong. Alur
+// kerjanya: isi formulir di tengah pekerjaan -> simpan tanpa jam selesai ->
+// nanti (esok / kapan pun) buka lagi, isi jam selesai, kirim (PATCH).
+
+async function muatLaporanBelumSelesai(){
+  const token = localStorage.getItem('token');
+  const card = document.getElementById('lanjutCard');
+  const list = document.getElementById('lanjutList');
+  if(!token || !card || !list) return;
+  try{
+    const res = await fetch('/api/pekerjaan?unfinished=1', {
+      headers:{ 'Authorization':'Bearer '+token }
+    });
+    if(!res.ok) return; // kalau gagal, form tetap bisa dipakai
+    const d = await res.json().catch(()=>({}));
+    const rows = (d.rows || []);
+    if(!rows.length){ card.style.display='none'; list.innerHTML=''; return; }
+    card.style.display='';
+    list.innerHTML = rows.map(r=>{
+      const bidangLabel = BIDANG_LABEL_KU[r.bidang] || r.bidang;
+      return `<button type="button" class="lanjut-item" data-id="${r.id}">
+        <span class="lanjut-tgl">${r.tanggal} · mulai ${r.jam_mulai || '--:--'}</span>
+        <span class="lanjut-judul">${escapeHtml(r.uraian || '(tanpa judul)')}</span>
+        <span class="lanjut-meta">${escapeHtml(bidangLabel)}${r.instalasi ? ' · '+escapeHtml(r.instalasi) : ''}</span>
+        <span class="lanjut-cta">Lanjutkan &rarr;</span>
+      </button>`;
+    }).join('');
+    list.querySelectorAll('.lanjut-item').forEach(b=>{
+      b.addEventListener('click', ()=> lanjutkanLaporan(Number(b.dataset.id)));
+    });
+  }catch(_){ /* diam */ }
+}
+
+async function lanjutkanLaporan(id){
+  const token = localStorage.getItem('token');
+  const msg = document.getElementById('statusMsg');
+  if(msg){ msg.textContent = 'Memuat laporan...'; msg.className='status-msg'; }
+  try{
+    const res = await fetch('/api/pekerjaan?edit='+id, {
+      headers:{ 'Authorization':'Bearer '+token }
+    });
+    const d = await res.json().catch(()=>({}));
+    if(!res.ok || !d.pekerjaan){
+      if(msg){ msg.textContent = 'Gagal memuat laporan: '+(d.error || ('HTTP '+res.status)); msg.className='status-msg error'; }
+      return;
+    }
+    isiStateDariDraft(d.pekerjaan);
+    // Lompat langsung ke langkah durasi: tinggal isi jam selesai.
+    const vis = visibleSteps();
+    const idx = vis.findIndex(s=>s.id==='durasi');
+    current = idx >= 0 ? idx : 0;
+    render();
+    window.scrollTo(0,0);
+  }catch(err){
+    if(msg){ msg.textContent = 'Gagal memuat laporan: '+err.message; msg.className='status-msg error'; }
+  }
+}
+
+// Terjemahkan baris database kembali ke isian form. Arah instalasi tersimpan
+// sebagai nama baku (tanpa awalan "IPA n"), jadi dicocokkan ulang ke pilihan
+// aslinya lewat instalasiBaku().
+function isiStateDariDraft(p){
+  state.id = p.id;
+  state.judulPerbaikan = p.uraian || '';
+  state.arahInstalasi = instalasiAsliKeOpsi(p.instalasi);
+  state.itemPerbaikan = BIDANG_LABEL_KU[p.bidang] || '';
+  state.jenisPekerjaan = p.jenis || '';
+
+  state.diameterTransmisi = ''; state.diameterTransmisiLain = '';
+  state.diameterSumur = ''; state.diameterSumurLain = '';
+  if(state.itemPerbaikan==='Pipa Transmisi' && p.diameter_nilai != null && p.diameter_satuan==='mm'){
+    const teks = String(p.diameter_nilai) + ' mm';
+    if(['400 mm','500 mm','600 mm','700 mm','800 mm'].includes(teks)) state.diameterTransmisi = teks;
+    else { state.diameterTransmisi = 'Yang lain'; state.diameterTransmisiLain = teks; }
+  }
+  if(state.itemPerbaikan==='Pipa Sumur' && p.diameter_nilai != null && p.diameter_satuan==='inch'){
+    const teks = String(p.diameter_nilai) + ' Inch';
+    if(['2 Inch','3 Inch','4 Inch','6 Inch','8 Inch'].includes(teks)) state.diameterSumur = teks;
+    else { state.diameterSumur = 'Yang lain'; state.diameterSumurLain = teks; }
+  }
+
+  state.materialPipa = p.material || '';
+  state.namaKontraktor = p.kontraktor || '';
+  state.adaPengadaan = p.barang_pengadaan ? 'Ya' : 'Tidak';
+  state.barangPengadaan = p.barang_pengadaan || '';
+  state.adaGudangInduk = p.barang_gudang ? 'Ya' : 'Tidak';
+  state.barangGudangInduk = p.barang_gudang || '';
+
+  state.jamMulai = p.jam_mulai || '';
+  state.jamSelesai = p.jam_selesai || '';
+  state.belumSelesai = !state.jamSelesai;
+
+  state.gpsLat = p.gps_lat;
+  state.gpsLng = p.gps_lng;
+  state.gpsAccuracy = p.gps_akurasi;
+
+  // Foto tersimpan sebagai data-url. Bongkar kembali jadi base64 + mime.
+  const url = (p.foto_urls || [])[0];
+  if(url && /^data:/.test(url)){
+    const m = url.match(/^data:([^;,]+);base64,(.+)$/);
+    if(m){ state.fotoMime = m[1]; state.fotoBase64 = m[2]; state.fotoName = 'foto-'+p.id+'.'+mimeEkstensi(m[1]); }
+    else { state.fotoMime=''; state.fotoBase64=''; state.fotoName=''; }
+  } else {
+    state.fotoMime=''; state.fotoBase64=''; state.fotoName='';
+  }
+}
+
+function instalasiAsliKeOpsi(stored){
+  if(!stored) return '';
+  return ARAH_INSTALASI_OPTIONS.find(o => instalasiBaku(o) === stored) || '';
+}
+
+function mimeEkstensi(mime){
+  return { 'image/jpeg':'jpg', 'image/png':'png', 'image/webp':'webp', 'image/heic':'heic' }[mime] || 'jpg';
+}
+
 render();
+muatLaporanBelumSelesai();
 </script>
 <script defer src="../assets/js/nav-badge.js"></script>
 </body>
