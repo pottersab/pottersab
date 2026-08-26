@@ -2,7 +2,11 @@ const { pool, ensureVizTables, ensureSignersTable, ensureSpdTables, ensureSumber
 const { requireAdmin } = require('../../lib/auth');
 const { DATASETS } = require('../../lib/visualization/columns');
 const { fetchSumurWells } = require('../../lib/visualization/repo');
-const { getK97PumpType } = require('../../lib/visualization/kpi');
+// getK97PumpType sengaja TIDAK di-require di sini: kpi.js (308 KB) cuma
+// dipakai untuk auto-fill saat buka form edit sumur. Kalau di-require di
+// top-level, setiap cold start (fungsi serverless "tidur" di paket Hobby)
+// harus mengurai modul sebesar itu padahal aksi lain -- termasuk Simpan
+// sumber -- tidak pernah butuh KPI. Dimuat lazy di dalam autoFillSumur.
 const { put, del } = require('@vercel/blob');
 
 // Endpoint gabungan untuk semua input admin apps/library (dulu 3 file
@@ -1056,6 +1060,9 @@ async function autoFillSumur(sumurId, installation) {
 
   // Jenis pompa dari KPI 9.7 Laporan Kondisi Air Sumur (isian admin terbaru
   // kalau ada, jatuh ke default contoh 9.7). Hanya 5 IPA yang dicakup 9.7.
+  // kpi.js dimuat DI SINI (lazy), bukan di top-level file -- lihat komentar
+  // di atas. Hanya GET context=1 (buka form edit) yang lewat baris ini.
+  const { getK97PumpType } = require('../../lib/visualization/kpi');
   auto.jenisPompa = await getK97PumpType(installation, nomorDariSumurId(sumurId));
 
   return auto;

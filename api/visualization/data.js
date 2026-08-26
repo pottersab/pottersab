@@ -5,7 +5,19 @@ const { checkVizAccess } = require('../../lib/visualization/viz-auth');
 const { buildDummyRows, buildDummyWideSingleRows, buildDummySumurDebitRows, buildDummySumurLevelRows } = require('../../lib/visualization/dummy');
 const { fetchRealRows, fetchWideSingleRows, fetchSumurWells, fetchSumurDebitRows, fetchSumurLevelRows } = require('../../lib/visualization/repo');
 const { logViewerAction } = require('../../lib/visualization/access-log');
-const { getKpiUkurDebitData, buildKpiExcelWorkbook, getKpiApatdData, buildKpiApatdExcelWorkbook, getKpiPengambilanData, buildKpiPengambilanExcelWorkbook, getKpiKualitasData, buildKpiKualitasExcelWorkbook, getKpi192Data, buildKpi192ExcelWorkbook, getKpiLevelSumurData, buildKpiLevelSumurExcelWorkbook, getKpiLevelStatisDinamisData, buildKpiLevelStatisDinamisExcelWorkbook, getKpi18_5Data, buildKpi18_5ExcelWorkbook, getKpi18_6Data, buildKpi18_6ExcelWorkbook, getKpiActivityPlanData, buildKpiActivityPlanExcelWorkbook, getKpiJadwalKegiatanData, buildKpiJadwalKegiatanExcelWorkbook, getKpi9_2Data, buildKpi9_2ExcelWorkbook, getKpi9_3Data, buildKpi9_3ExcelWorkbook, getKpi9_4Data, buildKpi9_4ExcelWorkbook, getKpi9_7Data, buildKpi9_7ExcelWorkbook, getKpi9_5Data, buildKpi9_5ExcelWorkbook, getKpi9_8Data, buildKpi9_8ExcelWorkbook } = require('../../lib/visualization/kpi');
+// KPI SAB butuh kpi.js (308 KB) -- modul terbesar di proyek. Modul ini hanya
+// dipakai untuk dataType kpi_*; dataType lain (mis. sumber_waduk / sumber_sumur
+// yang dipakai halaman Daftar Sumber Air Baku) tidak butuh KPI sama sekali.
+// Karena itu kpi.js dimuat LAZY lewat kpiLib(): kalau di-require di top-level,
+// setiap cold start (fungsi serverless "tidur" di paket Hobby) harus mengurai
+// 308 KB padahal permintaan yang datang cuma minta daftar sumber. Pemanggil KPI
+// memakai kpiLib().getKpiXxx(...); modul di-cache setelah pemuatan pertama
+// dalam satu instance.
+let _kpi = null;
+function kpiLib() {
+  if (!_kpi) _kpi = require('../../lib/visualization/kpi');
+  return _kpi;
+}
 
 // Label laporan per dataType unduhan Excel KPI (untuk riwayat unduhan).
 const KPI_XLSX_LABELS = {
@@ -75,7 +87,7 @@ module.exports = async (req, res) => {
   if (dataType === 'kpi_ukur_debit') {
     await ensureKpiTables();
     const access = await checkVizAccess(req);
-    const result = await getKpiUkurDebitData(access, req.query.tahun);
+    const result = await kpiLib().getKpiUkurDebitData(access, req.query.tahun);
     return res.status(200).json(result);
   }
 
@@ -87,12 +99,12 @@ module.exports = async (req, res) => {
     await ensureKpiTables();
     const user = requireAdmin(req, res);
     if (!user) return;
-    const result = await getKpiUkurDebitData({ granted: true, kind: 'admin' }, req.query.tahun);
+    const result = await kpiLib().getKpiUkurDebitData({ granted: true, kind: 'admin' }, req.query.tahun);
     // Tanggal tanda tangan defaultnya hari ini, tapi boleh ditimpa manual dari
     // halaman (field-nya bisa diedit) -- meta['1'] & meta['2'] sama-sama
     // menunjuk objek yang sama, jadi cukup timpa sekali.
     if (req.query.tanggal) result.meta['1'].signPlaceDate = req.query.tanggal;
-    const buffer = await buildKpiExcelWorkbook(result);
+    const buffer = await kpiLib().buildKpiExcelWorkbook(result);
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename="18.2 Ukur Debit ${result.year}.xlsx"`);
     return res.status(200).send(Buffer.from(buffer));
@@ -104,7 +116,7 @@ module.exports = async (req, res) => {
   if (dataType === 'kpi_apatd') {
     await ensureKpiTables();
     const access = await checkVizAccess(req);
-    const result = await getKpiApatdData(access, req.query.tahun);
+    const result = await kpiLib().getKpiApatdData(access, req.query.tahun);
     return res.status(200).json(result);
   }
 
@@ -112,9 +124,9 @@ module.exports = async (req, res) => {
     await ensureKpiTables();
     const user = requireAdmin(req, res);
     if (!user) return;
-    const result = await getKpiApatdData({ granted: true, kind: 'admin' }, req.query.tahun);
+    const result = await kpiLib().getKpiApatdData({ granted: true, kind: 'admin' }, req.query.tahun);
     if (req.query.tanggal) result.meta.signPlaceDate = req.query.tanggal;
-    const buffer = await buildKpiApatdExcelWorkbook(result);
+    const buffer = await kpiLib().buildKpiApatdExcelWorkbook(result);
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename="18.3A APATD ${result.year}.xlsx"`);
     return res.status(200).send(Buffer.from(buffer));
@@ -126,7 +138,7 @@ module.exports = async (req, res) => {
   if (dataType === 'kpi_pengambilan') {
     await ensureKpiTables();
     const access = await checkVizAccess(req);
-    const result = await getKpiPengambilanData(access, req.query.tahun);
+    const result = await kpiLib().getKpiPengambilanData(access, req.query.tahun);
     return res.status(200).json(result);
   }
 
@@ -134,9 +146,9 @@ module.exports = async (req, res) => {
     await ensureKpiTables();
     const user = requireAdmin(req, res);
     if (!user) return;
-    const result = await getKpiPengambilanData({ granted: true, kind: 'admin' }, req.query.tahun);
+    const result = await kpiLib().getKpiPengambilanData({ granted: true, kind: 'admin' }, req.query.tahun);
     if (req.query.tanggal) result.meta.signPlaceDate = req.query.tanggal;
-    const buffer = await buildKpiPengambilanExcelWorkbook(result);
+    const buffer = await kpiLib().buildKpiPengambilanExcelWorkbook(result);
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename="18.3B Pengambilan Air Baku ${result.year}.xlsx"`);
     return res.status(200).send(Buffer.from(buffer));
@@ -149,7 +161,7 @@ module.exports = async (req, res) => {
   if (dataType === 'kpi_kualitas') {
     await ensureKpiTables();
     const access = await checkVizAccess(req);
-    const result = await getKpiKualitasData(access, req.query.bulan);
+    const result = await kpiLib().getKpiKualitasData(access, req.query.bulan);
     return res.status(200).json(result);
   }
 
@@ -157,9 +169,9 @@ module.exports = async (req, res) => {
     await ensureKpiTables();
     const user = requireAdmin(req, res);
     if (!user) return;
-    const result = await getKpiKualitasData({ granted: true, kind: 'admin' }, req.query.bulan);
+    const result = await kpiLib().getKpiKualitasData({ granted: true, kind: 'admin' }, req.query.bulan);
     if (req.query.tanggal) result.meta.signPlaceDate = req.query.tanggal;
-    const buffer = await buildKpiKualitasExcelWorkbook(result);
+    const buffer = await kpiLib().buildKpiKualitasExcelWorkbook(result);
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename="18.4 Laporan Kualitas Air Baku ${result.bulan}.xlsx"`);
     return res.status(200).send(Buffer.from(buffer));
@@ -174,7 +186,7 @@ module.exports = async (req, res) => {
     await ensureKpiTables();
     await ensurePekerjaanTable();
     const access = await checkVizAccess(req);
-    const result = await getKpi192Data(access, req.query.bulan);
+    const result = await kpiLib().getKpi192Data(access, req.query.bulan);
     return res.status(200).json(result);
   }
 
@@ -183,9 +195,9 @@ module.exports = async (req, res) => {
     await ensurePekerjaanTable();
     const user = requireAdmin(req, res);
     if (!user) return;
-    const result = await getKpi192Data({ granted: true, kind: 'admin' }, req.query.bulan);
+    const result = await kpiLib().getKpi192Data({ granted: true, kind: 'admin' }, req.query.bulan);
     if (req.query.tanggal) result.meta.signPlaceDate = req.query.tanggal;
-    const buffer = await buildKpi192ExcelWorkbook(result);
+    const buffer = await kpiLib().buildKpi192ExcelWorkbook(result);
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename="19.2 Evaluasi Hasil Monitoring ${result.monthTitle}.xlsx"`);
     return res.status(200).send(Buffer.from(buffer));
@@ -199,7 +211,7 @@ module.exports = async (req, res) => {
     await ensureKpiTables();
     await ensureVizTables();
     const access = await checkVizAccess(req);
-    const result = await getKpiLevelSumurData(access, req.query.tahun);
+    const result = await kpiLib().getKpiLevelSumurData(access, req.query.tahun);
     return res.status(200).json(result);
   }
 
@@ -208,9 +220,9 @@ module.exports = async (req, res) => {
     await ensureVizTables();
     const user = requireAdmin(req, res);
     if (!user) return;
-    const result = await getKpiLevelSumurData({ granted: true, kind: 'admin' }, req.query.tahun);
+    const result = await kpiLib().getKpiLevelSumurData({ granted: true, kind: 'admin' }, req.query.tahun);
     if (req.query.tanggal) result.meta.signPlaceDate = req.query.tanggal;
-    const buffer = await buildKpiLevelSumurExcelWorkbook(result);
+    const buffer = await kpiLib().buildKpiLevelSumurExcelWorkbook(result);
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename="18.1A Pengukuran Level Sumur ${result.year}.xlsx"`);
     return res.status(200).send(Buffer.from(buffer));
@@ -223,7 +235,7 @@ module.exports = async (req, res) => {
     await ensureKpiTables();
     await ensureVizTables();
     const access = await checkVizAccess(req);
-    const result = await getKpiLevelStatisDinamisData(access, req.query.tahun);
+    const result = await kpiLib().getKpiLevelStatisDinamisData(access, req.query.tahun);
     return res.status(200).json(result);
   }
 
@@ -232,9 +244,9 @@ module.exports = async (req, res) => {
     await ensureVizTables();
     const user = requireAdmin(req, res);
     if (!user) return;
-    const result = await getKpiLevelStatisDinamisData({ granted: true, kind: 'admin' }, req.query.tahun);
+    const result = await kpiLib().getKpiLevelStatisDinamisData({ granted: true, kind: 'admin' }, req.query.tahun);
     if (req.query.tanggal) result.meta.signPlaceDate = req.query.tanggal;
-    const buffer = await buildKpiLevelStatisDinamisExcelWorkbook(result);
+    const buffer = await kpiLib().buildKpiLevelStatisDinamisExcelWorkbook(result);
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename="18.1B Pengukuran Statis Dinamis ${result.year}.xlsx"`);
     return res.status(200).send(Buffer.from(buffer));
@@ -247,7 +259,7 @@ module.exports = async (req, res) => {
     await ensureKpiTables();
     await ensureVizTables();
     const access = await checkVizAccess(req);
-    const result = await getKpi18_5Data(access, req.query.tahun);
+    const result = await kpiLib().getKpi18_5Data(access, req.query.tahun);
     return res.status(200).json(result);
   }
 
@@ -256,9 +268,9 @@ module.exports = async (req, res) => {
     await ensureVizTables();
     const user = requireAdmin(req, res);
     if (!user) return;
-    const result = await getKpi18_5Data({ granted: true, kind: 'admin' }, req.query.tahun);
+    const result = await kpiLib().getKpi18_5Data({ granted: true, kind: 'admin' }, req.query.tahun);
     if (req.query.tanggal) result.meta.signPlaceDate = req.query.tanggal;
-    const buffer = await buildKpi18_5ExcelWorkbook(result);
+    const buffer = await kpiLib().buildKpi18_5ExcelWorkbook(result);
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename="18.5 Monitoring Kondisi Peralatan ${result.tahun}.xlsx"`);
     return res.status(200).send(Buffer.from(buffer));
@@ -270,7 +282,7 @@ module.exports = async (req, res) => {
     await ensureKpiTables();
     await ensurePekerjaanTable();
     const access = await checkVizAccess(req);
-    const result = await getKpi18_6Data(access, req.query.tahun);
+    const result = await kpiLib().getKpi18_6Data(access, req.query.tahun);
     return res.status(200).json(result);
   }
 
@@ -279,9 +291,9 @@ module.exports = async (req, res) => {
     await ensurePekerjaanTable();
     const user = requireAdmin(req, res);
     if (!user) return;
-    const result = await getKpi18_6Data({ granted: true, kind: 'admin' }, req.query.tahun);
+    const result = await kpiLib().getKpi18_6Data({ granted: true, kind: 'admin' }, req.query.tahun);
     if (req.query.tanggal) result.meta.signPlaceDate = req.query.tanggal;
-    const buffer = await buildKpi18_6ExcelWorkbook(result);
+    const buffer = await kpiLib().buildKpi18_6ExcelWorkbook(result);
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename="18.6 Jadwal PM Terkendali ${result.tahun}.xlsx"`);
     return res.status(200).send(Buffer.from(buffer));
@@ -292,7 +304,7 @@ module.exports = async (req, res) => {
   if (dataType === 'kpi_activity_plan') {
     await ensureKpiTables();
     const access = await checkVizAccess(req);
-    const result = await getKpiActivityPlanData(access, req.query.tahun, req.query.periode);
+    const result = await kpiLib().getKpiActivityPlanData(access, req.query.tahun, req.query.periode);
     return res.status(200).json(result);
   }
 
@@ -300,9 +312,9 @@ module.exports = async (req, res) => {
     await ensureKpiTables();
     const user = requireAdmin(req, res);
     if (!user) return;
-    const result = await getKpiActivityPlanData({ granted: true, kind: 'admin' }, req.query.tahun, req.query.periode);
+    const result = await kpiLib().getKpiActivityPlanData({ granted: true, kind: 'admin' }, req.query.tahun, req.query.periode);
     if (req.query.tanggal) result.signPlaceDate = req.query.tanggal;
-    const buffer = await buildKpiActivityPlanExcelWorkbook(result);
+    const buffer = await kpiLib().buildKpiActivityPlanExcelWorkbook(result);
     const apPeriodSuffix = result.periodeNum === 2 ? ' Jul-Des' : '';
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename="Activity Plan SAB ${result.tahun}${apPeriodSuffix}.xlsx"`);
@@ -316,7 +328,7 @@ module.exports = async (req, res) => {
   if (dataType === 'kpi_jadwal_kegiatan') {
     await ensureKpiTables();
     const access = await checkVizAccess(req);
-    const result = await getKpiJadwalKegiatanData(access, req.query.bulan);
+    const result = await kpiLib().getKpiJadwalKegiatanData(access, req.query.bulan);
     return res.status(200).json(result);
   }
 
@@ -324,9 +336,9 @@ module.exports = async (req, res) => {
     await ensureKpiTables();
     const user = requireAdmin(req, res);
     if (!user) return;
-    const result = await getKpiJadwalKegiatanData({ granted: true, kind: 'admin' }, req.query.bulan);
+    const result = await kpiLib().getKpiJadwalKegiatanData({ granted: true, kind: 'admin' }, req.query.bulan);
     if (req.query.tanggal) result.meta.signPlaceDate = req.query.tanggal;
-    const buffer = await buildKpiJadwalKegiatanExcelWorkbook(result);
+    const buffer = await kpiLib().buildKpiJadwalKegiatanExcelWorkbook(result);
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename="Jadwal Kegiatan ${result.monthTitle}.xlsx"`);
     return res.status(200).send(Buffer.from(buffer));
@@ -338,7 +350,7 @@ module.exports = async (req, res) => {
   if (dataType === 'kpi_9_2') {
     await ensureKpiTables();
     const access = await checkVizAccess(req);
-    const result = await getKpi9_2Data(access, req.query.bulan);
+    const result = await kpiLib().getKpi9_2Data(access, req.query.bulan);
     return res.status(200).json(result);
   }
 
@@ -346,9 +358,9 @@ module.exports = async (req, res) => {
     await ensureKpiTables();
     const user = requireAdmin(req, res);
     if (!user) return;
-    const result = await getKpi9_2Data({ granted: true, kind: 'admin' }, req.query.bulan);
+    const result = await kpiLib().getKpi9_2Data({ granted: true, kind: 'admin' }, req.query.bulan);
     if (req.query.tanggal) result.meta.signPlaceDate = req.query.tanggal;
-    const buffer = await buildKpi9_2ExcelWorkbook(result);
+    const buffer = await kpiLib().buildKpi9_2ExcelWorkbook(result);
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename="9.2 Laporan Kualitas Air Baku ${result.monthTitle}.xlsx"`);
     return res.status(200).send(Buffer.from(buffer));
@@ -361,7 +373,7 @@ module.exports = async (req, res) => {
   if (dataType === 'kpi_9_3') {
     await ensureKpiTables();
     const access = await checkVizAccess(req);
-    const result = await getKpi9_3Data(access, req.query.bulan);
+    const result = await kpiLib().getKpi9_3Data(access, req.query.bulan);
     return res.status(200).json(result);
   }
 
@@ -369,8 +381,8 @@ module.exports = async (req, res) => {
     await ensureKpiTables();
     const user = requireAdmin(req, res);
     if (!user) return;
-    const result = await getKpi9_3Data({ granted: true, kind: 'admin' }, req.query.bulan);
-    const buffer = await buildKpi9_3ExcelWorkbook(result);
+    const result = await kpiLib().getKpi9_3Data({ granted: true, kind: 'admin' }, req.query.bulan);
+    const buffer = await kpiLib().buildKpi9_3ExcelWorkbook(result);
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename="9.3 Laporan Kondisi Air Waduk ${result.monthTitle}.xlsx"`);
     return res.status(200).send(Buffer.from(buffer));
@@ -381,7 +393,7 @@ module.exports = async (req, res) => {
   // "9.4 Laporan Ketidaksesuaian debit.xlsx".
   if (dataType === 'kpi_9_4') {
     await ensureKpiTables();
-    const result = await getKpi9_4Data({ granted: true }, req.query.bulan);
+    const result = await kpiLib().getKpi9_4Data({ granted: true }, req.query.bulan);
     return res.status(200).json(result);
   }
 
@@ -389,8 +401,8 @@ module.exports = async (req, res) => {
     await ensureKpiTables();
     const user = requireAdmin(req, res);
     if (!user) return;
-    const result = await getKpi9_4Data({ granted: true, kind: 'admin' }, req.query.bulan);
-    const buffer = await buildKpi9_4ExcelWorkbook(result);
+    const result = await kpiLib().getKpi9_4Data({ granted: true, kind: 'admin' }, req.query.bulan);
+    const buffer = await kpiLib().buildKpi9_4ExcelWorkbook(result);
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename="9.4 Laporan Ketidaksesuaian Debit ${result.monthTitle}.xlsx"`);
     return res.status(200).send(Buffer.from(buffer));
@@ -403,7 +415,7 @@ module.exports = async (req, res) => {
   if (dataType === 'kpi_9_7') {
     await ensureKpiTables();
     const access = await checkVizAccess(req);
-    const result = await getKpi9_7Data(access, req.query.bulan);
+    const result = await kpiLib().getKpi9_7Data(access, req.query.bulan);
     return res.status(200).json(result);
   }
 
@@ -411,8 +423,8 @@ module.exports = async (req, res) => {
     await ensureKpiTables();
     const user = requireAdmin(req, res);
     if (!user) return;
-    const result = await getKpi9_7Data({ granted: true, kind: 'admin' }, req.query.bulan);
-    const buffer = await buildKpi9_7ExcelWorkbook(result);
+    const result = await kpiLib().getKpi9_7Data({ granted: true, kind: 'admin' }, req.query.bulan);
+    const buffer = await kpiLib().buildKpi9_7ExcelWorkbook(result);
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename="9.7 Laporan Kondisi Air Sumur ${result.monthTitle}.xlsx"`);
     return res.status(200).send(Buffer.from(buffer));
@@ -424,7 +436,7 @@ module.exports = async (req, res) => {
   // "9.5 Laporan Monitoring Pipa Transmisi.xlsx".
   if (dataType === 'kpi_9_5') {
     await ensureKpiTables();
-    const result = await getKpi9_5Data({ granted: true }, req.query.bulan);
+    const result = await kpiLib().getKpi9_5Data({ granted: true }, req.query.bulan);
     return res.status(200).json(result);
   }
 
@@ -432,8 +444,8 @@ module.exports = async (req, res) => {
     await ensureKpiTables();
     const user = requireAdmin(req, res);
     if (!user) return;
-    const result = await getKpi9_5Data({ granted: true, kind: 'admin' }, req.query.bulan);
-    const buffer = await buildKpi9_5ExcelWorkbook(result);
+    const result = await kpiLib().getKpi9_5Data({ granted: true, kind: 'admin' }, req.query.bulan);
+    const buffer = await kpiLib().buildKpi9_5ExcelWorkbook(result);
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename="9.5 Laporan Monitoring Pipa Transmisi ${result.monthTitle}.xlsx"`);
     return res.status(200).send(Buffer.from(buffer));
@@ -444,7 +456,7 @@ module.exports = async (req, res) => {
   // "9.8 Laporan Jadwal Kalibrasi.xlsx".
   if (dataType === 'kpi_9_8') {
     await ensureKpiTables();
-    const result = await getKpi9_8Data({ granted: true }, req.query.bulan);
+    const result = await kpiLib().getKpi9_8Data({ granted: true }, req.query.bulan);
     return res.status(200).json(result);
   }
 
@@ -452,8 +464,8 @@ module.exports = async (req, res) => {
     await ensureKpiTables();
     const user = requireAdmin(req, res);
     if (!user) return;
-    const result = await getKpi9_8Data({ granted: true, kind: 'admin' }, req.query.bulan);
-    const buffer = await buildKpi9_8ExcelWorkbook(result);
+    const result = await kpiLib().getKpi9_8Data({ granted: true, kind: 'admin' }, req.query.bulan);
+    const buffer = await kpiLib().buildKpi9_8ExcelWorkbook(result);
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename="9.8 Laporan Jadwal Kalibrasi ${result.monthTitle}.xlsx"`);
     return res.status(200).send(Buffer.from(buffer));
