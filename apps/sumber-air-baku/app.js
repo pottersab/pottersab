@@ -413,6 +413,13 @@ function editSumber(jenis, id) {
 
   $('editStatus').textContent = '';
   $('editStatus').className = 'status-msg';
+  // Reset tombol Simpan ke kondisi normal SETIAP modal edit dibuka. Sebelumnya,
+  // setelah simpan BERHASIL tombol tidak pernah di-re-enable (tetap disabled
+  // dengan spinner "Menyimpan…"), jadi saat membuka kartu berikutnya tombol
+  // tidak bisa diklik -- terasa seperti "simpan muter terus tanpa henti".
+  const btnSimpan = $('editSimpan');
+  btnSimpan.disabled = false;
+  btnSimpan.textContent = 'Simpan';
   $('editModal').style.display = 'flex';
 }
 
@@ -510,6 +517,10 @@ async function simpanEdit() {
       btn.disabled = false; btn.textContent = 'Simpan';
       return;
     }
+    // Reset tombol ke "Simpan" normal (lihat komentar di editSumber):
+    // sebelumnya tombol tertinggal disabled+spinner setelah simpan berhasil.
+    btn.disabled = false;
+    btn.textContent = 'Simpan';
     $('editModal').style.display = 'none';
     await muatDetail(j);
     render();
