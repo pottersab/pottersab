@@ -4,15 +4,13 @@
   "description": "Portal aplikasi kerja Sub Divisi Sumber Air Baku",
   "private": true,
   "dependencies": {
-    "@neondatabase/serverless": "^1.1.0",
     "@vercel/blob": "^2.6.1",
     "bcryptjs": "^2.4.3",
     "exceljs": "^4.4.0",
     "jsonwebtoken": "^9.0.2",
     "nodemailer": "^6.9.14",
     "pdf-lib": "^1.17.1",
-    "pg": "^8.11.3",
-    "ws": "^8.21.3"
+    "pg": "^8.11.3"
   },
   "main": "sw.js",
   "directories": {
