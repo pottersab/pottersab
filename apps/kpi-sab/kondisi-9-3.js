@@ -150,7 +150,9 @@
       html += '<td class="no">' + row.d + '</td>';
       html += numCell(row.level, 2);
       html += numCell(row.volume, 0);
-      html += numCell(row.disadap, 1);
+      // Air yang disadap ditampilkan bulat (tanpa desimal) -- revisi permintaan:
+      // nilai asli tetap desimal, yang dibulatkan hanya tampilannya.
+      html += numCell(row.disadap, 0);
       html += numCell(row.after, 0);
       html += numCell(row.hujan, 2);
       html += '</tr>';
@@ -163,7 +165,7 @@
         return '<td><div class="cellwrap"><span class="cellnum">' + (v !== null ? fmt(v, dec) : '') + '</span></div></td>';
       };
       return '<tr class="avg"><td>' + label + '</td>' +
-        put('level', 2) + put('volume', 0) + put('disadap', 1) + put('after', 0) + put('hujan', 2) + '</tr>';
+        put('level', 2) + put('volume', 0) + put('disadap', 0) + put('after', 0) + put('hujan', 2) + '</tr>';
     }
     html += sumRow('Jumlah', 'sum');
     html += sumRow('Rata rata', 'avg');
