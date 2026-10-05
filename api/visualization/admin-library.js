@@ -1,4 +1,4 @@
-const { pool, ensureVizTables, ensureSignersTable, ensureSpdTables, ensureSumberTables, ensureTable: ensureHistoryTable } = require('../../lib/db');
+const { pool, ensureVizTables, ensureSignersTable, ensureSpdTables, ensureSumberTables, ensurePetaTables, ensureTable: ensureHistoryTable } = require('../../lib/db');
 const { requireAdmin } = require('../../lib/auth');
 const { DATASETS } = require('../../lib/visualization/columns');
 const { fetchSumurWells } = require('../../lib/visualization/repo');
@@ -189,6 +189,23 @@ async function handleMapLatest(req, res) {
   });
 
   return res.status(200).json({ ipa, sumur, waduk });
+}
+
+// --- action=map-lokasi: titik peta yang dipegang admin, yaitu titik BARU dan
+// KOREKSI koordinat titik lama (lihat ensurePetaTables di lib/db.js).
+// Endpoint PUBLIK, sepasang dengan map-latest: halaman peta memang terbuka,
+// dan yang dikirim di sini cuma nama + koordinat -- sama isinya dengan
+// data/lokasi.json yang juga terbuka. Panggilan requireAdmin di bawah harus
+// tetap DILEWATI, karena itu handler ini didaftarkan sebelum requireAdmin di
+// module.exports. ---------------------------------------------------------
+async function handleMapLokasi(req, res) {
+  if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
+  await ensurePetaTables();
+  const { rows } = await pool.query(
+    `SELECT jenis, lokasi_id, nama, installation, lat, lng, keterangan
+       FROM peta_lokasi ORDER BY jenis, nama`
+  );
+  return res.status(200).json({ rows: rows.map(r => Object.assign({}, r)) });
 }
 
 // --- action=daily: input harian Waduk Manggar/Teritip (Level, Curah Hujan,
@@ -1258,6 +1275,85 @@ async function handleSumber(req, res) {
   return res.status(405).json({ error: 'Method not allowed' });
 }
 
+// --- action=peta: CRUD titik peta (admin). Dipakai apps/peta-ipa-sumur waktu
+// admin menambah titik baru atau mengoreksi koordinat titik yang sudah ada.
+//
+// Menghapus di sini TIDAK selalu berarti titiknya hilang: kalau id-nya ada di
+// data/lokasi.json, titik itu kembali ke koordinat aslinya. Klien yang tahu
+// bedanya (dia punya lokasi.json), jadi tombolnya yang diberi label berbeda.
+const JENIS_PETA = ['ipa', 'sumur', 'waduk'];
+
+// Batas koordinat dipakai sebagai validasi, bukan sekadar angka: lat & lng
+// yang tertukar saat mengetik (-1,2 jadi 1,2 dst) hasilnya masih "angka
+// valid" tapi markernya nyasar. Rentangnya yang membatasi -- di Balikpapan
+// lat selalu negatif dan lng selalu ~116-117.
+function koordinatValid(v, batas) {
+  const n = Number(v);
+  return Number.isFinite(n) && Math.abs(n) <= batas ? n : null;
+}
+
+async function handlePeta(req, res) {
+  const user = requireAdmin(req, res);
+  if (!user) return;
+  await ensurePetaTables();
+  const admin = user.username || 'admin';
+
+  // GET dipakai form edit untuk membaca keterangan/created_by yang tidak
+  // ikut dikirim lewat endpoint publik map-lokasi.
+  if (req.method === 'GET') {
+    const { rows } = await pool.query(`SELECT * FROM peta_lokasi ORDER BY jenis, nama`);
+    return res.status(200).json({ rows: rows.map(r => Object.assign({}, r)) });
+  }
+
+  if (req.method === 'POST') {
+    const b = req.body || {};
+    const jenis = teksSumber(b.jenis);
+    const id = teksSumber(b.lokasi_id);
+    const nama = teksSumber(b.nama);
+    const lat = koordinatValid(b.lat, 90);
+    const lng = koordinatValid(b.lng, 180);
+
+    if (!JENIS_PETA.includes(jenis)) {
+      return res.status(400).json({ error: 'jenis harus ipa, sumur, atau waduk' });
+    }
+    if (!id || !nama) return res.status(400).json({ error: 'lokasi_id dan nama wajib diisi' });
+    if (lat === null || lng === null) {
+      return res.status(400).json({ error: 'Koordinat tidak valid (lat -90..90, lng -180..180).' });
+    }
+
+    // installation cuma bermakna untuk sumur: dipakai peta untuk mengelompokkan
+    // sumur per IPA induk di dropdown navigasi.
+    const installation = jenis === 'sumur' ? teksSumber(b.installation) : null;
+    if (jenis === 'sumur' && !installation) {
+      return res.status(400).json({ error: 'Instalasi induk wajib dipilih untuk sumur' });
+    }
+
+    await pool.query(
+      `INSERT INTO peta_lokasi
+         (jenis, lokasi_id, nama, installation, lat, lng, keterangan, created_by, updated_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8, now())
+       ON CONFLICT (jenis, lokasi_id) DO UPDATE SET
+         nama = EXCLUDED.nama, installation = EXCLUDED.installation,
+         lat = EXCLUDED.lat, lng = EXCLUDED.lng,
+         keterangan = EXCLUDED.keterangan, updated_at = now()`,
+      [jenis, id, nama, installation, lat, lng, teksSumber(b.keterangan), admin]
+    );
+    return res.status(200).json({ success: true });
+  }
+
+  if (req.method === 'DELETE') {
+    const jenis = String(req.query.jenis || '');
+    const id = String(req.query.id || '');
+    if (!JENIS_PETA.includes(jenis) || !id) {
+      return res.status(400).json({ error: 'jenis (ipa/sumur/waduk) dan id wajib diisi' });
+    }
+    await pool.query(`DELETE FROM peta_lokasi WHERE jenis = $1 AND lokasi_id = $2`, [jenis, id]);
+    return res.status(200).json({ success: true });
+  }
+
+  return res.status(405).json({ error: 'Method not allowed' });
+}
+
 module.exports = async (req, res) => {
   await ensureVizTables();
 
@@ -1266,6 +1362,7 @@ module.exports = async (req, res) => {
   // Publik, tanpa admin -- dipakai apps/peta-ipa-sumur (sama seperti
   // api/home-summary.js yang juga publik). Harus dicek SEBELUM requireAdmin.
   if (action === 'map-latest') return handleMapLatest(req, res);
+  if (action === 'map-lokasi') return handleMapLokasi(req, res);
 
   const user = requireAdmin(req, res);
   if (!user) return;
@@ -1280,6 +1377,7 @@ module.exports = async (req, res) => {
   if (action === 'spd') return handleSpd(req, res);
   if (action === 'lpj') return handleLpj(req, res);
   if (action === 'sumber') return handleSumber(req, res);
+  if (action === 'peta') return handlePeta(req, res);
 
-  return res.status(400).json({ error: 'action wajib diisi (daily/daily-history/sumur/sumur-history/bulk/wells/signers/spd/lpj/sumber/map-latest)' });
+  return res.status(400).json({ error: 'action wajib diisi (daily/daily-history/sumur/sumur-history/bulk/wells/signers/spd/lpj/sumber/peta/map-latest/map-lokasi)' });
 };

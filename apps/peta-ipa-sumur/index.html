@@ -288,6 +288,132 @@ header.map-top {
 
 .leaflet-popup-content-wrapper { border-radius:var(--radius-md); }
 .leaflet-popup-content { font-family:'Inter',sans-serif; margin:12px 14px; }
+
+/* ===== Titik: penanda asal-usul, keterangan, tombol koreksi (admin) ===== */
+/* Isi popup di luar judul kini berasal dari input admin, bukan berkas statis,
+   jadi ada kemungkinan teksnya panjang/kosong -- diberi gaya sendiri supaya
+   tetap terbaca dan tidak menggeser tata letak stat di atasnya. */
+.popup-asal { font-size:10.5px; border-radius:8px; padding:5px 8px; margin-bottom:7px; }
+.popup-asal.baru { background:var(--sumur-pale); color:#1F6B41; }
+.popup-asal.koreksi { background:var(--accent-pale); color:#8A5A1E; }
+.popup-ket { font-size:11px; color:var(--ink-soft); background:var(--bg); border-radius:8px; padding:6px 8px; margin-top:7px; }
+
+/* Berdiri sendiri di atas blok Google Maps, jadi gayanya tidak bisa
+   menumpang .gmaps-aksi .gm-btn yang cuma berlaku di dalam grid itu. */
+.gm-btn.koreksi {
+  width:100%; display:flex; align-items:center; justify-content:center; gap:5px;
+  white-space:nowrap; font-family:'Space Grotesk',sans-serif; font-size:11.5px;
+  font-weight:600; padding:7px 8px; border-radius:9px; cursor:pointer; margin-top:9px;
+  background:var(--primary-pale); color:var(--primary); border:1px solid #BFD8E0;
+  transition:background .15s ease, border-color .15s ease;
+}
+.gm-btn.koreksi:hover { background:#CFE6EB; border-color:#B0D2DA; }
+
+/* ===== Panel tambah / koreksi titik (admin) ===== */
+/* Di HP jadi bottom sheet; di layar lebar jadi kartu tengah. Padding bawah
+   ikut safe-area supaya tombol Simpan tidak ketutup gesture bar. */
+.map-actions { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+.btn-tambah-titik {
+  display:inline-flex; align-items:center; gap:7px;
+  font-family:'Space Grotesk',sans-serif; font-size:13.5px; font-weight:600;
+  color:#fff; background:var(--sumur); border:1px solid var(--sumur);
+  padding:9px 16px; border-radius:999px; cursor:pointer; transition:filter .15s ease;
+}
+.btn-tambah-titik:hover { filter:brightness(1.08); }
+
+.panel-backdrop {
+  position:fixed; inset:0; background:rgba(10,37,55,.35); z-index:1100;
+  opacity:0; visibility:hidden; transition:opacity .18s ease, visibility .18s;
+}
+.panel-backdrop.open { opacity:1; visibility:visible; }
+
+.peta-panel {
+  position:fixed; z-index:1101; background:var(--surface);
+  left:0; right:0; bottom:0; max-height:78vh; overflow-y:auto;
+  border-radius:var(--radius-lg) var(--radius-lg) 0 0;
+  padding:16px 18px calc(18px + env(safe-area-inset-bottom));
+  box-shadow:0 -10px 40px rgba(10,37,55,.22);
+  transform:translateY(102%); transition:transform .22s ease;
+}
+.peta-panel.open { transform:translateY(0); }
+@media(min-width:760px){
+  .peta-panel {
+    left:50%; right:auto; bottom:auto; top:50%; width:420px; max-height:88vh;
+    border-radius:var(--radius-lg); opacity:0; visibility:hidden;
+    transform:translate(-50%,-46%) scale(.98);
+    transition:opacity .18s ease, transform .18s ease, visibility .18s;
+  }
+  .peta-panel.open { opacity:1; visibility:visible; transform:translate(-50%,-50%) scale(1); }
+}
+
+.peta-panel-head { display:flex; align-items:center; justify-content:space-between; }
+.peta-panel-head strong { font-family:'Space Grotesk',sans-serif; font-size:16px; color:var(--ink); }
+.panel-close {
+  background:none; border:none; font-size:24px; line-height:1; cursor:pointer;
+  color:var(--ink-soft); padding:0 4px;
+}
+.panel-hint { font-size:12px; color:var(--ink-soft); margin:4px 0 12px; line-height:1.4; }
+
+/* Dua fase panel, disetel app.js lewat atribut data-fase:
+   - "pilih": koordinat belum ada -> field identitas disembunyikan supaya
+     panel cuma setinggi baris koordinat dan peta tetap bisa diketuk;
+   - "isi": koordinat sudah ada -> form lengkap. */
+.peta-panel[data-fase="pilih"] .fase-isi { display:none; }
+
+.field { margin-bottom:10px; }
+.field label { display:block; font-size:11.5px; font-weight:600; color:var(--ink-soft); margin-bottom:4px; }
+.field input, .field select {
+  width:100%; font-family:'Inter',sans-serif; font-size:14px; color:var(--ink);
+  background:var(--bg); border:1px solid var(--line); border-radius:10px; padding:10px 12px;
+  outline:none; transition:border-color .15s ease, background .15s ease;
+}
+.field input:focus, .field select:focus { border-color:var(--primary-light); background:#fff; }
+.field-row { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.field-note { display:block; font-size:11px; color:var(--ink-soft); margin-top:4px; line-height:1.35; }
+
+.seg { display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px; }
+.seg-btn {
+  font-family:'Space Grotesk',sans-serif; font-size:13px; font-weight:600;
+  padding:9px 6px; border-radius:10px; cursor:pointer;
+  color:var(--ink-soft); background:var(--bg); border:1px solid var(--line);
+  transition:all .15s ease;
+}
+.seg-btn.active { color:#fff; background:var(--primary); border-color:var(--primary); }
+/* Dimatikan saat mengoreksi titik -- jenis terikat ke id titiknya. */
+.seg-btn:disabled { opacity:.5; cursor:default; }
+
+.btn-gps {
+  width:100%; display:flex; align-items:center; justify-content:center; gap:7px;
+  font-family:'Space Grotesk',sans-serif; font-size:13px; font-weight:600;
+  padding:10px; border-radius:10px; cursor:pointer; margin:2px 0 12px;
+  color:var(--primary); background:var(--primary-pale); border:1px solid var(--primary-pale);
+}
+.btn-gps:hover { background:#CFE6EB; }
+
+.panel-pesan { font-size:12px; border-radius:9px; padding:8px 11px; margin-bottom:10px; line-height:1.4; }
+.panel-pesan.error { background:#FBE4E4; color:#A32222; }
+.panel-pesan.ok { background:var(--sumur-pale); color:#1F6B41; }
+
+.panel-foot { display:flex; gap:8px; margin-top:6px; }
+.panel-foot button {
+  font-family:'Space Grotesk',sans-serif; font-size:13.5px; font-weight:600;
+  padding:11px 16px; border-radius:11px; cursor:pointer; transition:background .15s ease;
+}
+.btn-simpan { flex:1; color:#fff; background:var(--primary); border:1px solid var(--primary); }
+.btn-simpan:hover { background:var(--primary-light); }
+.btn-simpan:disabled { opacity:.6; cursor:default; }
+.btn-hapus { color:#A32222; background:#FBE4E4; border:1px solid #F3D2D2; }
+.btn-hapus:hover { background:#F7D9D9; }
+.btn-hapus:disabled { opacity:.6; cursor:default; }
+
+/* Marker sementara di panel tambah/koreksi: sengaja beda dari pin asli
+   supaya jelas ini titik yang belum disimpan. */
+.pin-pick {
+  width:34px; height:34px; border-radius:50%; background:#fff;
+  display:flex; align-items:center; justify-content:center;
+  border:2px dashed var(--primary); color:var(--primary);
+  box-shadow:0 3px 12px rgba(14,42,50,.3);
+}
 </style>
 </head>
 <body>
@@ -395,6 +521,7 @@ function doLogout(){
     <h1>Peta Titik IPA, Sumur &amp; Waduk</h1>
     <p>Sub Divisi Sumber Air Baku — koordinat asli, angka AP/ATD/debit/level diambil langsung dari data terbaru</p>
   </div>
+  <div class="map-actions">
   <div class="filter-bar">
     <button class="filter-btn active" data-filter="all">
       <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" width="15" height="15"><rect x="3" y="3" width="6" height="6" rx="1.5"/><rect x="11" y="3" width="6" height="6" rx="1.5"/><rect x="3" y="11" width="6" height="6" rx="1.5"/><rect x="11" y="11" width="6" height="6" rx="1.5"/></svg>
@@ -416,6 +543,12 @@ function doLogout(){
       <svg class="chevron" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" width="12" height="12"><path d="M5 7.5l5 5 5-5"/></svg>
     </button>
   </div>
+    <!-- Cuma tampil untuk admin (diatur app.js setelah cek localStorage). -->
+    <button type="button" class="btn-tambah-titik" id="btnTambahTitik" style="display:none">
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" width="14" height="14"><path d="M10 4v12M4 10h12"/></svg>
+      Tambah titik
+    </button>
+  </div>
 </header>
 
 <div class="category-dropdown" id="categoryDropdown">
@@ -430,7 +563,78 @@ function doLogout(){
 </div>
 
 <div id="map"></div>
-<div class="note">Koordinat data asli. Status sumur (Aktif/Non-aktif) dihitung otomatis dari nilai debit — bukan diisi manual. AP = Air Permukaan, ATD = Air Tanah Dalam.</div>
+<div class="note">Koordinat data asli. Status sumur (Aktif/Non-aktif) dihitung otomatis dari nilai debit — bukan diisi manual. AP = Air Permukaan, ATD = Air Tanah Dalam. Titik baru &amp; koreksi koordinat bisa ditambah admin lewat tombol <b>Tambah titik</b> dan disimpan di database, jadi tidak perlu ubah berkas lokasi.json.</div>
+
+<!-- Panel tambah/koreksi titik. Markup-nya selalu ada di halaman (bukan
+     dibuat lewat JS) supaya tidak ada elemen yang perlu disusun ulang tiap
+     dibuka; app.js cuma mengisi nilainya lalu menambah kelas .open. -->
+<div class="panel-backdrop" id="panelBackdrop"></div>
+<section class="peta-panel" id="petaPanel" aria-label="Tambah atau koreksi titik peta">
+  <div class="peta-panel-head">
+    <strong id="panelTitle">Tambah titik baru</strong>
+    <button type="button" class="panel-close" id="panelClose" aria-label="Tutup">&times;</button>
+  </div>
+  <p class="panel-hint" id="panelHint"></p>
+
+  <div class="panel-pesan" id="panelPesan" style="display:none"></div>
+
+  <div class="field">
+    <label>Jenis titik</label>
+    <div class="seg" id="jenisSeg">
+      <button type="button" class="seg-btn" data-jenis="ipa">IPA</button>
+      <button type="button" class="seg-btn" data-jenis="sumur">Sumur</button>
+      <button type="button" class="seg-btn" data-jenis="waduk">Waduk</button>
+    </div>
+  </div>
+
+  <!-- Baris koordinat & tombol lokasi sengaja paling atas, dan identitas titik
+       (nama, id, keterangan) menyusul di .fase-isi. Selama koordinatnya belum
+       ada, panel cuma setinggi ini -- peta di belakangnya tetap kelihatan dan
+       bisa diketuk untuk menaruh titik. -->
+  <div class="field-row">
+    <div class="field">
+      <label for="fLat">Latitude</label>
+      <input id="fLat" type="text" inputmode="decimal" autocomplete="off" placeholder="-1.263011">
+    </div>
+    <div class="field">
+      <label for="fLng">Longitude</label>
+      <input id="fLng" type="text" inputmode="decimal" autocomplete="off" placeholder="116.837947">
+    </div>
+  </div>
+
+  <button type="button" class="btn-gps" id="btnGps">
+    <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><circle cx="12" cy="12" r="5"/></svg>
+    Pakai lokasi saya sekarang
+  </button>
+
+  <div class="fase-isi">
+    <div class="field" id="fieldInstallation" style="display:none">
+      <label for="fInstallation">Instalasi induk</label>
+      <select id="fInstallation"></select>
+    </div>
+
+    <div class="field" id="fieldId">
+      <label for="fId">ID titik</label>
+      <input id="fId" type="text" autocomplete="off" spellcheck="false" placeholder="mis. teritip_19">
+      <span class="field-note" id="idNote"></span>
+    </div>
+
+    <div class="field">
+      <label for="fNama">Nama titik</label>
+      <input id="fNama" type="text" autocomplete="off" placeholder="mis. Sumur 19 — Teritip">
+    </div>
+
+    <div class="field">
+      <label for="fKet">Keterangan (opsional)</label>
+      <input id="fKet" type="text" autocomplete="off" placeholder="mis. sumur bor baru, selesai Agustus 2026">
+    </div>
+  </div>
+
+  <div class="panel-foot">
+    <button type="button" class="btn-hapus" id="btnHapus" style="display:none">Hapus titik</button>
+    <button type="button" class="btn-simpan" id="btnSimpan">Simpan</button>
+  </div>
+</section>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
 <script src="app.js"></script>

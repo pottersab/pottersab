@@ -1238,9 +1238,42 @@ function doLogout(){
         });
       }
 
-      fetch('apps/peta-ipa-sumur/data/lokasi.json')
-        .then(function(res){ return res.json(); })
-        .then(function(data){
+      /* Titik baru & koreksi koordinat yang ditambahkan admin lewat halaman
+         peta disimpan di database (tabel peta_lokasi), TIDAK di lokasi.json.
+         Mini-map ini ikut membacanya -- kalau cuma baca berkas statis, badge
+         "9 IPA" jadi bohong begitu ada titik baru. Aturan gabungnya sama
+         dengan apps/peta-ipa-sumur: baris database menang untuk id yang sama.
+
+         Fetch titik admin sengaja dipisah dan punya catch sendiri: beranda
+         harus tetap tampil walau endpoint itu gagal (offline, dsb). */
+      function gabungLokasi(bawaan, rows){
+        var hasil = { ipa: [], sumur: [], waduk: [] };
+        var posisi = {};
+        ['ipa', 'sumur', 'waduk'].forEach(function(j){
+          (bawaan[j] || []).forEach(function(loc){
+            posisi[j + ':' + loc.id] = hasil[j].length;
+            hasil[j].push(loc);
+          });
+        });
+        (rows || []).forEach(function(r){
+          if(!hasil[r.jenis]) return;
+          var k = r.jenis + ':' + r.lokasi_id;
+          var titik = { id: r.lokasi_id, nama: r.nama, lat: Number(r.lat), lng: Number(r.lng) };
+          if(r.installation) titik.installation = r.installation;
+          if(posisi[k] === undefined){ posisi[k] = hasil[r.jenis].length; hasil[r.jenis].push(titik); }
+          else { hasil[r.jenis][posisi[k]] = titik; }
+        });
+        return hasil;
+      }
+
+      Promise.all([
+        fetch('apps/peta-ipa-sumur/data/lokasi.json').then(function(res){ return res.json(); }),
+        fetch('/api/visualization/admin-library?action=map-lokasi')
+          .then(function(res){ return res.json(); })
+          .catch(function(){ return { rows: [] }; })
+      ])
+        .then(function(hasil){
+          var data = gabungLokasi(hasil[0], hasil[1].rows);
           addDots(data.ipa, CATEGORY_COLOR.ipa, 5);
           addDots(data.sumur, CATEGORY_COLOR.sumur, 3.5);
           addDots(data.waduk, CATEGORY_COLOR.waduk, 5.5);
