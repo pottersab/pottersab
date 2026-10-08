@@ -1,16 +1,30 @@
 // ===========================================================================
 // Daftar Sumber Air Baku — apps/sumber-air-baku
 // ---------------------------------------------------------------------------
-// Dua menu: Waduk & Sumur. Daftar sumber (nama + koordinat) diambil dari
-// apps/peta-ipa-sumur/data/lokasi.json (satu sumber kebenaran untuk peta &
-// daftar), lalu digabung dengan detail yang disimpan di DB (lihat
-// ?action=sumber di admin-library.js). Detailnya terkunci: tanpa akses
-// visitor cuma lihat nama + gerbang "Minta Akses"; admin dapat mengisi.
+// Dua menu: Waduk & Sumur. Daftar sumber (nama + koordinat) diambil dari DUA
+// tempat, sama seperti apps/peta-ipa-sumur:
+//   1. apps/peta-ipa-sumur/data/lokasi.json -- titik BAWAAN, statis.
+//   2. ?action=map-lokasi (tabel peta_lokasi) -- titik yang ditambahkan admin
+//      dari halaman peta + koreksi koordinat titik lama.
+// Sebelumnya halaman ini cuma membaca berkas (1), jadi sumur yang ditambahkan
+// lewat halaman peta tidak pernah muncul di sini -- kejadian 2026-10-07,
+// 9 sumur Teritip baru. Aturan gabungnya sama dengan halaman peta: baris
+// dari database MENANG untuk (jenis, id) yang sama.
+// Lalu digabung lagi dengan detail yang disimpan di DB (lihat ?action=sumber
+// di admin-library.js). Detailnya terkunci: tanpa akses visitor cuma lihat
+// nama + gerbang "Minta Akses"; admin dapat mengisi.
 // ===========================================================================
 
 const DATA_URL = '/api/visualization/data';
 const ADMIN_URL = '/api/visualization/admin-library';
 const LOKASI_URL = '../peta-ipa-sumur/data/lokasi.json';
+// Endpoint PUBLIK (tanpa admin), sepasang dengan map-latest -- isinya cuma
+// nama + koordinat, sama seperti lokasi.json yang juga terbuka.
+const MAP_LOKASI_URL = '/api/visualization/admin-library?action=map-lokasi';
+
+// Jenis titik yang dipakai halaman ini. 'ipa' sengaja tidak ikut -- menu di
+// sini cuma Waduk & Sumur, dan baris ipa dari peta_lokasi dilewati.
+const JENIS = ['waduk', 'sumur'];
 
 const INSTALLASI_LABEL = {
   gunung_sari: 'IPA Gunung Sari',
@@ -62,6 +76,67 @@ async function loadJSON(url, fallback) {
     if (!r.ok) throw new Error('HTTP ' + r.status);
     return await r.json();
   } catch (e) { return fallback; }
+}
+
+// Nomor sumur di ujung id ("teritip_05" -> 5). Dipakai untuk mengurutkan, jadi
+// id yang tidak berpola nomor ditaruh paling belakang, bukan bikin error.
+function nomorDariId(id) {
+  const m = String(id || '').match(/_(\d+)$/);
+  return m ? Number(m[1]) : Number.MAX_SAFE_INTEGER;
+}
+
+// Urutkan sumur per instalasi menurut NOMOR sumurnya, bukan urutan di berkas.
+// Sejak titik baru bisa ditambahkan dari halaman peta, sumur anyar selalu
+// menempel di akhir daftar -- padahal nomornya bisa di tengah (Sumur 05 jatuh
+// di antara 03 dan 08). Pengelompokan per instalasi sendiri tetap dilakukan
+// renderSumur(); di sini cuma memastikan urutan di dalam tiap kelompok benar.
+function urutSumur(a, b) {
+  if (a.installation !== b.installation) {
+    return String(a.installation || '').localeCompare(String(b.installation || ''), 'id');
+  }
+  return nomorDariId(a.id) - nomorDariId(b.id);
+}
+
+// Gabungkan lokasi.json (bawaan) dengan baris tabel peta_lokasi (titik baru +
+// koreksi koordinat). Aturannya sama persis dengan apps/peta-ipa-sumur/app.js:
+// baris dari database MENANG untuk (jenis, id) yang sama, sisanya jadi titik
+// baru. Sengaja disalin, bukan dijadikan modul bersama -- halaman ini tidak
+// punya menu ipa, jadi versinya lebih ramping.
+function gabungLokasi(bawaan, rows) {
+  const hasil = { waduk: [], sumur: [] };
+  const posisi = {};   // "jenis:id" -> index di hasil[jenis]
+
+  JENIS.forEach(j => {
+    (bawaan[j] || []).forEach(loc => {
+      posisi[j + ':' + loc.id] = hasil[j].length;
+      hasil[j].push(Object.assign({}, loc));
+    });
+  });
+
+  (rows || []).forEach(r => {
+    const j = r.jenis;
+    if (!hasil[j]) return;   // 'ipa' (atau jenis tak dikenal): lewati
+    const k = j + ':' + r.lokasi_id;
+    const data = {
+      id: r.lokasi_id,
+      nama: r.nama,
+      lat: Number(r.lat),
+      lng: Number(r.lng)
+    };
+    // Cuma dipasang kalau ada isinya -- kalau di-set undefined, Object.assign
+    // di bawah justru menimpa nilai asli dari lokasi.json dengan undefined.
+    if (r.installation) data.installation = r.installation;
+
+    if (posisi[k] === undefined) {
+      posisi[k] = hasil[j].length;
+      hasil[j].push(data);
+    } else {
+      hasil[j][posisi[k]] = Object.assign({}, hasil[j][posisi[k]], data);
+    }
+  });
+
+  hasil.sumur.sort(urutSumur);
+  return hasil;
 }
 
 async function muatDetail(jenis) {
@@ -652,7 +727,16 @@ async function initData() {
 
 async function init() {
   state.isAdmin = !!(localStorage.getItem('token') && localStorage.getItem('role') === 'admin');
-  state.lokasi = await loadJSON(LOKASI_URL, { waduk: [], sumur: [] });
+
+  // Dua-duanya dimuat bersamaan. Kalau endpoint peta_lokasi gagal, loadJSON
+  // mengembalikan { rows: [] } -- daftarnya mundur ke lokasi.json saja
+  // (perilaku lama), bukan kosong.
+  const [bawaan, db] = await Promise.all([
+    loadJSON(LOKASI_URL, { waduk: [], sumur: [] }),
+    loadJSON(MAP_LOKASI_URL, { rows: [] })
+  ]);
+  state.lokasi = gabungLokasi(bawaan, db.rows);
+
   restoreVizSession();
   bindModalButtons();
   await initData();
