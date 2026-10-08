@@ -1336,29 +1336,56 @@ async function handlePeta(req, res) {
     // titik mustahil berpindah instalasi diam-diam.
     let nomorSumur = null;
     let namaKolom = null;
+    let idLamaDirapikan = null;   // koreksi baris lama yang id-nya belum kanonik
     if (jenis === 'sumur') {
       if (!installation) {
         return res.status(400).json({ error: 'Instalasi induk wajib dipilih untuk sumur' });
       }
+      await ensureSumberTables();   // detail sumber ikut dipindah kalau id dirapikan
+
       const rapi = normalisasiIdSumur(id, installation);
       if (!rapi.ok) return res.status(400).json({ error: rapi.error });
 
-      // Id hasil normalisasi yang SUDAH ada padahal yang dikirim beda artinya
-      // menabrak titik sumur lain -- upsert di bawah akan menimpanya diam-diam
-      // (koordinat + namanya ikut tertimpa). Tolak, jangan tebak-tebakan.
-      // Kalau id yang dikirim sudah rapi, ini baris itu sendiri: itu koreksi,
-      // bukan tabrakan.
+      // Id yang dikirim belum kanonik ('teritip_1'). Ada DUA kemungkinan, dan
+      // membedakannya penting -- kalau tidak, salah satunya berujung titik dobel:
+      //
+      //   a. Baris dengan id itu SUDAH ada -> ini koreksi titik lama yang id-nya
+      //      belum 2 digit. Baris itu harus DIPINDAH ke id yang rapi, bukan
+      //      ditambah baris baru. Kalau cuma di-upsert dengan id baru, upsertnya
+      //      tidak menemukan konflik (kuncinya beda) dan justru menyisipkan
+      //      baris kedua -- sumur yang sama jadi dua titik di peta.
+      //   b. Baris itu TIDAK ada -> ini titik baru. Kalau id rapi tujuannya
+      //      sudah dipakai, artinya menabrak sumur lain: tolak, karena upsert
+      //      akan menimpa koordinat & nama sumur itu diam-diam.
+      //
+      // Kalau id yang dikirim sudah rapi, tidak ada yang perlu dipindah: itu
+      // baris itu sendiri.
       if (rapi.berubah) {
-        const { rows: bentrok } = await pool.query(
+        const { rows: barisLama } = await pool.query(
+          `SELECT lokasi_id FROM peta_lokasi WHERE jenis = 'sumur' AND lokasi_id = $1`,
+          [id]
+        );
+        const { rows: barisTujuan } = await pool.query(
           `SELECT lokasi_id FROM peta_lokasi WHERE jenis = 'sumur' AND lokasi_id = $1`,
           [rapi.id]
         );
-        if (bentrok.length) {
+
+        if (barisLama.length && barisTujuan.length) {
+          // Dua-duanya ada: baris lama belum kanonik DAN id tujuannya sudah
+          // dipakai baris lain. Tidak bisa diputuskan otomatis -- salah pilih
+          // berarti menimpa sumur yang salah.
+          return res.status(400).json({
+            error: `Peta punya dua titik untuk sumur ini: ${id} dan ${rapi.id}. `
+              + `Periksa keduanya di peta, hapus yang salah, baru simpan lagi.`
+          });
+        }
+        if (barisTujuan.length) {
           return res.status(400).json({
             error: `Sumur ${rapi.id} sudah ada di peta. Kalau mau memindahkan titik sumur itu, `
               + `buka titiknya dari peta (bukan lewat "Tambah titik"). Kalau ini memang sumur lain, pakai nomor lain.`
           });
         }
+        if (barisLama.length) idLamaDirapikan = id;
       }
 
       id = rapi.id;
@@ -1374,6 +1401,25 @@ async function handlePeta(req, res) {
     let hasilSumur = null;
     try {
       await client.query('BEGIN');
+
+      // Baris lama yang id-nya belum 2 digit dipindah dulu, BARU di-upsert di
+      // bawah -- supaya upsertnya ketemu konflik di baris yang sama, bukan
+      // menyisipkan baris kedua untuk sumur yang sama.
+      if (idLamaDirapikan) {
+        await client.query(
+          `UPDATE peta_lokasi SET lokasi_id = $1, updated_at = now()
+           WHERE jenis = 'sumur' AND lokasi_id = $2`,
+          [id, idLamaDirapikan]
+        );
+        // Detail sumber di-key oleh sumur_id yang memakai id titik peta (lihat
+        // lib/db.js), jadi barisnya harus ikut pindah -- kalau tidak, detailnya
+        // menggantung di id lama dan tampak hilang dari Daftar Sumber Air Baku.
+        await client.query(
+          `UPDATE sumber_sumur SET sumur_id = $1, updated_at = now()
+           WHERE sumur_id = $2`,
+          [id, idLamaDirapikan]
+        );
+      }
 
       await client.query(
         `INSERT INTO peta_lokasi
