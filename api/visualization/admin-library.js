@@ -2,6 +2,13 @@ const { pool, ensureVizTables, ensureSignersTable, ensureSpdTables, ensureSumber
 const { requireAdmin } = require('../../lib/auth');
 const { DATASETS } = require('../../lib/visualization/columns');
 const { fetchSumurWells } = require('../../lib/visualization/repo');
+const { nomorDariId, installationDariId, nomorDariWellName, normalisasiIdSumur, pastikanSumurTerdaftar } = require('../../lib/visualization/sumur-well');
+// Titik BAWAAN peta (nama + koordinat). Dipakai handlePeta waktu DELETE untuk
+// membedakan "titik yang ditambahkan admin" dari "titik bawaan yang cuma
+// dilepas koreksinya" -- lihat komentar di sana. Dibaca di sisi SERVER, bukan
+// dipercaya dari klien: yang menentukan sumurnya boleh dihapus atau tidak tidak
+// boleh bergantung pada apa yang dikirim browser.
+const LOKASI_BAWAAN = require('../../apps/peta-ipa-sumur/data/lokasi.json');
 // getK97PumpType sengaja TIDAK di-require di sini: kpi.js (308 KB) cuma
 // dipakai untuk auto-fill saat buka form edit sumur. Kalau di-require di
 // top-level, setiap cold start (fungsi serverless "tidur" di paket Hobby)
@@ -997,17 +1004,12 @@ function teksSumber(v) {
   return s ? s : null;
 }
 
-// Nomor sumur dari id "{installation}_{NN}" -> 01 -> 1 (buat cocok ke no di
-// kpi_9_7_items yang memakai nomor sumur dari data web).
-function nomorDariSumurId(sumurId) {
-  const m = String(sumurId).match(/_(\d+)$/);
-  return m ? parseInt(m[1], 10) : null;
-}
-
-// Instalasi dari id sumur: "gunung_sari_01" -> "gunung_sari".
-function installationDariSumurId(sumurId) {
-  return String(sumurId).replace(/_\d+$/, '');
-}
+// Nomor & instalasi dari id "{installation}_{NN}" (buat cocok ke no di
+// kpi_9_7_items yang memakai nomor sumur dari data web). Aturannya sekarang
+// tinggal di lib/visualization/sumur-well.js -- dulu disalin di sini, dan
+// salinan aturan penamaan sumur itu yang bikin bug 'teritip_1' vs 'teritip_01'.
+const nomorDariSumurId = nomorDariId;
+const installationDariSumurId = installationDariId;
 
 // Unggah satu lampiran (data URL) ke Vercel Blob. Kembalikan { url, pathname }
 // atau { error }. kalau dataUrl kosong -> null (tidak ada lampiran baru).
@@ -1308,7 +1310,7 @@ async function handlePeta(req, res) {
   if (req.method === 'POST') {
     const b = req.body || {};
     const jenis = teksSumber(b.jenis);
-    const id = teksSumber(b.lokasi_id);
+    let id = teksSumber(b.lokasi_id);
     const nama = teksSumber(b.nama);
     const lat = koordinatValid(b.lat, 90);
     const lng = koordinatValid(b.lng, 180);
@@ -1323,22 +1325,92 @@ async function handlePeta(req, res) {
 
     // installation cuma bermakna untuk sumur: dipakai peta untuk mengelompokkan
     // sumur per IPA induk di dropdown navigasi.
-    const installation = jenis === 'sumur' ? teksSumber(b.installation) : null;
-    if (jenis === 'sumur' && !installation) {
-      return res.status(400).json({ error: 'Instalasi induk wajib dipilih untuk sumur' });
+    let installation = jenis === 'sumur' ? teksSumber(b.installation) : null;
+
+    // --- Sumur: rapikan id, lalu daftarkan sumurnya -------------------------
+    // Id sumur TIDAK dipercaya apa adanya. Halaman peta menyarankan
+    // "{instalasi}_{NN}", tapi field-nya bisa diketik bebas, dan id yang salah
+    // format bikin sumur itu tidak akan pernah dapat data debit/statis/dinamis
+    // -- penggabungan di klien memakai wellIdFromName() yang selalu 2 digit.
+    // Id juga yang MENENTUKAN instalasi (bukan field instalasi di form), jadi
+    // titik mustahil berpindah instalasi diam-diam.
+    let nomorSumur = null;
+    let namaKolom = null;
+    if (jenis === 'sumur') {
+      if (!installation) {
+        return res.status(400).json({ error: 'Instalasi induk wajib dipilih untuk sumur' });
+      }
+      const rapi = normalisasiIdSumur(id, installation);
+      if (!rapi.ok) return res.status(400).json({ error: rapi.error });
+
+      // Id hasil normalisasi yang SUDAH ada padahal yang dikirim beda artinya
+      // menabrak titik sumur lain -- upsert di bawah akan menimpanya diam-diam
+      // (koordinat + namanya ikut tertimpa). Tolak, jangan tebak-tebakan.
+      // Kalau id yang dikirim sudah rapi, ini baris itu sendiri: itu koreksi,
+      // bukan tabrakan.
+      if (rapi.berubah) {
+        const { rows: bentrok } = await pool.query(
+          `SELECT lokasi_id FROM peta_lokasi WHERE jenis = 'sumur' AND lokasi_id = $1`,
+          [rapi.id]
+        );
+        if (bentrok.length) {
+          return res.status(400).json({
+            error: `Sumur ${rapi.id} sudah ada di peta. Kalau mau memindahkan titik sumur itu, `
+              + `buka titiknya dari peta (bukan lewat "Tambah titik"). Kalau ini memang sumur lain, pakai nomor lain.`
+          });
+        }
+      }
+
+      id = rapi.id;
+      nomorSumur = rapi.nomor;
+      namaKolom = teksSumber(b.namaKolom);
     }
 
-    await pool.query(
-      `INSERT INTO peta_lokasi
-         (jenis, lokasi_id, nama, installation, lat, lng, keterangan, created_by, updated_at)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8, now())
-       ON CONFLICT (jenis, lokasi_id) DO UPDATE SET
-         nama = EXCLUDED.nama, installation = EXCLUDED.installation,
-         lat = EXCLUDED.lat, lng = EXCLUDED.lng,
-         keterangan = EXCLUDED.keterangan, updated_at = now()`,
-      [jenis, id, nama, installation, lat, lng, teksSumber(b.keterangan), admin]
-    );
-    return res.status(200).json({ success: true });
+    // Titik peta & pendaftaran sumurnya satu transaksi: kalau pendaftaran
+    // sumurnya gagal (mis. nama kolom bentrok), titiknya jangan terlanjur
+    // tersimpan -- kalau tidak, peta dan daftar sumur balik tidak sinkron,
+    // persis masalah yang mau dihilangkan.
+    const client = await pool.connect();
+    let hasilSumur = null;
+    try {
+      await client.query('BEGIN');
+
+      await client.query(
+        `INSERT INTO peta_lokasi
+           (jenis, lokasi_id, nama, installation, lat, lng, keterangan, created_by, updated_at)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8, now())
+         ON CONFLICT (jenis, lokasi_id) DO UPDATE SET
+           nama = EXCLUDED.nama, installation = EXCLUDED.installation,
+           lat = EXCLUDED.lat, lng = EXCLUDED.lng,
+           keterangan = EXCLUDED.keterangan, updated_at = now()`,
+        [jenis, id, nama, installation, lat, lng, teksSumber(b.keterangan), admin]
+      );
+
+      if (jenis === 'sumur') {
+        hasilSumur = await pastikanSumurTerdaftar(client, installation, { nomor: nomorSumur, namaKolom });
+        if (!hasilSumur.ok) {
+          await client.query('ROLLBACK');
+          return res.status(400).json({ error: hasilSumur.error });
+        }
+      }
+
+      await client.query('COMMIT');
+    } catch (err) {
+      await client.query('ROLLBACK').catch(() => {});
+      throw err;
+    } finally {
+      client.release();
+    }
+
+    // lokasi_id ikut dibalas supaya klien tahu id yang BENAR-BENAR tersimpan
+    // (bisa beda dari yang diketik: 'teritip_1' -> 'teritip_01').
+    return res.status(200).json({
+      success: true,
+      lokasi_id: id,
+      installation: installation,
+      well_name: hasilSumur ? hasilSumur.wellName : null,
+      sumurDibuat: hasilSumur ? hasilSumur.dibuat : false
+    });
   }
 
   if (req.method === 'DELETE') {
@@ -1347,8 +1419,57 @@ async function handlePeta(req, res) {
     if (!JENIS_PETA.includes(jenis) || !id) {
       return res.status(400).json({ error: 'jenis (ipa/sumur/waduk) dan id wajib diisi' });
     }
+
+    // Sumur: titik baru yang dilepas sekalian disingkirkan dari daftar sumur,
+    // tapi HANYA kalau memang belum pernah diisi data.
+    //
+    // Dua penjaga, dan dua-duanya perlu:
+    //   1. Titik BAWAAN (ada di data/lokasi.json) tidak pernah menghapus sumur.
+    //      DELETE di situ bukan penghapusan -- itu "kembalikan ke koordinat
+    //      asli", dan sumurnya jelas masih ada. Dibaca dari berkas, bukan dari
+    //      flag kiriman klien: ini penentu data boleh hilang atau tidak, jadi
+    //      tidak pantas bergantung pada apa yang dikirim browser.
+    //   2. Sumur yang sudah punya pembacaan di sumur_debit_readings
+    //      DIPERTAHANKAN. sumur_wells itu satu-satunya penentu kolom di halaman
+    //      input; kalau barisnya dihapus, data debitnya jadi menggantung dan
+    //      tidak bisa dibuka lagi dari web -- kelihatannya seperti data hilang.
+    let sumurDihapus = false;
+    let sumurDipertahankan = false;
+
+    if (jenis === 'sumur') {
+      const bawaan = (LOKASI_BAWAAN.sumur || []).some(s => s.id === id);
+      if (!bawaan) {
+        const installation = installationDariId(id);
+        const nomor = nomorDariId(id);
+        const { rows: kandidat } = await pool.query(
+          `SELECT well_name FROM sumur_wells WHERE installation = $1 AND category = 'debit'`,
+          [installation]
+        );
+        // nomor HARUS ada: tanpa penjaga ini, id tanpa nomor (nomor = null)
+        // akan cocok dengan nama kolom yang juga tidak berpola sumur -- dua-duanya
+        // null, dan sumur yang salah ikut terhapus.
+        const cocok = nomor === null ? null : kandidat.find(r => nomorDariWellName(r.well_name) === nomor);
+
+        if (cocok) {
+          const { rows: adaData } = await pool.query(
+            `SELECT 1 FROM sumur_debit_readings WHERE installation = $1 AND well_name = $2 LIMIT 1`,
+            [installation, cocok.well_name]
+          );
+          if (adaData.length) {
+            sumurDipertahankan = true;
+          } else {
+            await pool.query(
+              `DELETE FROM sumur_wells WHERE installation = $1 AND category = 'debit' AND well_name = $2`,
+              [installation, cocok.well_name]
+            );
+            sumurDihapus = true;
+          }
+        }
+      }
+    }
+
     await pool.query(`DELETE FROM peta_lokasi WHERE jenis = $1 AND lokasi_id = $2`, [jenis, id]);
-    return res.status(200).json({ success: true });
+    return res.status(200).json({ success: true, sumurDihapus, sumurDipertahankan });
   }
 
   return res.status(405).json({ error: 'Method not allowed' });

@@ -619,6 +619,18 @@ function doLogout(){
       <span class="field-note" id="idNote"></span>
     </div>
 
+    <!-- Cuma untuk sumur yang BARU -- menyimpan titik sumur sekalian
+         mendaftarkannya sebagai sumur yang bisa diisi data, dan kolom itu
+         butuh nama. Dikosongkan -> server memakai nama netral
+         "Sumur_NN_<Instalasi>". Sumur lama berakhiran lokasi pompa
+         ("Sumur_04_Dalam_IPA") yang belum tentu diketahui saat menambah titik
+         di lapangan, makanya opsional. -->
+    <div class="field" id="fieldNamaKolom" style="display:none">
+      <label for="fNamaKolom">Nama kolom data (opsional)</label>
+      <input id="fNamaKolom" type="text" autocomplete="off" spellcheck="false" placeholder="mis. Sumur_19_Teritip">
+      <span class="field-note" id="namaKolomNote"></span>
+    </div>
+
     <div class="field">
       <label for="fNama">Nama titik</label>
       <input id="fNama" type="text" autocomplete="off" placeholder="mis. Sumur 19 — Teritip">

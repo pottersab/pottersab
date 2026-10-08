@@ -361,19 +361,34 @@ function normalId(s) {
   return String(s || '').trim().toLowerCase().replace(/[^a-z0-9_]+/g, '_').replace(/^_+|_+$/g, '');
 }
 
-// Saran id sumur: nomor berikutnya yang belum terpakai di instalasi itu,
-// 2 digit. Formatnya WAJIB sama dengan wellIdFromName di
-// api/visualization/admin-library.js ({installation}_{NN}) -- kalau beda,
-// sumur barunya tidak akan pernah dapat data debit/statis/dinamis walau
-// datanya sudah diinput, karena penggabungan di sana memakai id.
+// Saran id sumur: nomor TERKECIL yang belum terpakai di instalasi itu, 2 digit.
+// Formatnya WAJIB sama dengan wellIdFromName di api/visualization/
+// admin-library.js ({installation}_{NN}) -- kalau beda, sumur barunya tidak
+// akan pernah dapat data debit/statis/dinamis walau datanya sudah diinput,
+// karena penggabungan di sana memakai id.
+//
+// Dulu sarannya "nomor terakhir + 1", dan itu yang bikin masalah 2026-10-07:
+// Teritip sudah punya nomor sampai 18, jadi sarannya teritip_19 -- padahal
+// yang ditambahkan justru sumur nomor 1, 2, 3. Terpaksa ketik manual, dan di
+// situ format 2 digitnya lepas. Nomor terkecil mengisi lubang lebih dulu, jadi
+// sarannya selalu masuk akal. Untuk instalasi yang nomornya sudah rapat (5 IPA
+// di KPI 18.2), hasilnya tetap nomor terakhir + 1 -- jadi urutan kolom 18.2
+// tidak ikut bergeser.
+//
+// Pencocokan lewat PREFIX ID, bukan field installation: titik lama bisa saja
+// belum punya field itu, sedangkan id selalu ada dan itulah yang mengikat.
 function saranIdSumur(installation) {
-  let maks = 0;
+  const dipakai = new Set();
   (state.lokasi.sumur || []).forEach(s => {
-    if (s.installation !== installation) return;
-    const m = String(s.id).match(/_(\d+)$/);
-    if (m) maks = Math.max(maks, Number(m[1]));
+    const id = String(s.id || '');
+    if (id.replace(/_\d+$/, '') !== installation) return;
+    const m = id.match(/_(\d+)$/);
+    if (m) dipakai.add(Number(m[1]));
   });
-  return installation + '_' + String(maks + 1).padStart(2, '0');
+
+  let nomor = 1;
+  while (dipakai.has(nomor)) nomor++;
+  return installation + '_' + String(nomor).padStart(2, '0');
 }
 
 function isiPilihanInstallation() {
@@ -467,12 +482,27 @@ function bukaPanel(mode, jenis, id) {
   // menganggapnya berubah dan tidak membersihkan apa pun).
   $('fId').value = '';
   $('fId').dataset.auto = '1';
+  $('fNamaKolom').value = '';
+
+  // Instalasi induk HARUS diisi ulang dari titik yang dibuka. Dulu tidak, dan
+  // akibatnya dropdown masih memegang nilai terakhir -- pada halaman yang baru
+  // dibuka itu "IPA Batu Ampar" (opsi pertama, hasil urut nama). Kalau admin
+  // tidak sadar menggantinya, `installation` titik itu tertulis batu_ampar dan
+  // titiknya pindah grup. Server sekarang juga menurunkan instalasi dari prefix
+  // id, jadi dua-duanya menutup celah yang sama.
+  if (loc) {
+    $('fInstallation').value = loc.installation || String(loc.id).replace(/_\d+$/, '');
+  }
+
   setJenis(jenis);
 
   // Jenis tidak boleh diubah saat mengoreksi: id titik terikat ke jenisnya
   // (kunci barisnya (jenis, id)), jadi memindahkannya ke jenis lain sama
   // dengan membuat titik baru sekaligus meninggalkan baris lama menggantung.
+  // Instalasi induk alasannya sama: id sumur berprefix instalasinya
+  // ({installation}_{NN}), jadi mengganti instalasi berarti mengganti id.
   document.querySelectorAll('#jenisSeg .seg-btn').forEach(b => { b.disabled = mode === 'koreksi'; });
+  $('fInstallation').disabled = mode === 'koreksi';
 
   $('fNama').value = loc ? loc.nama : '';
   $('fKet').value = loc ? (loc.keterangan || '') : '';
@@ -516,6 +546,7 @@ function setJenis(jenis) {
   if (berubah) { $('fId').value = ''; $('fId').dataset.auto = '1'; }
 
   perbaruiSaranId();
+  perbaruiFieldNamaKolom();
 }
 
 function perbaruiSaranId() {
@@ -543,6 +574,38 @@ function perbaruiSaranId() {
   note.textContent = f.jenis === 'sumur'
     ? 'Dipakai mencocokkan data debit/statis/dinamis. Format {instalasi}_{NN} — biarkan seperti saran kecuali memang perlu diubah.'
     : 'ID ini jadi rujukan data. Untuk IPA, data AP/ATD hanya muncul kalau ID-nya cocok dengan yang dipakai input bulanan.';
+}
+
+// Nama instalasi untuk contoh nama kolom: "kampung_baru_ulu" -> "Kampung_Baru_Ulu".
+// Sama persis dengan labelInstalasi() di lib/visualization/sumur-well.js --
+// yang di sini cuma untuk contoh di catatan bantuan, bukan penentu data.
+function labelInstalasi(installation) {
+  return String(installation || '').split('_').filter(Boolean)
+    .map(k => k.charAt(0).toUpperCase() + k.slice(1)).join('_');
+}
+
+// Field "Nama kolom data" cuma bermakna untuk sumur yang BARU: menyimpan titik
+// sumur sekalian mendaftarkannya sebagai sumur yang bisa diisi data, dan kolom
+// itu butuh nama. Saat mengoreksi titik, sumurnya sudah terdaftar -- dan
+// mengganti nama kolomnya bukan urusan panel ini, karena data yang sudah
+// tersimpan terikat ke nama lama. Server juga mengabaikannya di kasus itu.
+function perbaruiFieldNamaKolom() {
+  if (!state.form) return;
+  const tampil = state.form.jenis === 'sumur' && state.form.mode !== 'koreksi';
+  $('fieldNamaKolom').style.display = tampil ? '' : 'none';
+  if (!tampil) return;
+
+  // Contohnya mengikuti nomor yang sedang disarankan supaya admin yang tidak
+  // tahu harus menulis apa cukup melihat catatannya.
+  const instalasi = $('fInstallation').value;
+  const nomor = $('fId').value.match(/_(\d+)$/);
+  const contoh = (instalasi && nomor)
+    ? 'Sumur_' + nomor[1].padStart(2, '0') + '_' + labelInstalasi(instalasi)
+    : '';
+
+  $('namaKolomNote').textContent =
+    (contoh ? 'Dikosongkan → dipakai ' + contoh + '. ' : '')
+    + 'Harus diawali "Sumur_" plus nomor sumurnya — kalau tidak, datanya tidak akan menempel ke titik ini.';
 }
 
 function pesanPanel(teks, jenis) {
@@ -585,18 +648,35 @@ async function simpanPanel() {
         jenis: f.jenis, lokasi_id: id, nama: nama,
         installation: installation,
         lat: lat, lng: lng,
-        keterangan: $('fKet').value.trim()
+        keterangan: $('fKet').value.trim(),
+        // Cuma dikirim untuk sumur baru -- server mengabaikannya kalau sumurnya
+        // sudah terdaftar (lihat perbaruiFieldNamaKolom).
+        namaKolom: (f.jenis === 'sumur' && f.mode !== 'koreksi') ? $('fNamaKolom').value.trim() : ''
       })
     });
     const d = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(d.error || ('HTTP ' + res.status));
+
+    // Id yang tersimpan bisa BEDA dari yang diketik: server merapikan nomor
+    // jadi 2 digit ('teritip_1' -> 'teritip_01'), dan penggabungan data di
+    // server memakai id yang sudah rapi itu. Jadi penanda marker & peta harus
+    // memakai id dari balasan, bukan id kiriman.
+    const idFinal = d.lokasi_id || id;
+
+    // Kalau id-nya dirapikan, beri tahu -- kalau tidak, admin akan mencari
+    // 'teritip_1' di daftar dan mengira titiknya tidak tersimpan. Panelnya
+    // ditutup di bawah, jadi pesannya sempat dibaca dulu.
+    if (idFinal !== id) {
+      pesanPanel(`Tersimpan sebagai ${idFinal} — nomor sumur dirapikan jadi 2 digit.`, 'ok');
+      await new Promise(r => setTimeout(r, 1400));
+    }
 
     tutupPanel();
     await muatData();
     gambarMarker();
     // Titik yang baru disimpan langsung dibuka supaya admin bisa memastikan
     // hasilnya, tanpa mencari sendiri di peta.
-    const marker = state.markersById[kunci(f.jenis, id)];
+    const marker = state.markersById[kunci(f.jenis, idFinal)];
     if (marker) { state.map.flyTo(marker.getLatLng(), 16); marker.openPopup(); }
   } catch (err) {
     pesanPanel('Gagal menyimpan: ' + err.message, 'error');
@@ -628,6 +708,15 @@ async function hapusPanel() {
     if (!res.ok) throw new Error(d.error || ('HTTP ' + res.status));
 
     tutupPanel();
+
+    // Titiknya hilang dari peta, tapi sumurnya sengaja DIPERTAHANKAN server
+    // karena sudah punya data debit. Kalau tidak diberitahukan, admin akan
+    // mengira datanya ikut terhapus.
+    if (d.sumurDipertahankan) {
+      alert('Titiknya sudah dilepas dari peta, tapi sumurnya TETAP ada di daftar '
+        + 'input data karena sudah punya data debit. Data yang sudah diisi tidak ikut hilang.');
+    }
+
     await muatData();
     gambarMarker();
   } catch (err) {
@@ -866,11 +955,15 @@ async function init() {
     // mengetik id sendiri (dataset.auto dilepas di bawah).
     $('fId').dataset.auto = '1';
     perbaruiSaranId();
+    perbaruiFieldNamaKolom();
   });
   $('fNama').addEventListener('input', () => {
     if (state.form && state.form.jenis !== 'sumur') perbaruiSaranId();
   });
-  $('fId').addEventListener('input', () => { $('fId').dataset.auto = '0'; });
+  $('fId').addEventListener('input', () => {
+    $('fId').dataset.auto = '0';
+    perbaruiFieldNamaKolom();
+  });
 
   // Koordinat yang diketik manual juga membuka fase "isi". Sengaja TIDAK
   // ikut menggeser pandangan: titiknya belum tentu ada, dan menggeser peta
