@@ -35,7 +35,7 @@ function toNumOrNull(v) {
 // di batas 12 Serverless Functions Vercel Hobby. Dibaca dari tabel yang SAMA
 // dipakai grafik existing (lihat lib/db.js) supaya selalu sinkron. ----------
 const AP_COLUMNS = ['teritip', 'kampung_damai', 'batu_ampar', 'km_12', 'gunung_tembak'];
-const ATD_COLUMNS = ['kampung_damai', 'gunung_sari', 'prapatan', 'zamp', 'kampung_baru_ulu'];
+const ATD_COLUMNS = ['kampung_damai', 'gunung_sari', 'prapatan', 'zamp', 'kampung_baru_ulu', 'gunung_tembak'];
 
 // Ambil nilai non-null PERTAMA per kolom dari baris yang sudah diurutkan
 // tanggal/bulan DESC -- tiap kolom bisa punya bulan terakhir terisi yang

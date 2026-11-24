@@ -37,7 +37,7 @@
 // ---------------------------------------------------------------------------
 const GROUPS = [
   { key: 'ap', label: 'Air Permukaan (AP)', wellTabs: ['ap_teritip', 'ap_kampung_damai', 'ap_batu_ampar', 'ap_km12', 'ap_gunung_tembak'], aggTabs: ['ap_rekap'] },
-  { key: 'atd', label: 'Air Tanah Dalam (ATD)', wellTabs: ['atd_kampung_damai', 'atd_gunung_sari', 'atd_prapatan', 'atd_zamp', 'atd_kampung_baru_ulu'], aggTabs: ['atd_rekap'] }
+  { key: 'atd', label: 'Air Tanah Dalam (ATD)', wellTabs: ['atd_kampung_damai', 'atd_gunung_sari', 'atd_prapatan', 'atd_zamp', 'atd_kampung_baru_ulu', 'atd_gunung_tembak'], aggTabs: ['atd_rekap'] }
 ];
 
 function allTabsOf(group) {
@@ -76,7 +76,8 @@ const DATA_SOURCES = [
       Gunung_Sari: { key: 'atd_gunung_sari', label: 'Debit ATD — Gunung Sari', unit: 'm³', color: 'primary', hasGauge: true },
       Prapatan: { key: 'atd_prapatan', label: 'Debit ATD — Prapatan', unit: 'm³', color: 'primary', hasGauge: true },
       Zamp: { key: 'atd_zamp', label: 'Debit ATD — Zamp', unit: 'm³', color: 'primary', hasGauge: true },
-      Kampung_Baru_Ulu: { key: 'atd_kampung_baru_ulu', label: 'Debit ATD — Kampung Baru Ulu', unit: 'm³', color: 'primary', hasGauge: true }
+      Kampung_Baru_Ulu: { key: 'atd_kampung_baru_ulu', label: 'Debit ATD — Kampung Baru Ulu', unit: 'm³', color: 'primary', hasGauge: true },
+      Gunung_Tembak: { key: 'atd_gunung_tembak', label: 'Debit ATD — Gunung Tembak', unit: 'm³', color: 'primary', hasGauge: true }
     }
   }
 ];

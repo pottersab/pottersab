@@ -185,7 +185,11 @@ module.exports = async (req, res) => {
     pool.query(`
       SELECT to_char(ap.bulan, 'YYYY-MM-DD') as bulan,
         (ap.teritip + ap.kampung_damai + ap.batu_ampar + ap.km_12 + ap.gunung_tembak) as ap_total,
-        (atd.kampung_damai + atd.gunung_sari + atd.prapatan + atd.zamp + atd.kampung_baru_ulu) as atd_total
+        -- gunung_tembak belakangan menyusul sebagai sumber ATD, jadi baris
+        -- historisnya NULL -- COALESCE supaya bulan lama tetap ikut terhitung
+        -- dan tidak perlu masuk syarat NOT NULL di WHERE di bawah.
+        (atd.kampung_damai + atd.gunung_sari + atd.prapatan + atd.zamp + atd.kampung_baru_ulu
+          + COALESCE(atd.gunung_tembak, 0)) as atd_total
       FROM air_permukaan ap
       JOIN air_tanah_dalam atd ON atd.bulan = ap.bulan
       WHERE ap.teritip IS NOT NULL AND ap.kampung_damai IS NOT NULL AND ap.batu_ampar IS NOT NULL
